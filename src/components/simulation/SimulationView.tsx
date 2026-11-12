@@ -1,3 +1,4 @@
+import { WorkspaceSections } from '../ui/WorkspaceSections';
 import {DeferredPanel} from '../ui/DeferredPanel';
 import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -1070,59 +1071,15 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         </div>
       </div>
 
-      <div className="module-process-strip"><span>01 · Solicitar simulação</span><ArrowRight size={13} /><span>02 · Comparar ofertas</span><ArrowRight size={13} /><span>03 · Acompanhar digitação</span></div>
+      <p className="internal-page-instruction">Comece em Nova simulação ou escolha abaixo o trabalho que deseja acompanhar.</p>
       {presentation === 'cards' && simulationsLoadError && <div role="alert" className="rounded-xl border border-[var(--border-default)] bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)] dark:border-[var(--border-default)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">{simulationsLoadError}<button type="button" className="ml-4 underline" onClick={() => void loadData()}>Tentar novamente</button></div>}
       {/* Navigation Sub-Tabs */}
-      <div className="module-mode-tabs" role="navigation" aria-label="Áreas de simulação">
-        <button type="button" aria-current={premium && activeTab === 'PORT_REFIN_PLANILHAS' ? 'page' : undefined} onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'PORT_REFIN_PLANILHAS' ? 'text-[var(--info-text)]' : 'text-[var(--text-secondary)]'}`}><FileSpreadsheet size={15} className="mr-2 inline" />PORT + REFIN · Planilhas</button>
-        <button
-          aria-current={premium && activeTab === 'VISAO_GERAL' ? 'page' : undefined}
-          onClick={() => setActiveTab('VISAO_GERAL')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-transform cursor-pointer ${
-            activeTab === 'VISAO_GERAL'
-              ? 'border-[var(--border-default)] text-[var(--info-text)] dark:text-[var(--info-text)] font-bold'
-              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
-          }`}
-        >
-          <ListFilter className="h-4 w-4" />
-          <span>Solicitações</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] font-semibold">
-            {simulations.length}
-          </span>
-        </button>
-
-        <button
-          aria-current={premium && activeTab === 'AGUARDANDO_DIGITACAO' ? 'page' : undefined}
-          onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-transform cursor-pointer ${
-            activeTab === 'AGUARDANDO_DIGITACAO'
-              ? 'border-[var(--border-default)] text-[var(--info-text)] dark:text-[var(--info-text)] font-bold'
-              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
-          }`}
-        >
-          <Clock className="h-4 w-4 text-[var(--warning-text)]" />
-          <span>Fila de digitação</span>
-          {metrics.enviadas > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] font-bold">
-              {metrics.enviadas}
-            </span>
-          )}
-        </button>
-
-        <button
-          aria-current={premium && activeTab === 'DASHBOARD_ANALISES' ? 'page' : undefined}
-          onClick={() => setActiveTab('DASHBOARD_ANALISES')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-transform cursor-pointer ${
-            activeTab === 'DASHBOARD_ANALISES'
-              ? 'border-[var(--border-default)] text-[var(--info-text)] dark:text-[var(--info-text)] font-bold'
-              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
-          }`}
-        >
-          <BarChart2 className="h-4 w-4" />
-          <span>Resultados e parceiros</span>
-        </button>
-      </div>
-
+      <WorkspaceSections label="Áreas de simulação" value={activeTab} onChange={id => setActiveTab(id as TabType)} items={[
+{id: 'VISAO_GERAL', title: 'Solicitações', description: 'Consulte pedidos e compare ofertas.', icon: <Calculator size={22}/>, count: simulations.length},
+{id: 'AGUARDANDO_DIGITACAO', title: 'Fila de digitação', description: 'Continue as operações já aprovadas.', icon: <FileCheck2 size={22}/>},
+{id: 'PORT_REFIN_PLANILHAS', title: 'Planilhas dos bancos', description: 'Trabalhe com as planilhas dos bancos.', icon: <FileSpreadsheet size={22}/>},
+{id: 'DASHBOARD_ANALISES', title: 'Resultados e parceiros', description: 'Acompanhe a produção e os parceiros.', icon: <BarChart2 size={22}/>},
+]} />
       {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
       {(activeTab === 'PORT_REFIN_PLANILHAS' || spreadsheetVisited) && <div hidden={activeTab !== 'PORT_REFIN_PLANILHAS'}><button type="button" onClick={()=>setActiveTab('VISAO_GERAL')} className="mb-4 rounded-lg border px-4 py-2 text-sm font-semibold">← Voltar às simulações</button><DeferredPanel active={true}><SpreadsheetPortRefinWorkspace premium={premium} partners={partners} onSuccess={() => { void loadData(); }} /></DeferredPanel></div>}
       {activeTab === 'VISAO_GERAL' && (

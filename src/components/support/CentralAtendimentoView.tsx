@@ -1,3 +1,4 @@
+import { WorkspaceSections } from '../ui/WorkspaceSections';
 import { SupportConversationDetails } from './SupportConversationDetails';
 import { isSupportEvent, supportConversationId } from '../../lib/supportRealtime';
 import React, { useState, useEffect, useRef } from 'react';
@@ -345,6 +346,12 @@ export const CentralAtendimentoView: React.FC = () => {
         </div>
       </header>
 
+      <WorkspaceSections label="Filas de atendimento" value={statusFilter} onChange={id => {setStatusFilter(id);setShowQueue(true);}} items={[
+        {id: 'ALL', title: 'Todas as conversas', description: 'Consulte o histórico de atendimento.', icon: <Headphones size={22}/>},
+        {id: 'OPEN', title: 'Aguardando atendimento', description: 'Conversas que precisam de resposta.', icon: <Clock size={22}/>, count: metrics.openCount},
+        {id: 'IN_PROGRESS', title: 'Em atendimento', description: 'Continue as conversas em andamento.', icon: <MessageSquare size={22}/>, count: metrics.inProgressCount},
+        {id: 'RESOLVED', title: 'Concluídos', description: 'Consulte os atendimentos encerrados.', icon: <CheckCircle2 size={22}/>, count: metrics.resolvedCount},
+      ]}/>
       {/* Main Two-Column Layout */}
       <div className={`support-inbox ${showQueue ? 'support-show-queue' : 'support-show-conversation'}`}>
         {/* Left Side: Conversation Queue & Filters */}
@@ -371,27 +378,6 @@ export const CentralAtendimentoView: React.FC = () => {
               <option value="ALL">Todas as filas</option>{canViewSimulation && <option value="SIMULATION">Mesa de simulação</option>}<option value="SUPPORT">Atendimento ao parceiro</option>
             </select>
             </details>
-            <div className="flex items-center gap-1">
-              {[
-                { id: 'ALL', label: 'Todos' },
-                { id: 'OPEN', label: 'Abertos' },
-                { id: 'IN_PROGRESS', label: 'Em Curso' },
-                { id: 'RESOLVED', label: 'Resolvidos' },
-              ].map((tab) => (
-                <button
-                  aria-pressed={statusFilter === tab.id}
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={`flex-1 py-1 rounded-lg text-[10.5px] font-bold transition-colors cursor-pointer ${
-                    statusFilter === tab.id
-                      ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-2xs'
-                      : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Conversations Queue */}

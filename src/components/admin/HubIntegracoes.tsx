@@ -1,3 +1,4 @@
+import { WorkspaceSections } from '../ui/WorkspaceSections';
 import {Table,Badge,Button} from '../ui/DesignSystem';
 import {watchIntegrationCatalog} from '../../lib/integrationCatalogRefresh';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -537,33 +538,12 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
         </div>
       </div>
 
-      {/* Barra de Subnavegação das 8 Abas do Hub */}
-      <div className={`flex items-center gap-1 overflow-x-auto border-b border-[var(--border-default)] pb-2 ${premium ? 'p2-integration-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Áreas de integração' : undefined}>
-        <select aria-label="Integração bancária" className="ui-input" style={{width:'auto',maxWidth:'100%'}} value={['overview','telegram','health','incidents','logs'].includes(activeTab)?'':activeTab} onChange={event=>setActiveTab(event.target.value as HubTab)}>
-          <option value="" disabled>Selecionar integração</option>
-          {tabs.filter(tab=>!['overview','telegram','health','incidents','logs'].includes(tab.id)).map(tab=><option key={tab.id} value={tab.id}>{tab.label}</option>)}
-        </select>
-        {tabs.filter(tab=>['overview','telegram','health','incidents','logs'].includes(tab.id)).map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              aria-current={premium && isActive ? 'page' : undefined}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                isActive
-                  ? 'bg-[var(--action)] text-[var(--action-ink)]  '
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
+      <WorkspaceSections label="Acompanhar integrações" value={activeTab} onChange={id => setActiveTab(id as HubTab)} items={tabs.filter(tab => ['overview','health','incidents','logs'].includes(tab.id)).map(tab => ({id: tab.id, title: tab.label, description: tab.id === 'overview' ? 'Escolha um banco para ver a conexão.' : tab.id === 'health' ? 'Confira a disponibilidade dos serviços.' : tab.id === 'incidents' ? 'Acompanhe problemas nas conexões.' : 'Consulte o histórico de solicitações.', icon: <tab.icon size={22}/>}))}/>
+      <label className="internal-bank-quick-select">Ir direto para um banco ou canal<select aria-label="Integração bancária" value={['overview','health','incidents','logs'].includes(activeTab) ? '' : activeTab} onChange={event => setActiveTab(event.target.value as HubTab)}><option value="" disabled>Escolha uma integração</option>{tabs.filter(tab => !['overview','health','incidents','logs'].includes(tab.id)).map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>
+      <details className="internal-bank-directory" open={!['overview','health','incidents','logs'].includes(activeTab)}>
+        <summary>Bancos e canais <span>Escolha uma integração para configurar ou consultar.</span></summary>
+        <nav aria-label="Escolher banco ou canal">{tabs.filter(tab => !['overview','health','incidents','logs'].includes(tab.id)).map(tab => <button type="button" key={tab.id} aria-current={activeTab === tab.id ? 'page' : undefined} onClick={() => setActiveTab(tab.id)}><tab.icon size={18}/>{tab.label}</button>)}</nav>
+      </details>
       {/* Feedback de Ações (Mensagens de Sucesso ou Erro) */}
       <p className="text-xs text-[var(--text-secondary)]" role="status">Atualização automática de leitura a cada 60 segundos enquanto esta tela estiver visível.{catalogUpdatedAt?` Última leitura: ${new Date(catalogUpdatedAt).toLocaleTimeString('pt-BR')}.`:''} Habilitada não significa online. O catálogo agrega as promotoras ativas da empresa; cada configuração mantém sua própria promotora.</p>
       <PremiumContent active={premium} className="p2-integration-body space-y-6">

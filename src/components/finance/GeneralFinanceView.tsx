@@ -1,3 +1,4 @@
+import { WorkspaceSections } from '../ui/WorkspaceSections';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   DollarSign,
@@ -286,9 +287,9 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
     <div className={`space-y-6 ${premium ? 'p2-live-module p2-live-finance' : ''}`}>
       {/* Header */}
       <ActionBar
-        title="Gestão Financeira Geral da Promotora"
-        subtitle="Controle de receitas operacionais, despesas administrativas, fluxo Previsto vs. Realizado"
-        badgeText="FLUXO DE CAIXA & DRE"
+        title="Financeiro"
+        subtitle="Acompanhe o caixa e organize o que você tem a pagar e a receber."
+        badgeText="Caixa da empresa"
         badgeColor="bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]"
         actions={canCreate ? (
           <button
@@ -296,7 +297,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
             className="flex items-center gap-2 bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] font-bold text-xs px-4 py-2 rounded-xl  transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            <span>Novo Lançamento Financeiro</span>
+            <span>Novo lançamento</span>
           </button>
         ) : undefined}
       />
@@ -336,6 +337,12 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
         />
       </div>
 
+      <WorkspaceSections label="Organizar lançamentos financeiros" value={filterDue === 'OVERDUE' ? 'overdue' : filterStatus === 'PREVISTO' && filterType === 'ENTRADA' ? 'receivable' : filterStatus === 'PREVISTO' && filterType === 'SAIDA' ? 'payable' : 'all'} onChange={id => {setFilterType(id === 'receivable' ? 'ENTRADA' : id === 'payable' ? 'SAIDA' : 'ALL'); setFilterStatus(id === 'receivable' || id === 'payable' || id === 'overdue' ? 'PREVISTO' : 'ALL'); setFilterDue(id === 'overdue' ? 'OVERDUE' : 'ALL');}} items={[
+        {id: 'all', title: 'Todos os lançamentos', description: 'Veja as movimentações do caixa.', icon: <Layers size={22}/>},
+        {id: 'receivable', title: 'A receber', description: 'Entradas previstas, ainda em aberto.', icon: <ArrowDownRight size={22}/>},
+        {id: 'payable', title: 'A pagar', description: 'Saídas previstas, ainda em aberto.', icon: <ArrowUpRight size={22}/>},
+        {id: 'overdue', title: 'Vencidos', description: 'Priorize os lançamentos em atraso.', icon: <Clock size={22}/>},
+      ]}/>
       {/* Filter Bar */}
       <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-3 text-xs  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] ${premium ? 'p2-finance-filters' : ''}`}>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
@@ -506,7 +513,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] p-6  space-y-4">
-            <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Novo Lançamento Financeiro</h3>
+            <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Novo lançamento</h3>
 
             <form onSubmit={handleCreateEntry} className="space-y-3 text-xs">
               <div className="space-y-1">

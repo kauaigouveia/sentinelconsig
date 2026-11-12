@@ -14,7 +14,7 @@ export interface PremiumRecordWorkspaceProps {
 /** Presentation adapter. Filters, records and actions belong to the original module. */
 export function PremiumRecordWorkspace({ filters, summary, count, mode, onMode, children }: PremiumRecordWorkspaceProps) {
   const [filtersOpen, setFiltersOpen] = useState(true);
-  return <section className="p2-operational-workspace" aria-label="Workspace de registros">
+  return <section className="p2-operational-workspace internal-record-workspace" aria-label="Workspace de registros">
     {summary && <details className="ui-operational-insights"><summary>Visão operacional</summary><div className="p2-operational-summary">{summary}</div></details>}
     <div className="p2-operational-toolbar">
       <strong>{count} registros encontrados</strong>
@@ -24,7 +24,8 @@ export function PremiumRecordWorkspace({ filters, summary, count, mode, onMode, 
         <button type="button" className="s2-button" aria-pressed={mode === 'cards'} onClick={() => onMode('cards')}><LayoutGrid size={15} />Cartões</button>
       </div>
     </div>
-    <div className="p2-operational-filters" hidden={!filtersOpen}>{filters}</div>
-    <div className="p2-operational-results">{children}</div>
+    <div className="internal-record-layout" data-filters-open={filtersOpen}>
+    <aside className="p2-operational-filters internal-filter-rail" hidden={!filtersOpen}><div className="internal-rail-heading"><strong>Encontre uma solicitação</strong><span>Refine a lista pelos critérios abaixo.</span></div>{filters}</aside>
+    <div className="p2-operational-results">{children}</div></div>
   </section>;
 }

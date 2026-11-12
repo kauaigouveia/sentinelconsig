@@ -1,3 +1,4 @@
+import { WorkspaceSections } from '../ui/WorkspaceSections';
 import { PortabilityFinancialSummary } from './PortabilityFinancialSummary';
 import { PORTABILITY_SITUATIONS, portabilitySituation, portabilitySegment, portabilityMonitoredValue, type PortabilitySegment, type PortabilitySituation } from '../../lib/portabilityMonitoring';
 import React, { useState, useEffect } from 'react';
@@ -154,69 +155,13 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
         </div>
       )}
 
-      {/* Metrics Filter Tabs */}
-      <div className={`grid grid-cols-2 md:grid-cols-5 gap-2.5 ${premium ? 'p2-cip-queues' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Filas de portabilidade' : undefined}>
-        <button
-          onClick={() => { setFinancialFilter(null); setActiveTab('TODAS'); }}
-          className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-            activeTab === 'TODAS'
-              ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)]'
-              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
-          }`}
-        >
-          <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Todas</span>
-          <p className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{classified.length}</p>
-        </button>
-
-        <button
-          onClick={() => { setFinancialFilter(null); setActiveTab('EM_PRAZO'); }}
-          className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-            activeTab === 'EM_PRAZO'
-              ? 'border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] dark:border-[var(--success-border)]'
-              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
-          }`}
-        >
-          <span className="text-[10px] font-bold uppercase text-[var(--success-text)] dark:text-[var(--success-text)]">Em Prazo (1 a 3d)</span>
-          <p className="text-lg font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">{emPrazo.length}</p>
-        </button>
-
-        <button
-          onClick={() => { setFinancialFilter(null); setActiveTab('5_DIA'); }}
-          className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-            activeTab === '5_DIA'
-              ? 'border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] dark:border-[var(--warning-border)]'
-              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
-          }`}
-        >
-          <span className="text-[10px] font-bold uppercase text-[var(--warning-text)] dark:text-[var(--warning-text)]">No 4º ou 5º Dia</span>
-          <p className="text-lg font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)]">{no5Dia.length}</p>
-        </button>
-
-        <button
-          onClick={() => { setFinancialFilter(null); setActiveTab('ATRASADAS'); }}
-          className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-            activeTab === 'ATRASADAS'
-              ? 'border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] dark:border-[var(--danger-border)]'
-              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
-          }`}
-        >
-          <span className="text-[10px] font-bold uppercase text-[var(--danger-text)] dark:text-[var(--danger-text)]">Atrasadas (&gt; 5d)</span>
-          <p className="text-lg font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]">{atrasadas.length}</p>
-        </button>
-
-        <button
-          onClick={() => { setFinancialFilter(null); setActiveTab('SALDO_RETORNADO'); }}
-          className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-            activeTab === 'SALDO_RETORNADO'
-              ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)]'
-              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
-          }`}
-        >
-          <span className="text-[10px] font-bold uppercase text-[var(--link)] dark:text-[var(--link)]">Saldo Retornado</span>
-          <p className="text-lg font-bold text-[var(--link)] dark:text-[var(--link)]">{saldoRetornado.length}</p>
-        </button>
-      </div>
-
+      <WorkspaceSections label="Filas de portabilidade" value={financialFilter ? '' : activeTab} onChange={id => {setFinancialFilter(null);setActiveTab(id as typeof activeTab);}} items={[
+        {id: 'TODAS', title: 'Todas', description: 'Visão completa das portabilidades.', icon: <ArrowLeftRight size={22}/>, count: classified.length},
+        {id: 'EM_PRAZO', title: 'Em prazo', description: 'Operações entre o 1º e o 3º dia útil.', icon: <Clock size={22}/>, count: emPrazo.length},
+        {id: '5_DIA', title: 'No 4º ou 5º dia', description: 'Acompanhe o prazo de retorno.', icon: <Calendar size={22}/>, count: no5Dia.length},
+        {id: 'ATRASADAS', title: 'Atrasadas', description: 'Prazo acima de 5 dias úteis.', icon: <AlertTriangle size={22}/>, count: atrasadas.length},
+        {id: 'SALDO_RETORNADO', title: 'Saldo retornado', description: 'Continue as operações com retorno.', icon: <CheckCircle2 size={22}/>, count: saldoRetornado.length},
+      ]}/>
       {financialFilter && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--field-border)] bg-[var(--info-bg)] p-3 text-sm dark:border-[var(--field-border)] dark:bg-[var(--info-bg)]"><span>{financialFilter.segment==='SALDO'?'Saldo de portabilidade':'Troco do refinanciamento'} · {PORTABILITY_SITUATIONS.find(item=>item.key===financialFilter.situation)?.label} · {currentList.length} proposta(s)</span><button type="button" onClick={()=>{setFinancialFilter(null);setActiveTab('TODAS');}} className="rounded-lg border px-3 py-2 font-semibold">Limpar filtro financeiro</button></div>}
 
       {/* Table */}

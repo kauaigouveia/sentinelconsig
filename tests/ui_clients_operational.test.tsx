@@ -30,7 +30,7 @@ describe('Cliente 360 operacional Premium com fontes sintéticas',()=>{
   });
   it('busca troca o cliente sem conservar a carteira do anterior',async()=>{
     render(<Client360View premium />);
-    fireEvent.change(screen.getByPlaceholderText('Buscar cliente por CPF ou Nome...'),{target:{value:'Beta'}});
+    fireEvent.change(screen.getByRole('textbox', {name: 'Buscar cliente por nome ou CPF'}),{target:{value:'Beta'}});
     expect(screen.queryByRole('button',{name:/Cliente fictício Alfa/})).toBeNull();
     expect(screen.getByRole('button',{name:'Propostas (0)'})).toBeTruthy();
     await waitFor(()=>expect(fetch).toHaveBeenCalledTimes(4));

@@ -21,6 +21,7 @@ import {
   Workflow,
   CalendarDays,
   Star,
+  ChevronDown,
 } from "lucide-react";
 import { GROUPS, visibleNavigation } from "./navigation";
 import type { Role } from "../../types";
@@ -39,6 +40,9 @@ const icons: Record<string, React.ElementType> = {
   "/central-pendencias": ListChecks,
   "/esteira": Workflow,
   "/agenda-operacional": CalendarDays,
+  "/minha-fila": ListChecks,
+  "/roteiros": FileText,
+  "/central-operacoes": Workflow,
 };
 export function PreviewSidebar({
   role,
@@ -68,6 +72,7 @@ export function PreviewSidebar({
     [hint, setHint] = useState<{ label: string; x: number; y: number } | null>(
       null,
     );
+  const [openGroups, setOpenGroups] = useState<string[]>(['Início', 'Produção']);
   const [narrow, setNarrow] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -82,6 +87,10 @@ export function PreviewSidebar({
   const ref = useRef<HTMLElement>(null),
     opener = useRef<HTMLElement | null>(null);
   const permitted = visibleNavigation(role, permissions);
+  const activeGroup = permitted.find(route => route.path === path)?.group;
+  useEffect(() => {
+    if (activeGroup) setOpenGroups(current => current.includes(activeGroup) ? current : [...current, activeGroup]);
+  }, [activeGroup]);
   const hasHub=permitted.some(route=>route.path==='/integracoes');
   const items = permitted.filter(route=>!hasHub || route.path!=='/saude-apis').filter(route=>
     `${route.title}${route.path==='/integracoes'?' Saúde das APIs':''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR'))
@@ -176,7 +185,7 @@ export function PreviewSidebar({
                           <Star size={14} />
                           <span>
                             {route.path === "/"
-                              ? "Visão da Operação"
+                              ? "Início"
                               : route.title}
                           </span>
                         </a>
@@ -193,8 +202,8 @@ export function PreviewSidebar({
                 key={group}
                 style={{ "--nav-color": "var(--text-secondary)" } as React.CSSProperties}
               >
-                <div className="s2-group" role="heading" aria-level={2}><span>{group}</span></div>
-                {entries.map((route) => {
+                <button type="button" className="s2-group" aria-expanded={!!query || compact || openGroups.includes(group)} onClick={() => setOpenGroups(current => current.includes(group) ? current.filter(item => item !== group) : [...current, group])}><span>{group}</span><ChevronDown size={13}/></button>
+                {(!!query || compact || openGroups.includes(group)) && entries.map((route) => {
                     const Icon =
                       icons[route.path] ||
                       {

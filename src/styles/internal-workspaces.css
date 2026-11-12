@@ -1,0 +1,139 @@
+/* Internal page structures; keep original data, permissions and event handlers. */
+.internal-page-instruction {font-size:14px;color:var(--text-secondary);margin:4px 0 22px}
+.s2-root .p2-live-administration {min-height:0}
+.s2-root .p2-live-cip .internal-section-navigation {grid-template-columns:repeat(5,minmax(0,1fr))}
+.s2-root .p2-live-kanban .p2-kanban-board {gap:20px;padding:4px 0 18px}
+.s2-root .p2-live-kanban .p2-kanban-board > div {width:320px;border-radius:16px;background:var(--bg-canvas);border-color:var(--border-default)}
+.s2-root .p2-live-kanban .p2-kanban-board > div > div:first-child {padding:18px;border-bottom:1px solid var(--border-default);background:var(--bg-surface)}
+.s2-root .p2-live-pendencies .p2-pendency-list {border-radius:16px;background:var(--bg-surface)}
+.s2-root .p2-live-pendencies .p2-pendency-list > div > div {padding:22px;border-color:var(--border-default)}
+.s2-root .p2-live-pendencies .p2-pendency-filters {background:var(--bg-surface);padding:20px;border-radius:14px}
+.s2-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs,.p2-automation-tabs) {padding:8px;border:1px solid var(--border-default);background:var(--bg-surface);border-radius:14px;gap:8px}
+.s2-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs,.p2-automation-tabs) button {min-height:44px;border-radius:9px;padding:12px 16px;font-size:13px;white-space:normal}
+.s2-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs,.p2-automation-tabs) button[aria-current="page"] {background:var(--action);color:var(--action-ink)}
+.s2-root [data-ui-family="workflow"] .p2-task-columns {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.s2-root [data-ui-family="workflow"] .p2-task-columns > p {grid-column:1/-1}
+.s2-root [data-ui-family="workflow"] .p2-task-columns > section {border-radius:14px;margin:0}
+@media(max-width:1100px){.s2-root .p2-live-cip .internal-section-navigation{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:767px){.s2-root [data-ui-family="workflow"] .p2-task-columns{grid-template-columns:minmax(0,1fr)}}
+.internal-filter-search-copy {display:none}
+.internal-bank-quick-select {display:flex;gap:16px;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;padding:18px 22px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:13px}
+.internal-bank-quick-select select {max-width:320px;width:50%;border:1px solid var(--field-border);padding:10px 12px;background:var(--bg-surface);border-radius:9px}
+.internal-proposal-modal > div {border-radius:20px;max-width:1160px;box-shadow:0 24px 80px rgb(0 0 0 / .2)}
+.internal-proposal-modal button[aria-pressed="true"],.internal-proposal-modal #btn-save-all-ades {background:var(--action);color:var(--action-ink)}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td[data-empty="true"] {display:none}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td .relative input {padding-left:36px}
+.internal-proposal-modal [data-entry-layout] {min-width:0}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table {display:block;min-width:0;width:100%;border:0}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table thead {display:none}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tbody {display:grid;gap:24px;padding:20px;background:var(--bg-canvas)}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tr {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:22px;border:1px solid var(--border-default);border-radius:14px;background:var(--bg-surface)}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td {display:block;min-width:0;padding:0;border:0;background:transparent}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td::before {content:attr(data-label);display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-align:left}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:first-child {grid-column:1/-1;display:flex;align-items:center;gap:8px;text-align:left;font-size:16px;color:var(--link);border-bottom:1px solid var(--border-default);padding-bottom:14px}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:first-child::before {margin:0;font-size:16px;color:inherit}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table :is(input,select,textarea) {min-height:44px;width:100%;min-width:0;padding:10px 12px;border-radius:9px;font-size:13px}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:last-child {display:flex;align-items:center;gap:10px;grid-column:1/-1;padding-top:10px;border-top:1px solid var(--border-default)}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:last-child::before {content:'Remover esta proposta';margin:0;font-weight:400}
+.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:last-child button {min-height:40px;min-width:40px;border:1px solid var(--border-default);border-radius:9px}
+@media(max-width:767px){.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tbody{padding:12px}.internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tr{grid-template-columns:minmax(0,1fr);padding:16px}.internal-bank-quick-select{align-items:flex-start;flex-direction:column;gap:10px}.internal-bank-quick-select select{width:100%;max-width:none}}
+.internal-bank-directory {padding:20px 22px;border:1px solid var(--border-default);border-radius:14px;background:var(--bg-surface)}
+.internal-bank-directory summary {font-size:14px;font-weight:650;cursor:pointer}
+.internal-bank-directory summary span {font-weight:400;font-size:12px;color:var(--text-secondary);margin-left:12px}
+.internal-bank-directory nav {display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;padding-top:20px}
+.internal-bank-directory nav button {display:flex;align-items:center;gap:9px;min-height:46px;padding:10px 14px;border:1px solid var(--border-default);border-radius:10px;font-size:12px;text-align:left;cursor:pointer}
+.internal-bank-directory nav button[aria-current="page"] {background:var(--action);color:var(--action-ink);border-color:var(--action)}
+.internal-full-preview > div {min-width:0;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.internal-full-preview .workspace-preview-menu {display:none}
+@media(max-width:767px){.internal-full-preview .workspace-preview-menu{display:inline-flex}.internal-full-preview .sentinel-header>div:last-child>span{max-width:125px;font-size:10px;line-height:1.4}.internal-bank-directory summary span{display:block;margin:8px 0 0}}
+.internal-section-navigation {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:12px 0 24px}
+.internal-section-navigation button {display:flex;align-items:flex-start;gap:12px;padding:20px 16px;border:1px solid var(--border-default);border-radius:14px;background:var(--bg-surface);text-align:left;cursor:pointer;min-width:0;transition:border-color .15s,background .15s}
+.internal-section-navigation button:hover {border-color:var(--link);background:var(--bg-surface-elevated)}
+.internal-section-navigation button[aria-current="page"] {border-color:var(--link);background:var(--info-bg);box-shadow:inset 0 0 0 1px var(--link)}
+.internal-section-icon {display:flex;align-items:center;justify-content:center;width:38px;height:38px;flex-shrink:0;border-radius:11px;background:var(--bg-surface-elevated);color:var(--link)}
+.internal-section-navigation button > span:nth-child(2) {min-width:0;flex:1}
+.internal-section-navigation strong {display:block;font-size:13px;line-height:1.5;color:var(--text-primary)}
+.internal-section-navigation strong small {display:inline-block;margin-left:8px;padding:1px 7px;border-radius:6px;background:var(--bg-surface);font-size:11px}
+.internal-section-navigation button > span > span {display:block;font-size:11px;line-height:1.7;color:var(--text-secondary);margin-top:5px}
+.internal-section-navigation button > svg {flex-shrink:0;color:var(--text-secondary);margin-top:2px}
+.s2-root .internal-record-workspace {background:var(--bg-surface);border:1px solid var(--border-default);border-radius:16px;overflow:hidden}
+.s2-root .internal-record-workspace .internal-record-layout {display:grid;grid-template-columns:250px minmax(0,1fr);align-items:start;min-width:0}
+.s2-root .internal-record-workspace .internal-record-layout[data-filters-open="false"] {grid-template-columns:minmax(0,1fr)}
+.s2-root .internal-record-workspace .internal-filter-rail {padding:20px 16px;background:var(--bg-canvas);border-right:1px solid var(--border-default);min-width:0;max-height:900px;overflow-y:auto}
+.s2-root .internal-record-workspace .internal-filter-rail[hidden] {display:none}
+.internal-rail-heading {display:grid;gap:6px;padding:0 0 18px}
+.internal-rail-heading strong {font-size:14px;font-weight:650;color:var(--text-primary)}
+.internal-rail-heading span {font-size:11px;color:var(--text-secondary);line-height:1.7}
+.s2-root .internal-record-workspace .internal-filter-rail > div:not(.internal-rail-heading) {padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.s2-root .internal-record-workspace .internal-filter-rail .grid {display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.s2-root .internal-record-workspace .internal-filter-rail .grid > * {grid-column:auto}
+.s2-root .internal-record-workspace .internal-filter-rail :is(input:not([type="checkbox"]),select) {width:100%;min-width:0;min-height:42px;background:var(--bg-surface);font-size:12px}
+.s2-root .internal-record-workspace .internal-filter-rail > div > div {flex-wrap:wrap}
+.s2-root .internal-record-workspace :is(.p2-live-results,.p2-operational-results) {min-width:0;overflow:hidden;padding:0;background:var(--bg-surface)}
+.internal-record-search {padding:0 20px 20px;border-bottom:1px solid var(--border-default)}
+.internal-inline-search {display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--bg-canvas);border:1px solid var(--field-border);border-radius:10px;color:var(--text-secondary)}
+.s2-root .internal-inline-search input {border:0;background:transparent;flex:1;min-width:0;min-height:46px;font-size:14px;padding:8px 0;outline-offset:0}
+.s2-root .internal-record-workspace .p2-table-tools {padding:20px;align-items:flex-start;border-bottom:0;gap:16px;flex-wrap:wrap}
+.internal-results-heading {display:grid;gap:5px;flex-shrink:0}
+.internal-results-heading strong {font-size:17px;font-weight:650}
+.internal-results-heading span {font-size:12px;color:var(--text-secondary)}
+.internal-summary {padding:16px 20px;border-top:1px solid var(--border-default);font-size:12px;color:var(--text-secondary)}
+.internal-summary summary {cursor:pointer;font-weight:600}
+.internal-summary > div {padding-top:16px;display:flex;gap:16px;flex-wrap:wrap}
+.s2-root .internal-record-workspace .p2-pagination {padding:16px 20px;background:var(--bg-surface);border-top:1px solid var(--border-default)}
+.s2-root .internal-record-workspace .p2-operational-toolbar {padding:20px}
+.s2-root .internal-client-layout {display:grid;grid-template-columns:300px minmax(0,1fr);align-items:start;gap:22px}
+.s2-root .internal-client-layout .internal-client-directory {height:min(78vh,920px);position:sticky;top:0;padding:20px;border-radius:16px;background:var(--bg-surface);min-width:0;min-height:360px}
+.s2-root .internal-client-layout .p2-client-detail {grid-column:auto;min-width:0}
+.s2-root .internal-client-directory button[aria-pressed] {padding:16px 12px;margin-bottom:8px;border:1px solid transparent;border-radius:10px}
+.s2-root .internal-client-directory button[aria-pressed="true"] {background:var(--info-bg);border-color:var(--link);box-shadow:none;--tw-ring-shadow:0 0 transparent}
+.s2-root .p2-client-profile {border-radius:16px;padding:26px;background:var(--bg-surface)}
+.s2-root .p2-client-profile h2 {font-size:24px;letter-spacing:-.035em}
+.s2-root .p2-client-tabs {border:0;gap:5px;flex-wrap:wrap;padding-top:18px}
+.s2-root .p2-client-tabs button {border:0;border-radius:9px;padding:10px 12px;min-height:42px}
+.s2-root .p2-client-tabs button[aria-current="page"] {background:var(--action);color:var(--action-ink)}
+.internal-directory-back {display:none}
+.internal-admin-search {display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--field-border);border-radius:9px;margin:4px 0 18px;background:var(--bg-surface)}
+.s2-root .internal-admin-search input {border:0;background:transparent;width:100%;min-width:0;font-size:12px}
+.s2-root .p2-live-administration > div:last-child {display:grid;grid-template-columns:235px minmax(0,1fr);gap:24px;align-items:start}
+.s2-root .p2-live-administration > div:last-child > aside {display:block;width:auto;padding:18px;position:sticky;top:0;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:14px;max-height:82vh;overflow-y:auto}
+.s2-root .p2-live-administration > div:last-child > aside > button {display:flex;width:100%;text-align:left;min-height:44px;margin-top:3px;white-space:normal}
+.s2-root .p2-live-administration > div:last-child > aside > button[aria-current="page"] {background:var(--action);color:var(--action-ink)}
+.s2-root .p2-live-administration > div:last-child > aside > button[aria-current="page"] svg {color:inherit}
+.s2-root .p2-live-administration > div:last-child > main {padding:0;min-width:0;overflow:visible;border:0}
+.internal-admin-directory {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.internal-directory-heading {grid-column:1/-1;padding:12px 0}
+.internal-directory-heading h2 {font-size:22px;font-weight:650;letter-spacing:-.025em}
+.internal-directory-heading p {font-size:13px;color:var(--text-secondary);margin-top:6px}
+.internal-admin-directory > button {display:flex;gap:16px;align-items:center;text-align:left;border:1px solid var(--border-default);border-radius:13px;background:var(--bg-surface);padding:22px;cursor:pointer;min-width:0}
+.internal-admin-directory > button:hover {border-color:var(--link);background:var(--bg-surface-elevated)}
+.internal-admin-directory > button > svg:first-child {color:var(--link);flex-shrink:0}
+.internal-admin-directory > button > span {flex:1;min-width:0}
+.internal-admin-directory strong {font-size:14px;font-weight:650;display:block}
+.internal-admin-directory small {font-size:11px;color:var(--text-secondary);display:block;margin-top:7px}
+.s2-root .support-workspace {padding:0;gap:0;border:0;background:transparent}
+.s2-root .support-workspace .support-toolbar {background:transparent;padding:0 0 18px;border:0}
+.s2-root .support-workspace .support-toolbar h1 {font-size:30px;letter-spacing:-.04em}
+.s2-root .support-workspace .support-inbox {border:1px solid var(--border-default);border-radius:16px;background:var(--bg-surface);overflow:hidden;min-height:520px}
+.s2-root .support-workspace .support-queue {width:330px}
+.s2-root .support-workspace .support-queue > div:first-child {padding:18px;background:var(--bg-surface)}
+.s2-root .support-workspace .support-queue button {min-height:42px}
+.s2-root .p2-live-finance .p2-finance-filters {display:flex;flex-direction:column;align-items:stretch;padding:20px;border-radius:14px;gap:18px}
+.s2-root .p2-live-finance .p2-finance-filters > div:first-child {display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0}
+.s2-root .p2-live-finance .p2-finance-filters > div:first-child > * {min-width:0;max-width:none;width:100%}
+.s2-root .p2-live-finance .p2-finance-filters > div:first-child select {width:100%;font-size:12px;padding-inline:10px}
+.s2-root .p2-live-finance .p2-finance-filters > div:first-child label {display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center}
+.s2-root .p2-live-finance .p2-finance-filters > div:last-child {display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-start}
+.s2-root .p2-live-finance .p2-finance-filters > div:last-child > span {width:100%}
+.s2-root .p2-client-tabs button[aria-current="page"] :is(span,svg) {color:inherit}
+.s2-root .p2-live-simulations td select {min-width:180px;width:180px}
+.s2-root .p2-live-finance .p2-finance-results {border-radius:16px}
+.s2-root .p2-live-finance .p2-finance-metrics {gap:16px}
+.s2-root .p2-stage-navigator {display:flex;align-items:stretch;overflow-x:auto;gap:12px;border:0;background:transparent;padding:8px 0 22px}
+.s2-root .p2-stage-navigator .p2-stage-label {display:none}
+.s2-root .p2-stage-navigator button {display:grid;grid-template-columns:8px minmax(110px,1fr) auto;align-items:center;gap:10px;padding:18px;min-width:200px;min-height:72px;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-surface)}
+.s2-root .p2-stage-navigator button strong {font-size:22px}
+.s2-root [data-ui-module] :is(.ui-card,.ui-modal,.ui-drawer) {border-color:var(--border-default);border-radius:16px}
+@media(max-width:1200px){.internal-section-navigation{grid-template-columns:repeat(2,minmax(0,1fr))}.s2-root .internal-client-layout{grid-template-columns:250px minmax(0,1fr)}.s2-root .internal-record-workspace .internal-record-layout{grid-template-columns:220px minmax(0,1fr)}}
+@media(max-width:900px){.s2-root .internal-record-workspace .internal-record-layout{grid-template-columns:minmax(0,1fr)}.s2-root .internal-record-workspace .internal-filter-rail{max-height:none;border-right:0;border-bottom:1px solid var(--border-default)}.s2-root .internal-record-workspace .internal-filter-rail .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.s2-root .p2-live-administration > div:last-child{grid-template-columns:minmax(0,1fr)}.s2-root .p2-live-administration > div:last-child > aside{position:static;max-height:260px}.s2-root .p2-live-finance .p2-finance-filters{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:767px){.internal-section-navigation{gap:8px;margin-bottom:18px}.internal-section-navigation button{padding:14px 12px;gap:8px;flex-wrap:wrap}.internal-section-navigation button>svg{display:none}.internal-section-navigation button>span:nth-child(2){flex-basis:100%}.internal-section-icon{width:30px;height:30px}.internal-section-icon svg{width:18px}.internal-section-navigation strong{font-size:12px}.internal-section-navigation button>span>span{font-size:11px}.s2-root .internal-client-layout{grid-template-columns:minmax(0,1fr)}.s2-root .internal-client-layout .internal-client-directory{position:static;height:72vh}.s2-root .internal-client-layout[data-directory-open="true"]>.p2-client-detail{display:none}.s2-root .internal-client-layout[data-directory-open="false"]>.internal-client-directory{display:none}.internal-directory-back{display:block;border:1px solid var(--border-default);border-radius:9px;background:var(--bg-surface);padding:12px 16px;margin-bottom:14px;width:100%;text-align:left;cursor:pointer}.internal-admin-directory{grid-template-columns:minmax(0,1fr)}.s2-root .support-workspace .support-queue{width:100%}.s2-root .internal-record-workspace .internal-filter-rail .grid{grid-template-columns:minmax(0,1fr)}.s2-root .p2-client-profile{padding:18px}}

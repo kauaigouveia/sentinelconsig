@@ -52,6 +52,21 @@ const preferred = [
   "/crm-parceiros",
   "/central-atendimento",
 ];
+const workspaceLabels: Record<string, string> = {
+  '/': 'Início',
+  '/minha-fila': 'Minhas tarefas',
+  '/agenda-operacional': 'Agenda',
+  '/propostas': 'Propostas',
+  '/simulacoes': 'Simular crédito',
+  '/roteiros': 'Guias dos bancos',
+  '/central-pendencias': 'Pendências',
+  '/esteira': 'Etapas das propostas',
+  '/central-operacoes': 'Rotina da equipe',
+  '/central-atendimento': 'Atendimento',
+  '/crm-parceiros': 'Parceiros',
+  '/financeiro-geral': 'Financeiro',
+  '/central-administracao': 'Configurações',
+};
 export function visibleNavigation(
   role?: Role,
   customPermissions: string[] = [],
@@ -65,6 +80,7 @@ export function visibleNavigation(
   )
     .map((route) => ({
       ...route,
+      title: workspaceLabels[route.path] || route.title,
       group: navigationGroup(route.path, route.category),
     }))
     .sort(

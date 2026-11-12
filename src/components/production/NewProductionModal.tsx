@@ -616,7 +616,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   const currentPartnerCode = currentPartner ? currentPartner.login : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] dark:bg-[var(--scrim)] p-2 sm:p-4 backdrop-blur-xs">
+    <div role="dialog" aria-modal="true" aria-labelledby="new-proposal-heading" data-entry-layout={mode === 'RAPIDO' ? 'form' : 'table'} className="internal-proposal-modal fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] dark:bg-[var(--scrim)] p-2 sm:p-4 backdrop-blur-xs">
       <div className="relative w-full max-w-[98vw] 2xl:max-w-7xl rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  flex flex-col max-h-[96vh] border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden">
         {/* Modal Header */}
         <div className="shrink-0 flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-4 sm:px-6 py-3.5 sm:py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-t-xl">
@@ -625,7 +625,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
               <Plus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nova Produção</h2>
+              <h2 id="new-proposal-heading" className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Cadastrar proposta</h2>
               <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Inclusão de propostas individuais ou múltiplas ADEs para o mesmo cliente
               </p>
@@ -634,6 +634,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              aria-label="Fechar cadastro de proposta"
               onClick={onClose}
               disabled={isSaving}
               className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:cursor-not-allowed cursor-pointer transition-colors"
@@ -698,24 +699,24 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setMode('RAPIDO')}
+                aria-pressed={mode === 'RAPIDO'} onClick={() => setMode('RAPIDO')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   mode === 'RAPIDO'
                     ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
                     : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
-                Modo Rápido (Multi-ADE)
+                Formulário
               </button>
               <button
-                onClick={() => setMode('COMPLETO')}
+                aria-pressed={mode === 'COMPLETO'} onClick={() => setMode('COMPLETO')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   mode === 'COMPLETO'
                     ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
                     : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
-                Modo Completo (com Observações)
+                Planilha avançada
               </button>
             </div>
 
@@ -812,7 +813,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
-                Linhas de Produção / ADEs ({adeRows.length})
+                Dados das propostas ({adeRows.length})
               </h3>
               <button
                 id="btn-add-ade-row"
@@ -820,12 +821,12 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                 className="flex items-center gap-1.5 rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-3 py-1.5 text-xs font-bold text-[var(--success-text)] dark:text-[var(--success-text)] hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>+ Adicionar ADE</span>
+                <span>Adicionar outra proposta</span>
               </button>
             </div>
 
             <div className="w-full overflow-x-auto rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shadow-xs">
-              <table className="w-full min-w-[1100px] text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+              <table className="internal-proposal-entry-table w-full min-w-[1100px] text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <tr>
                     <th className="px-3 py-2.5 w-12 text-center shrink-0">#</th>
@@ -856,11 +857,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
                     return (
                       <tr key={row.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
-                        <td className="px-3 py-2 text-center font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] shrink-0">
+                        <td data-label="Proposta" className="px-3 py-2 text-center font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] shrink-0">
                           {idx + 1}
                         </td>
-                        <td className="px-3 py-2">
-                          <input
+                        <td data-label="Número da proposta *" className="px-3 py-2">
+                          <input aria-label={`Número da proposta * da proposta ${idx + 1}`}
                             type="text"
                             value={row.proposalNumber}
                             onChange={e => handleUpdateRow(idx, 'proposalNumber', e.target.value)}
@@ -868,8 +869,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             className="w-full font-mono rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                           />
                         </td>
-                        <td className="px-3 py-2">
-                          <select
+                        <td data-label="Convênio" className="px-3 py-2">
+                          <select aria-label={`Convênio da proposta ${idx + 1}`}
                             value={row.convenioId || ''}
                             onChange={e => handleUpdateRow(idx, 'convenioId', e.target.value)}
                             title={convenios.find(c => c.id === row.convenioId)?.name || 'Todos os Convênios'}
@@ -883,8 +884,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             ))}
                           </select>
                         </td>
-                        <td className="px-3 py-2">
-                          <select
+                        <td data-label="Produto *" className="px-3 py-2">
+                          <select aria-label={`Produto * da proposta ${idx + 1}`}
                             value={row.productId}
                             onChange={e => handleUpdateRow(idx, 'productId', e.target.value)}
                             title={products.find(p => p.id === row.productId)?.name || 'Produto'}
@@ -897,14 +898,14 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             ))}
                           </select>
                         </td>
-                        <td className="px-3 py-2">
+                        <td data-label="Prazo em meses *" className="px-3 py-2">
                           <input aria-label={`Prazo da proposta ${idx + 1} (meses)`} type="number" min="1" step="1" value={row.installmentsCount ?? '84'} onChange={e => handleUpdateRow(idx, 'installmentsCount', e.target.value)} className="w-full rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1.5 text-xs" />
                         </td>
-                        <td className="px-3 py-2">
+                        <td data-label="Parcela (R$)" className="px-3 py-2">
                           <input aria-label={`Valor da parcela da proposta ${idx + 1}`} type="text" inputMode="decimal" value={row.installmentValue ?? ''} placeholder="0,00" onChange={e => handleUpdateRow(idx, 'installmentValue', e.target.value)} className="w-full rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1.5 text-xs" />
                         </td>
-                        <td className="px-3 py-2">
-                          <select
+                        <td data-label="Banco *" className="px-3 py-2">
+                          <select aria-label={`Banco * da proposta ${idx + 1}`}
                             value={row.bankId}
                             onChange={e => handleUpdateRow(idx, 'bankId', e.target.value)}
                             title={banks.find(b => b.id === row.bankId)?.name || 'Banco'}
@@ -917,8 +918,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             ))}
                           </select>
                         </td>
-                        <td className="px-3 py-2">
-                          <select
+                        <td data-label="Promotora *" className="px-3 py-2">
+                          <select aria-label={`Promotora * da proposta ${idx + 1}`}
                             value={row.promoterId}
                             onChange={e => handleUpdateRow(idx, 'promoterId', e.target.value)}
                             title={allowedPromoters.find(pr => pr.id === row.promoterId)?.name || 'Promotora'}
@@ -933,12 +934,12 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                         </td>
 
                         {/* Valor Liberado */}
-                        <td className="px-3 py-2">
+                        <td data-label="Valor liberado (R$)" className="px-3 py-2">
                           <div className="relative rounded-md">
                             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                               R$
                             </span>
-                            <input
+                            <input aria-label={`Valor liberado (R$) da proposta ${idx + 1}`}
                               type="text"
                               value={row.disbursedValue ?? ''}
                               onChange={e => handleUpdateRow(idx, 'disbursedValue', e.target.value)}
@@ -950,7 +951,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                         </td>
 
                         {/* Saldo Contrato (Destacado em Portabilidade) */}
-                        <td className="px-3 py-2">
+                        <td data-label="Saldo do contrato (R$)" className="px-3 py-2">
                           <div className="relative rounded-md">
                             <span
                               className={`pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold ${
@@ -959,7 +960,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             >
                               R$
                             </span>
-                            <input
+                            <input aria-label={`Saldo do contrato (R$) da proposta ${idx + 1}`}
                               type="text"
                               value={row.contractBalance ?? ''}
                               onChange={e => handleUpdateRow(idx, 'contractBalance', e.target.value)}
@@ -974,11 +975,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           </div>
                         </td>
 
-                        <td className="px-3 py-2">
+                        <td data-empty={!isRefinPort && !isPort} data-label="Vínculo de refinanciamento / portabilidade" className="px-3 py-2">
                           {isRefinPort ? (
                             <div className="flex items-center gap-1">
                               <Link2 className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)] shrink-0" />
-                              <select
+                              <select aria-label={`Vínculo de refinanciamento / portabilidade da proposta ${idx + 1}`}
                                 value={row.linkWithPortabilityIndex ?? ''}
                                 onChange={e =>
                                   handleUpdateRow(
@@ -1030,8 +1031,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                         </td>
 
                         {mode === 'COMPLETO' && (
-                          <td className="px-3 py-2">
-                            <input
+                          <td data-label="Observações" className="px-3 py-2">
+                            <input aria-label={`Observações da proposta ${idx + 1}`}
                               type="text"
                               value={row.notes || ''}
                               onChange={e => handleUpdateRow(idx, 'notes', e.target.value)}
@@ -1041,7 +1042,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           </td>
                         )}
 
-                        <td className="px-3 py-2 text-center">
+                        <td data-label="Ações" className="px-3 py-2 text-center">
                           <button
                             onClick={() => handleRemoveRow(idx)}
                             disabled={adeRows.length <= 1}
@@ -1104,7 +1105,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>SALVAR TODAS AS ADEs</span>
+                  <span>{adeRows.length === 1 ? 'Salvar proposta' : "Salvar " + adeRows.length + " propostas"}</span>
                 </>
               )}
             </button>

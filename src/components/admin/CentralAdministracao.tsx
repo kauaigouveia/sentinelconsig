@@ -21,6 +21,7 @@ import {
   TrendingUp,
   RefreshCw,
   Calendar,
+  Search,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { UserManagement } from './UserManagement';
@@ -61,6 +62,7 @@ export type AdminTab =
 
 export const CentralAdministracao: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [navigationQuery, setNavigationQuery] = useState('');
   const [overviewData, setOverviewData] = useState<any>(null);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
@@ -103,7 +105,7 @@ export const CentralAdministracao: React.FC<{ premium?: boolean }> = ({ premium 
     { id: 'audit', label: 'Trilha de Auditoria', icon: History, badge: overviewData?.auditIntegrityStatus === 'VALID' ? 'SHA-256 OK' : null },
     { id: 'pendencies', label: 'Central de Pendências', icon: AlertTriangle, badge: overviewData?.openPendenciesCount, alert: Boolean(overviewData?.openPendenciesCount) },
     { id: 'automations', label: 'Central de Automação', icon: Bot, badge: overviewData?.activeAutomationsCount },
-    { id: 'integrations', label: 'Hub de Integrações', icon: Zap, badge: '4 Conexões' },
+    { id: 'integrations', label: 'Hub de Integrações', icon: Zap, badge: null },
     { id: 'whitelabel', label: 'White Label & Marca', icon: Settings, badge: null },
     { id: 'announcements', label: 'Comunicados', icon: Sparkles, badge: null },
     ...(isPlatformMaster ? [{ id: 'domains', label: 'Domínios Customizados', icon: Shield, badge: null }] : []),
@@ -119,13 +121,13 @@ export const CentralAdministracao: React.FC<{ premium?: boolean }> = ({ premium 
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Central de Administração</h1>
+              <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Configurações da empresa</h1>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--info-bg)] text-[var(--link)] border border-[var(--field-border)]">
-                Sentinel OS
+                Administração
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)]">
-              Governança multi-tenant, autorizações, automações e esteira operacional unificada.
+              Gerencie sua equipe, os cadastros e as regras da operação.
             </p>
           </div>
         </div>
@@ -154,13 +156,14 @@ export const CentralAdministracao: React.FC<{ premium?: boolean }> = ({ premium 
           <div className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider px-3 py-2">
             Módulos Administrativos
           </div>
-          {navItems.map((item) => {
+          <label className="internal-admin-search"><Search size={16}/><input aria-label="Buscar configuração" placeholder="Encontrar configuração" value={navigationQuery} onChange={event => setNavigationQuery(event.target.value)}/></label>
+          {navItems.filter(item => item.label.toLocaleLowerCase('pt-BR').includes(navigationQuery.toLocaleLowerCase('pt-BR'))).map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as AdminTab)}
+                onClick={() => {setActiveTab(item.id as AdminTab);setNavigationQuery('');}}
                 aria-current={premium && isActive ? 'page' : undefined}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                   isActive
@@ -238,107 +241,12 @@ export const CentralAdministracao: React.FC<{ premium?: boolean }> = ({ premium 
                 </div>
               </div>
 
-              {/* Module Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div
-                  onClick={() => setActiveTab('users')}
-                  className="bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] rounded-xl p-5 cursor-pointer transition-all   space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 bg-[var(--info-bg)] text-[var(--link)] rounded-lg group-hover:bg-[var(--info-bg)] group-hover:text-[var(--text-primary)] transition-colors">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">Gestão de Usuários</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Controle de identidades únicas, atribuição multi-tenant (memberships) e reset de senhas seguro.
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('pendencies')}
-                  className="bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--danger-border)] rounded-xl p-5 cursor-pointer transition-all   space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 bg-[var(--danger-bg)] text-[var(--danger-text)] rounded-lg group-hover:bg-[var(--danger-bg)] group-hover:text-[var(--text-primary)] transition-colors">
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">Central de Pendências</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Tratamento de travas operacionais com controle de SLA, prioridades e notificações em tempo real.
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('automations')}
-                  className="bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] rounded-xl p-5 cursor-pointer transition-all   space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 bg-[var(--info-bg)] text-[var(--link)] rounded-lg group-hover:bg-[var(--info-bg)] group-hover:text-[var(--text-primary)] transition-colors">
-                      <Bot className="w-5 h-5" />
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">Central de Automação</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Disparos automáticos baseados em eventos de propostas, webhooks e alertas reativos.
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('integrations')}
-                  className="bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] rounded-xl p-5 cursor-pointer transition-all   space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 bg-[var(--info-bg)] text-[var(--link)] rounded-lg group-hover:bg-[var(--info-bg)] group-hover:text-[var(--text-primary)] transition-colors">
-                      <Zap className="w-5 h-5" />
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">Hub de Integrações Bancárias</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Monitoramento de canais com Banco C6, Facta Financeira, Happy Consignado e BMG.
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('products')}
-                  className="bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] rounded-xl p-5 cursor-pointer transition-all   space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 bg-[var(--info-bg)] text-[var(--link)] rounded-lg group-hover:bg-[var(--info-bg)] group-hover:text-[var(--text-primary)] transition-colors">
-                      <Package className="w-5 h-5" />
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">Produtos Globais & Exclusivos</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Catálogo com 13 produtos globais do sistema e produtos exclusivos por empresa contratante.
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('convenios')}
-                  className="bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--success-border)] rounded-xl p-5 cursor-pointer transition-all   space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 bg-[var(--success-bg)] text-[var(--success-text)] rounded-lg group-hover:bg-[var(--success-bg)] group-hover:text-[var(--text-primary)] transition-colors">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">Convênios Globais & Locais</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    21 convênios padronizados para todos os tenants e regras de permissão específicas.
-                  </p>
-                </div>
-              </div>
+              <section className="internal-admin-directory" aria-label="Todas as configurações">
+                <div className="internal-directory-heading"><h2>O que você precisa configurar?</h2><p>Escolha uma área para acessar seus cadastros e ferramentas.</p></div>
+                {navItems.filter(item => item.id !== 'overview').map(item => <button type="button" key={item.id} onClick={() => setActiveTab(item.id as AdminTab)}><item.icon size={23}/><span><strong>{item.label}</strong><small>{['users','roles'].includes(item.id) ? 'Equipe e acesso ao sistema' : ['products','convenios','banks','status','calendario','rules'].includes(item.id) ? 'Cadastros e regras da operação' : ['audit','domains','tenants'].includes(item.id) ? 'Controle e acompanhamento' : 'Ferramentas da empresa'}</small></span><ChevronRight size={17}/></button>)}
+              </section>
             </div>
           )}
-
           {activeTab === 'tenants' && <PlatformMasterCentral />}
           {activeTab === 'users' && <UserManagement />}
           {activeTab === 'roles' && <PerfisPermissoesView />}

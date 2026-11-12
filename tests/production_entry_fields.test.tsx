@@ -15,6 +15,17 @@ vi.mock('../src/components/common/PartnerSearchSelect', () => ({ PartnerSearchSe
 import { NewProductionModal } from '../src/components/production/NewProductionModal';
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); fixture.save.mockClear(); fixture.rules.mockClear(); });
 describe('manual proposal term and installment (mocked services)', () => {
+  it('preserva os dados ao alternar entre formulário e planilha, sem salvar', () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => []})));
+    render(<NewProductionModal isOpen onClose={() => {}} onSuccess={() => {}} />);
+    const number = screen.getByPlaceholderText('833085808 ou UUID') as HTMLInputElement;
+    fireEvent.change(number, {target: {value: 'PROPOSTA-EM-PREENCHIMENTO'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Planilha avançada'}));
+    expect(number.value).toBe('PROPOSTA-EM-PREENCHIMENTO');
+    fireEvent.click(screen.getByRole('button', {name: 'Formulário'}));
+    expect(number.value).toBe('PROPOSTA-EM-PREENCHIMENTO');
+    expect(fixture.save).not.toHaveBeenCalled();
+  });
   it.each(['NOVO', 'PORTABILIDADE'])('sends the selected term and installment for %s', async type => {
     fixture.type = type;
     vi.stubGlobal('fetch', vi.fn(async (url: string) => { if (url !== '/api/partners') throw new Error('Network forbidden'); return { ok: true, json: async () => [] }; }));
@@ -24,7 +35,7 @@ describe('manual proposal term and installment (mocked services)', () => {
     fireEvent.change(screen.getByPlaceholderText('833085808 ou UUID'), { target: { value: 'TEST-ADE' } });
     fireEvent.change(screen.getByLabelText('Prazo da proposta 1 (meses)'), { target: { value: '108' } });
     fireEvent.change(screen.getByLabelText('Valor da parcela da proposta 1'), { target: { value: '227,09' } });
-    fireEvent.click(screen.getByRole('button', { name: 'SALVAR TODAS AS ADEs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar proposta' }));
     await waitFor(() => expect(fixture.save).toHaveBeenCalledTimes(1));
     expect(fixture.save.mock.calls[0][0]).toMatchObject({ installmentsCount: 108, installmentValue: 227.09 });
     expect(fixture.rules).toHaveBeenCalledWith(expect.objectContaining({ installmentsCount: 108 }));

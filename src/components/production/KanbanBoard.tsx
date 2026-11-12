@@ -228,7 +228,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
     <div className={`space-y-3.5 h-[calc(100vh-8.5rem)] flex flex-col ${premium ? 'p2-live-module p2-live-kanban' : ''}`}>
       {/* Top Action Bar with Filters */}
       <ActionBar
-        title="Esteira Kanban"
+        title="Etapas das propostas" subtitle="Veja onde cada proposta está e abra o cartão para continuar o trabalho."
         count={filteredProposals.length}
         rightActions={
           <div className="ui-filter-bar">

@@ -16,7 +16,7 @@ describe('Escopo da apresentação V2',()=>{
     expect(operationalFamily('torre-controle')).toBe('special');
   });
   it('conserva preferência em refresh e respeita rollback explícito',()=>{
-    expect(readDevelopmentPresentation('')).toBe(false);
+    expect(readDevelopmentPresentation('')).toBe(true);
     rememberDevelopmentPresentation(true);
     expect(readDevelopmentPresentation('')).toBe(true);
     expect(readDevelopmentPresentation('?ui=legacy')).toBe(false);

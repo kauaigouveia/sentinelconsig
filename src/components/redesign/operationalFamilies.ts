@@ -5,7 +5,7 @@ const support = new Set(['central-atendimento','suporte-central','atendimento-pa
 const analytics = new Set(['dashboard-executivo','radar-comercial','sentinela-ai','sentinel-intelligence','relatorio-gargalos']);
 const automation = new Set(['central-automacao','automacoes']);
 const platform = new Set(['saas-tenants','admin-plano-consumo']);
-const primary = new Set(['torre-controle','producao','simulacoes','esteira','clientes','busca-cpf','pesquisa-cpf','portabilidades','central-pendencias','pendencias-central','parceiros','hub-integracoes','integracoes-hub','financeiro-geral']);
+const primary = new Set(['roteiros','torre-controle','producao','simulacoes','esteira','clientes','busca-cpf','pesquisa-cpf','portabilidades','central-pendencias','pendencias-central','parceiros','hub-integracoes','integracoes-hub','financeiro-geral']);
 export function operationalFamily(view: string): string | undefined {
   return administration.has(view) ? 'administration' : workflow.has(view) ? 'workflow' : support.has(view) ? 'support' : analytics.has(view) ? 'analytics' : automation.has(view) ? 'automation' : platform.has(view) ? 'platform' : primary.has(view) ? 'special' : ['command-center','command'].includes(view) ? 'command' : view === 'tv-monitor' ? 'monitor' : undefined;
 }

@@ -26,7 +26,9 @@ export const PRODUCTION_COLUMNS = [
 ] as const;
 export function readProductionColumns(key: string): number[] {
   try {
-    const data = JSON.parse(localStorage.getItem(key) || "[]");
+    const stored = localStorage.getItem(key);
+    if (stored === null) return [4, 5, 8, 9, 11, 12];
+    const data = JSON.parse(stored);
     return Array.isArray(data)
       ? Array.from(
           new Set(
@@ -64,6 +66,7 @@ export function ProductionWorkspace({
   hiddenColumns,
   onHiddenColumns,
   onKanban,
+  search,
 }: {
   filters: React.ReactNode;
   summary?: React.ReactNode;
@@ -79,17 +82,18 @@ export function ProductionWorkspace({
   hiddenColumns: number[];
   onHiddenColumns: (columns: number[]) => void;
   onKanban?: () => void;
+  search?: React.ReactNode;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(true),
     [columnsOpen, setColumnsOpen] = useState(false);
   return (
     <section
-      className="p2-panel p2-production-live"
+      className="p2-panel p2-production-live internal-record-workspace"
       aria-label="Workspace operacional de propostas"
     >
 
       <div className="p2-table-tools">
-        <div className="ui-production-context"><span>{count} propostas</span>{summary}</div>
+        <div className="internal-results-heading"><strong>Sua carteira</strong><span>{count} propostas encontradas</span></div>
         <div className="p2-actions">
           <button
             className="s2-button"
@@ -97,7 +101,7 @@ export function ProductionWorkspace({
             onClick={() => setFiltersOpen((v) => !v)}
           >
             <SlidersHorizontal size={15} />
-            Filtros avançados
+            {filtersOpen ? 'Ocultar filtros' : 'Filtrar propostas'}
           </button>
           <button
             className="s2-button"
@@ -105,7 +109,7 @@ export function ProductionWorkspace({
             onClick={() => setColumnsOpen((v) => !v)}
           >
             <Columns3 size={15} />
-            Configurar colunas
+            Colunas
           </button>
           <button
             className="s2-button"
@@ -126,11 +130,12 @@ export function ProductionWorkspace({
           {onKanban && (
             <button className="s2-button" onClick={onKanban}>
               <Workflow size={15} />
-              Kanban
+              Ver etapas
             </button>
           )}
         </div>
       </div>
+      {search && <div className="internal-record-search">{search}</div>}
       {columnsOpen && (
         <div className="p2-customize" aria-label="Colunas de propostas">
           {PRODUCTION_COLUMNS.map(
@@ -158,15 +163,16 @@ export function ProductionWorkspace({
           </button>
         </div>
       )}
-      <div hidden={!filtersOpen} className="p2-live-filters">
-        {filters}
-      </div>
+      <div className="internal-record-layout" data-filters-open={filtersOpen}>
+      <aside hidden={!filtersOpen} className="p2-live-filters internal-filter-rail"><div className="internal-rail-heading"><strong>Filtrar carteira</strong><span>Combine os critérios para encontrar uma proposta.</span></div>{filters}</aside>
       <div
         className="p2-live-results"
         data-hidden-columns={hiddenColumns.join(" ")}
       >
         {children}
       </div>
+      </div>
+      {summary && <details className="internal-summary"><summary>Resumo dos resultados filtrados</summary><div>{summary}</div></details>}
       <footer className="p2-pagination">
         <label>
           Por página{" "}

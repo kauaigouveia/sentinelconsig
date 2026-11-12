@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { PreviewSidebar } from "./components/redesign/PreviewSidebar";
-import { PreviewDashboard } from "./components/redesign/PreviewDashboard";
+import { WorkspaceHome as PreviewDashboard } from "./components/redesign/WorkspaceHome";
 import { PreviewSearch } from "./components/redesign/PreviewSearch";
 import { WorkTabs } from "./components/redesign/WorkTabs";
 import { DetailDrawer } from "./components/redesign/PremiumPrimitives";
@@ -31,6 +31,7 @@ import {
 import { visibleNavigation } from "./components/redesign/navigation";
 import "./index.css";
 import "./styles/sentinel-2-preview.css";
+import "./styles/workspace-refresh.css";
 function currentPath() {
   const path = new URLSearchParams(window.location.search).get("view") || "/";
   return visibleNavigation("PLATFORM_MASTER").some((r) => r.path === path)

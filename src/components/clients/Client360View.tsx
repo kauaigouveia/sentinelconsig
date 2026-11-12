@@ -47,6 +47,7 @@ type TabType = 'overview' | 'proposals' | 'contracts' | 'timeline' | 'documents'
 
 export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, premium = false }) => {
   const [searchTerm, setSearchTerm] = useState(initialSearchCpf || '');
+  const [showDirectory, setShowDirectory] = useState(!initialSearchCpf);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [detailProposalId, setDetailProposalId] = useState<string | null>(null);
@@ -395,21 +396,23 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
     <div className={`space-y-4 ${premium ? 'p2-live-module p2-live-clients' : ''}`}>
       {/* Title */}
       <ActionBar
-        title="Visão do Cliente 360º"
+        title="Clientes"
+        subtitle="Encontre um cliente e acompanhe propostas, documentos e contatos em um só lugar."
         count={filteredClients.length}
         financialTotal={selectedClient ? `CPF: ${formatCpf(selectedClient.cpf)}` : undefined}
       />
 
-      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${premium ? 'p2-client-layout' : ''}`}>
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${premium ? 'p2-client-layout internal-client-layout' : ''}`} data-directory-open={showDirectory}>
         {/* Left Column: Client Search & List */}
-        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3  space-y-3 flex flex-col h-[min(70vh,760px)] min-h-[320px] lg:h-[760px]">
+        <div className="internal-client-directory rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-3 space-y-3 flex flex-col">
+          <div className="internal-rail-heading"><strong>Lista de clientes</strong><span>{filteredClients.length} encontrados · selecione para ver a ficha</span></div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Buscar cliente por CPF ou Nome..."
+              aria-label="Buscar cliente por nome ou CPF" placeholder="Nome ou CPF do cliente"
               className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-8 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface)] focus:border-[var(--field-border)] focus:outline-hidden"
             />
             {searchTerm && (
@@ -438,7 +441,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                 return (
                   <button
                     key={c.id}
-                    onClick={() => setSelectedClientId(c.id)}
+                    aria-pressed={isSelected} onClick={() => {setSelectedClientId(c.id);setShowDirectory(false);}}
                     className={`w-full text-left p-2.5 rounded-lg border transition-all cursor-pointer ${
                       isSelected
                         ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)]  ring-2 ring-[var(--focus)]'
@@ -450,7 +453,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                         {c.fullName}
                       </span>
                       <span className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold px-1.5 py-0.5 rounded text-[10px]">
-                        {count} ADEs
+                        {count} propostas
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
@@ -470,6 +473,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
 
         {/* Right Column: 360 Client Profile & Navigation */}
         <div className={`lg:col-span-2 space-y-4 ${premium ? 'p2-client-detail' : ''}`}>
+          <button type="button" className="internal-directory-back" onClick={() => setShowDirectory(true)}>← Voltar à lista de clientes</button>
           {selectedClient ? (
             <>
               {/* Profile Card & KPI Header */}

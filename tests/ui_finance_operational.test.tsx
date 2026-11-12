@@ -24,7 +24,7 @@ describe('Financeiro Premium com fonte sintética, sem escrita',()=>{
   it('abre e cancela o formulário original sem submissão',async()=>{
     state.create=true;render(<GeneralFinanceView premium />);
     await screen.findByText('Lançamento fictício');
-    fireEvent.click(screen.getByRole('button',{name:'Novo Lançamento Financeiro'}));
+    fireEvent.click(screen.getByRole('button',{name:'Novo lançamento'}));
     expect(screen.getByPlaceholderText('Ex: 1.500,00')).toBeTruthy();
     fireEvent.click(screen.getByRole('button',{name:'Cancelar'}));
     expect(screen.queryByPlaceholderText('Ex: 1.500,00')).toBeNull();

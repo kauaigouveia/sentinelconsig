@@ -3,6 +3,8 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { V8WorkerConsentPage } from './components/simulation/V8WorkerConsentPage.tsx';
 import './index.css';
+import './styles/workspace-refresh.css';
+import './styles/internal-workspaces.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
 import { SpeedInsights } from '@vercel/speed-insights/react';

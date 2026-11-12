@@ -494,7 +494,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5 rounded-xl border border-[var(--border-default)] dark:border-[var(--border-default)]  space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
           {/* Quick Search */}
-          <div className="relative col-span-1 sm:col-span-2">
+          <div className={premium ? "internal-filter-search-copy" : "relative col-span-1 sm:col-span-2"}>
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
             <input
               type="text"
@@ -508,7 +508,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           {/* Status */}
           <div>
             <select
-              value={filterStatus}
+              aria-label="Situação da proposta" value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
               className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
@@ -524,7 +524,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           {/* Alçada */}
           <div>
             <select
-              value={filterAlçada}
+              aria-label="Responsável pela próxima ação" value={filterAlçada}
               onChange={e => setFilterAlçada(e.target.value as any)}
               className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
@@ -540,7 +540,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           {/* Banco */}
           <div>
             <select
-              value={filterBank}
+              aria-label="Banco" value={filterBank}
               onChange={e => setFilterBank(e.target.value)}
               className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
@@ -556,7 +556,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           {/* Promotora */}
           <div>
             <select
-              value={filterPromoter}
+              aria-label="Promotora" value={filterPromoter}
               onChange={e => setFilterPromoter(e.target.value)}
               className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
@@ -572,7 +572,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           {/* Digitador */}
           <div>
             <select
-              value={filterDigitizer}
+              aria-label="Digitador" value={filterDigitizer}
               onChange={e => setFilterDigitizer(e.target.value)}
               className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
@@ -586,7 +586,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           {/* Produto */}
           <div>
             <select
-              value={filterProduct}
+              aria-label="Produto" value={filterProduct}
               onChange={e => setFilterProduct(e.target.value)}
               className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
@@ -649,7 +649,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       {/* Contextual Action Bar */}
       <ActionBar
         title={premium ? "Propostas" : "Operações de crédito"}
-        subtitle={premium ? 'Carteira da empresa atual · consulta e operações autorizadas' : undefined}
+        subtitle={premium ? 'Encontre uma proposta, confira a situação e continue o atendimento.' : undefined}
         count={premium?undefined:filteredProposals.length}
         financialTotal={premium?undefined:totalDisbursedFiltered}
         rightActions={
@@ -904,7 +904,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         </div>
       </div>
 
-      <Workspace page={pagination.current} pages={pagination.pages} onPage={setPage} pageSize={pageSize} onPageSize={(size:number)=>{setPageSize(size);setPage(0);}} hiddenColumns={hiddenColumns} onHiddenColumns={setHiddenColumns} onKanban={onKanban} filters={proposalFilters} summary={proposalSummary} count={filteredProposals.length} mode={presentation} onMode={setPresentation}>
+      <Workspace search={premium ? <label className="internal-inline-search"><Search size={18}/><input aria-label="Buscar propostas" placeholder="Busque por cliente, CPF, proposta ou parceiro" value={searchTerm} onChange={event => setSearchTerm(event.target.value)}/></label> : undefined} page={pagination.current} pages={pagination.pages} onPage={setPage} pageSize={pageSize} onPageSize={(size:number)=>{setPageSize(size);setPage(0);}} hiddenColumns={hiddenColumns} onHiddenColumns={setHiddenColumns} onKanban={onKanban} filters={proposalFilters} summary={proposalSummary} count={filteredProposals.length} mode={presentation} onMode={setPresentation}>
       {/* Batch Action Floating / Sticky Bar */}
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between rounded-xl bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface)] text-[var(--text-primary)] p-3 px-5  border border-[var(--border-default)] animate-in fade-in slide-in-">
