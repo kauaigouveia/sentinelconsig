@@ -95,7 +95,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [quotes, setQuotes] = useState<InssQuote[]>([]);
   const [nossaFintechQuotes, setNossaFintechQuotes] = useState<NossaInssNovoQuote[]>([]);
   const [nossaFintechError, setNossaFintechError] = useState('');
-  const [nossaFintechLegalRepresentative, setNossaFintechLegalRepresentative] = useState(statement?.legalRepresentative ?? false);
+  const [nossaFintechLegalRepresentative, setNossaFintechLegalRepresentative] = useState(statement ? statement.legalRepresentative : false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedCondition, setSelectedCondition] = useState<SimulationRequest['selectedCondition']>();
@@ -313,7 +313,6 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
       const nossaFintechPromise = operationCode === '1'
         ? (async () => {
             try {
-              if (statement && statement.legalRepresentative === undefined) throw Error('O extrato não informa se há representante legal para a tabela Nossa Fintech.');
               const response = await fetch('/api/integrations/nossa-fintech/inss/novo/simulate-all', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ numberOfInstallments: Number(term), mode: newSimulationMode, value: newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment, legalRepresentative: nossaFintechLegalRepresentative, birthDate, benefitType: Number(benefitType) }),

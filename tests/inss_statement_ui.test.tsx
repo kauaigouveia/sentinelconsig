@@ -40,6 +40,9 @@ it('carrega os dois contratos e só calcula após o operador confirmar a compara
   expect(calls()).toHaveLength(0);
   fireEvent.click(screen.getByRole('button',{name:'Comparar ofertas'}));
   await waitFor(()=>expect(calls()).toHaveLength(2));
+  const nossaCalls = http.mock.calls.filter(([url]) => url === '/api/integrations/nossa-fintech/port-refin/simulate-all');
+  expect(nossaCalls).toHaveLength(2);
+  for (const [, init] of nossaCalls) expect(JSON.parse(String(init?.body))).not.toHaveProperty('legalRepresentative');
   expect(calls().every(([,init])=>JSON.parse(String(init?.body)).illiterate==="YES")).toBe(true);
   expect(calls().map(([,init])=>JSON.parse(String(init?.body)).contracts[0])).toEqual(
     ['001','123'].map(originBank=>({originBank,originalTerm:84,remaining:27,balance:1000.50,installment:25.50})));
@@ -54,4 +57,18 @@ it('descarta o extrato numa troca de empresa durante a leitura', async()=>{
   finish(fixture);
   expect(close).toHaveBeenCalledOnce();
   expect(screen.queryByText('Pessoa sintética')).toBeNull();
+});
+
+it('consulta Nossa Fintech para empréstimo novo mesmo sem representante informado no PDF', async()=>{
+  const http = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({items:[],offers:[],enabled:false})));
+  vi.stubGlobal('fetch', http);
+  open();
+  fireEvent.click(await screen.findByRole('radio',{name:'Não'}));
+  fireEvent.click(screen.getByRole('button',{name:'Simular novo pela margem'}));
+  const compare = await screen.findByRole('button',{name:'Comparar ofertas'});
+  await waitFor(()=>expect((compare as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(compare);
+  await waitFor(()=>expect(http.mock.calls.filter(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all')).toHaveLength(1));
+  const call = http.mock.calls.find(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all')!;
+  expect(JSON.parse(String(call[1]?.body))).not.toHaveProperty('legalRepresentative');
 });

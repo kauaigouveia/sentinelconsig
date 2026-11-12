@@ -82,9 +82,6 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null); setProviderNotes([]); setError(''); };
   const calculateNossaFintech = async (form:FormSnapshot): Promise<SimulationRow[]> => {
-    if (statement && statement.legalRepresentative === undefined) {
-      throw new Error('O extrato não informa se há representante legal. A Nossa Fintech utiliza esse dado para escolher as tabelas.');
-    }
     const response = await request('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...(form.reviewMetadata??portabilityContext),originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: parseCurrency(form.lastDueBalance), installmentFaceValue: parseCurrency(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined }),
