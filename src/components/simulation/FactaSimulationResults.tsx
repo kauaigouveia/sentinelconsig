@@ -1,3 +1,4 @@
+import { higherMonthlyRateFirst } from '../../lib/monthlyRateOrder';
 import {EligibilityResult} from './EligibilityResult';
 import React from 'react';
 import { SimulationOfferCard } from './SimulationOfferCard';
@@ -8,7 +9,7 @@ export function FactaSimulationResults({ offers, message, canViewDiagnostics=fal
   return <section className="space-y-3 rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]">
     <h4 className="text-sm font-bold">Ofertas FACTA</h4>
 
-    {offers.map((offer, index) => <SimulationOfferCard key={`${offer.code}-${offer.portabilityCode || ''}-${index}`} name={offer.name} description={`Integração: FACTA · tabela ${offer.code}${offer.portabilityCode ? ` · portabilidade ${offer.portabilityCode}` : ''}`} amount={offer.amount} contractAmount={offer.contractAmount} installment={offer.installment} term={offer.term} rate={offer.rate} selected={selectedCode === offer.code} disabled={!(offer.amount || offer.contractAmount) || !offer.installment || !offer.term || !offer.rate} onSelect={onSelect ? () => onSelect(offer) : undefined}>{offer.policyStatus&&<EligibilityResult canViewDiagnostics={canViewDiagnostics} input={{bank:'FACTA',product:'INSS',table:offer.name,check:{status:offer.policyStatus,reason:offer.policyReview}}}/>}</SimulationOfferCard>)}
+    {[...offers].sort((a,b)=>higherMonthlyRateFirst(a.rate,b.rate)).map((offer, index) => <SimulationOfferCard key={`${offer.code}-${offer.portabilityCode || ''}-${index}`} name={offer.name} description={`Integração: FACTA · tabela ${offer.code}${offer.portabilityCode ? ` · portabilidade ${offer.portabilityCode}` : ''}`} amount={offer.amount} contractAmount={offer.contractAmount} installment={offer.installment} term={offer.term} rate={offer.rate} selected={selectedCode === offer.code} disabled={!(offer.amount || offer.contractAmount) || !offer.installment || !offer.term || !offer.rate} onSelect={onSelect ? () => onSelect(offer) : undefined}>{offer.policyStatus&&<EligibilityResult canViewDiagnostics={canViewDiagnostics} input={{bank:'FACTA',product:'INSS',table:offer.name,check:{status:offer.policyStatus,reason:offer.policyReview}}}/>}</SimulationOfferCard>)}
     {message && <EligibilityResult canViewDiagnostics={canViewDiagnostics} input={{bank:'FACTA',product:'INSS',message}}/>}
   </section>;
 }
