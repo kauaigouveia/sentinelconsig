@@ -41,6 +41,7 @@ import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as U
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 const SimulationImportModal=React.lazy(()=>import('./SimulationImportModal').then(module=>({default:module.SimulationImportModal})));
 const PartnerSimulationMonthlyReport=React.lazy(()=>import('./PartnerSimulationMonthlyReport').then(module=>({default:module.PartnerSimulationMonthlyReport})));
+const InssStatementWorkspace = React.lazy(() => import('./InssStatementWorkspace'));
 const SimulationFlowSelectorModal=React.lazy(()=>import('./SimulationFlowSelectorModal').then(module=>({default:module.SimulationFlowSelectorModal})));
 const SpreadsheetPortRefinWorkspace=React.lazy(()=>import('./SpreadsheetPortRefinWorkspace').then(module=>({default:module.SpreadsheetPortRefinWorkspace})));
 const ProductSimulationModal=React.lazy(()=>import('./ProductSimulationModal').then(module=>({default:module.ProductSimulationModal})));
@@ -101,6 +102,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const [finantoOperationCode, setFinantoOperationCode] = useState<'1' | '2' | '3' | '4'>('1');
   const [finantoEnabled, setFinantoEnabled] = useState(false);
   const [nossaFintechEnabled, setNossaFintechEnabled] = useState(false);
+  const [statementScope, setStatementScope] = useState<string | null>(null);
+  useEffect(() => setStatementScope(null), [journeyScope]);
   const [inssInitialDraft, setInssInitialDraft] = useState<React.ComponentProps<typeof FinantoInssSimulationModal>['initialDraft']>();
   const [isNossaFintechPortRefinOpen, setIsNossaFintechPortRefinOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -2554,6 +2557,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           setIsFlowSelectorOpen(false);
           if(flow==='MANUAL' && isNewModalOpen)return;
           setIsNewModalOpen(false); setIsHappyInssModalOpen(false); setIsHappyCltModalOpen(false); setIsFinantoInssModalOpen(false); setIsNossaFintechPortRefinOpen(false); setMultiProduct(null);
+          if (flow === 'INSS_EXTRATO') { setStatementScope(journeyScope); return; }
           if (flow === 'PORT_REFIN_PLANILHAS') { setActiveTab('PORT_REFIN_PLANILHAS'); return; }
           if (flow === 'CLT_MULTI' || flow === 'FGTS_MULTI') {
             setMultiProduct(flow === 'CLT_MULTI' ? 'CLT' : 'FGTS');
@@ -2578,6 +2582,11 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       <DeferredPanel active={multiProduct === 'CLT'}><CltJourneyWorkspace key={journeyScope} scope={journeyScope} partners={partners} happyEnabled={happySimulationAccessEnabled} onSuccess={async () => { await loadData(); }} isOpen={multiProduct === 'CLT'} onBack={() => { setMultiProduct(null); setIsFlowSelectorOpen(true); }} onClose={() => setMultiProduct(null)} /></DeferredPanel>
       <DeferredPanel active={multiProduct === 'FGTS'}><ProductSimulationModal partners={partners} onSuccess={async () => { await loadData(); }} product="FGTS" isOpen={multiProduct === 'FGTS'} onBack={() => setIsFlowSelectorOpen(true)} onClose={() => setMultiProduct(null)} /></DeferredPanel>
 
+      {statementScope === journeyScope && <DeferredPanel active><InssStatementWorkspace
+        scope={journeyScope} partners={partners} happyEnabled={happySimulationAccessEnabled}
+        onClose={() => setStatementScope(null)} onSuccess={async () => { await loadData(); }}
+        onContinue={draft => { setStatementScope(null); setInssInitialDraft(draft); setFinantoOperationCode('4'); setIsFinantoInssModalOpen(true); }}
+      /></DeferredPanel>}
       {/* Modal Simulação Happy INSS */}
       <DeferredPanel active={isHappyInssModalOpen}><HappyInssSimulationModal
         onBack={()=>setIsFlowSelectorOpen(true)}

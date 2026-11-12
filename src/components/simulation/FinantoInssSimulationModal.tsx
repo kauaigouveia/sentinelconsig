@@ -1,3 +1,4 @@
+import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {EligibilityResult} from './EligibilityResult';
 import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
 import { IlliteracyField, PortabilityReviewFields } from './PortabilityReviewFields';
@@ -31,6 +32,7 @@ type InssQuote = { rule: ApiItem; calculation?: ApiItem; error?: string; skipped
 type NossaInssNovoQuote = { table?: ApiItem; success: boolean; status?: number; data?: ApiItem; error?: string };
 
 interface Props {
+  statement?: ReviewedInssStatement;
   onBack?: () => void;
   isOpen: boolean;
   happyEnabled?: boolean;
@@ -65,11 +67,11 @@ const OPERATION_LABELS: Record<Props['operationCode'], string> = {
 // A enumeração oficial da API é: 1 Novo, 2 Refinanciamento, 3 Portabilidade, 4 Portabilidade + Refinanciamento.
 const API_OPERATION_CODES: Record<Props['operationCode'], number> = { '1': 1, '2': 3, '3': 2, '4': 4 };
 
-export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, operationCode, onClose, partners, onSuccess, initialDraft }) => {
+export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, operationCode, onClose, partners, onSuccess, initialDraft, statement }) => {
   const appliedDraft = useRef(false);
   const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [draftReady, setDraftReady] = useState(false);
-  const [step,setStep]=useState(0);
+  const [step,setStep]=useState(statement ? 1 : 0);
   const [factaOffers, setFactaOffers] = useState<FactaComparisonOffer[]>([]);
   const [factaMessage, setFactaMessage] = useState('');
   const [eligibilityDiagnostics,setEligibilityDiagnostics]=useState(false);
@@ -87,7 +89,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [quotes, setQuotes] = useState<InssQuote[]>([]);
   const [nossaFintechQuotes, setNossaFintechQuotes] = useState<NossaInssNovoQuote[]>([]);
   const [nossaFintechError, setNossaFintechError] = useState('');
-  const [nossaFintechLegalRepresentative, setNossaFintechLegalRepresentative] = useState(false);
+  const [nossaFintechLegalRepresentative, setNossaFintechLegalRepresentative] = useState(statement?.legalRepresentative ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedCondition, setSelectedCondition] = useState<SimulationRequest['selectedCondition']>();
@@ -98,14 +100,14 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [loadingTerm, setLoadingTerm] = useState(false);
 
   const [partnerId, setPartnerId] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [name, setName] = useState('');
-  const [benefit, setBenefit] = useState('');
-  const [benefitState, setBenefitState] = useState('SP');
-  const [benefitStartDate, setBenefitStartDate] = useState('');
-  const [benefitType, setBenefitType] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [income, setIncome] = useState('');
+  const [cpf, setCpf] = useState(statement?.customer.cpf ?? '');
+  const [name, setName] = useState(statement?.customer.name ?? '');
+  const [benefit, setBenefit] = useState(statement?.customer.benefitNumber ?? '');
+  const [benefitState, setBenefitState] = useState(statement ? statement.uf : 'SP');
+  const [benefitStartDate, setBenefitStartDate] = useState(statement?.benefitStart ?? '');
+  const [benefitType, setBenefitType] = useState(statement?.customer.benefitType ?? '');
+  const [birthDate, setBirthDate] = useState(statement?.customer.birthDate ?? '');
+  const [income, setIncome] = useState(statement?.income ?? '');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
@@ -125,24 +127,25 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [accountNumber, setAccountNumber] = useState('');
   const [accountDigit, setAccountDigit] = useState('');
   const [loanValue, setLoanValue] = useState('');
-  const [installmentValue, setInstallmentValue] = useState('');
+  const [installmentValue, setInstallmentValue] = useState(statement && operationCode === '1' ? statement.loanMargin : '');
   const [newSimulationMode, setNewSimulationMode] = useState<'AMOUNT' | 'INSTALLMENT'>('INSTALLMENT');
   const [rate, setRate] = useState('');
   const [term, setTerm] = useState('84');
   const [hasInsurance, setHasInsurance] = useState(false);
-  const [originLenderCode, setOriginLenderCode] = useState('');
-  const [originContractNumber, setOriginContractNumber] = useState('');
-  const [originTerm, setOriginTerm] = useState('');
-  const [originInstallmentsRemaining, setOriginInstallmentsRemaining] = useState('');
-  const [originInstallmentValue, setOriginInstallmentValue] = useState('');
-  const [originDueBalanceValue, setOriginDueBalanceValue] = useState('');
+  const importedOrigin = operationCode === '2' ? statement?.contracts[0] : undefined;
+  const [originLenderCode, setOriginLenderCode] = useState(importedOrigin?.originLenderCode ?? '');
+  const [originContractNumber, setOriginContractNumber] = useState(importedOrigin?.originContractNumber ?? '');
+  const [originTerm, setOriginTerm] = useState(importedOrigin?.originalTerm ?? '');
+  const [originInstallmentsRemaining, setOriginInstallmentsRemaining] = useState(importedOrigin?.openedInstallmentNumber ?? '');
+  const [originInstallmentValue, setOriginInstallmentValue] = useState(importedOrigin?.installmentFaceValue ?? '');
+  const [originDueBalanceValue, setOriginDueBalanceValue] = useState(importedOrigin?.lastDueBalance ?? '');
   const [refinanceTerm, setRefinanceTerm] = useState('84');
   const [refinanceRate, setRefinanceRate] = useState('');
   const [refinanceInstallmentValue, setRefinanceInstallmentValue] = useState('0');
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
 
-  useEffect(()=>{setPortabilityContext({});},[cpf]);
+  useEffect(()=>{setPortabilityContext(statement ? {illiterate:statement.illiterate,negativeMarginAmount:statement.loanMargin,benefitStartDate:statement.benefitStart} : {});},[cpf,statement]);
   useEffect(() => {
     const cep = zipCode.replace(/\D/g, '');
     if (cep.length !== 8 || !typing) { setCepMessage(''); return; }
@@ -207,7 +210,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
     setDraftReady(false);
     let cancelled = false;
     if (isOpen) {
-      setStep(initialDraft?2:0);
+      setStep(initialDraft ? 2 : statement ? 1 : 0);
       setCreated(null); setAuthTerm(null); setSelectedCondition(undefined); setTyping(false); setFront(null); setBack(null);
       void loadRules().then(() => {
         if(cancelled)return;
@@ -304,6 +307,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
       const nossaFintechPromise = operationCode === '1'
         ? (async () => {
             try {
+              if (statement && statement.legalRepresentative === undefined) throw Error('O extrato não informa se há representante legal para a tabela Nossa Fintech.');
               const response = await fetch('/api/integrations/nossa-fintech/inss/novo/simulate-all', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ numberOfInstallments: Number(term), mode: newSimulationMode, value: newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment, legalRepresentative: nossaFintechLegalRepresentative, birthDate, benefitType: Number(benefitType) }),
@@ -464,7 +468,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
     finally { setLoadingTerm(false); }
   };
 
-  const field = (title: string, value: string, change: (value: string) => void, type = 'text', required = true, maxLength?: number, step?: string) => <label className={labelClass}>{title}{title.includes('R$') ? <CurrencyInput className={inputClass} required={required} value={value} onValueChange={change} /> : <input className={inputClass} type={type} required={required} value={value} maxLength={maxLength} step={type === 'number' ? step || 'any' : undefined} onChange={e => change(e.target.value)} />}</label>;
+  const field = (title: string, value: string, change: (value: string) => void, type = 'text', required = true, maxLength?: number, step?: string) => <label className={labelClass}>{title}{title.includes('R$') ? <CurrencyInput className={inputClass} required={required} value={value} onValueChange={change} /> : <input className={inputClass} type={type} required={required} value={value} readOnly={!!statement && change === setBenefit} maxLength={maxLength} step={type === 'number' ? step || 'any' : undefined} onChange={e => change(e.target.value)} />}</label>;
   const applyPresencaBenefit = (data: PresencaBenefitDetail) => {
     if (normalizeCpf(cpf) !== data.cpf) return;
     setBenefit(data.benefit); setBenefitType(data.species);
@@ -480,14 +484,14 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
     <section role="dialog" aria-modal="true" aria-labelledby="inss-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
       <header className="flex items-center justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading}/><h2 id="inss-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{OPERATION_LABELS[operationCode]}</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">Compare as condições disponíveis nas integrações habilitadas.</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]" aria-label="Fechar"><X className="h-5 w-5" /></button></header>
-      <SimulationSteps labels={['Cliente','Condições','Ofertas']} step={typing?2:step} onChange={value=>{if(!typing)setStep(value);}} disabled={loading || typing}/>{(step===2 || typing) && <SimulationCustomerSummary name={name} cpf={cpf} birthDate={birthDate} installment={operationCode==='4'?parseAmount(originInstallmentValue)+parseAmount(refinanceInstallmentValue):operationCode==='2'?parseAmount(originInstallmentValue):parseAmount(installmentValue)} amount={operationCode==='1' && newSimulationMode==='AMOUNT'?parseAmount(loanValue):undefined} term={Number(operationCode==='4'?refinanceTerm:term)} rate={parseAmount(operationCode==='4'?refinanceRate:rate)}/>}<div className="overflow-y-auto p-5 sm:p-7">
+      <SimulationSteps labels={['Cliente','Condições','Ofertas']} step={typing?2:step} onChange={value=>{if(!typing && (!statement || value>0))setStep(value);}} disabled={loading || typing}/>{(step===2 || typing) && <SimulationCustomerSummary name={name} cpf={cpf} birthDate={birthDate} installment={operationCode==='4'?parseAmount(originInstallmentValue)+parseAmount(refinanceInstallmentValue):operationCode==='2'?parseAmount(originInstallmentValue):parseAmount(installmentValue)} amount={operationCode==='1' && newSimulationMode==='AMOUNT'?parseAmount(loanValue):undefined} term={Number(operationCode==='4'?refinanceTerm:term)} rate={parseAmount(operationCode==='4'?refinanceRate:rate)}/>}<div className="overflow-y-auto p-5 sm:p-7">
         {created ? <div className="space-y-4"><div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-4 text-sm text-[var(--success-text)] dark:border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]"><CheckCircle2 className="mr-2 inline h-5 w-5" />{created.finantoSimulationId ? 'Envio concluído e registrado na Central do Sentinel.' : 'Simulação salva na esteira, aguardando digitação pela mesa.'}{created.finantoSimulationId && <div className="mt-2 font-mono text-xs">Referência: {created.finantoSimulationId}</div>}</div>
           {created.finantoSimulationId && <div className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-4 text-sm text-[var(--warning-text)] dark:border-[var(--warning-border)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]"><ShieldCheck className="mr-2 inline h-5 w-5" />Próxima etapa: apresentar o termo ao cliente e obter autorização expressa. A assinatura não é realizada automaticamente pelo sistema.</div>}
           {created.finantoSimulationId && !authTerm && <button type="button" onClick={getAuthTerm} disabled={loadingTerm} className="rounded-lg bg-[var(--action)] px-4 py-2 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-90">{loadingTerm ? 'Consultando termo...' : 'Consultar termo de autorização'}</button>}
           {authTerm && <pre className="max-h-72 overflow-auto rounded-lg bg-[var(--bg-canvas)] p-4 text-xs text-[var(--success-text)]">{JSON.stringify(authTerm, null, 2)}</pre>}
           <button type="button" onClick={onClose} className="ml-2 rounded-lg border border-[var(--field-border)] px-4 py-2 text-sm dark:border-[var(--field-border)]">Concluir</button></div> : <form onSubmit={event=>{if(!typing){event.preventDefault();return;}void handleCreate(event);}} className="space-y-6">
           <fieldset data-simulation-step hidden={step!==0 || typing} disabled={step!==0 || typing} className="space-y-5">
-          <section className="space-y-3"><h3 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">1. Dados obrigatórios do cliente</h3><p className="text-xs text-[var(--text-secondary)]">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Nome do cliente (opcional)', name, setName, 'text', false)}{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
+          <section className="space-y-3"><h3 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">1. Dados obrigatórios do cliente</h3><p className="text-xs text-[var(--text-secondary)]">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required readOnly={!!statement} value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Nome do cliente (opcional)', name, setName, 'text', false)}{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
           {!['2','4'].includes(operationCode)&&<IlliteracyField value={portabilityContext.illiterate||''} onChange={illiterate=>{setPortabilityContext(current=>({...current,illiterate}));setSelectedCondition(undefined);setCalculation(null);setQuotes([]);setFactaOffers([]);}}/>}
           {['2','4'].includes(operationCode)&&<PortabilityReviewFields value={{benefitStartDate,...portabilityContext}} onChange={value=>{setPortabilityContext(value);setBenefitStartDate(value.benefitStartDate||'');setSelectedCondition(undefined);setCalculation(null);setQuotes([]);setFactaOffers([]);}}/>}
@@ -501,7 +505,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
           {(operationCode === '2' || operationCode === '4') && <div className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h4 className="mb-3 text-sm font-bold">Dados do contrato atual para portabilidade</h4><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><BankCodeSelect label="Banco de origem" value={originLenderCode} onChange={setOriginLenderCode} className={inputClass} labelClassName={labelClass} />{field('Número do contrato', originContractNumber, setOriginContractNumber)}{field('Prazo original (meses)', originTerm, setOriginTerm, 'number')}{field('Parcelas restantes', originInstallmentsRemaining, setOriginInstallmentsRemaining, 'number')}{field('Valor da parcela atual (R$)', originInstallmentValue, setOriginInstallmentValue, 'number')}{field('Saldo devedor (R$)', originDueBalanceValue, setOriginDueBalanceValue, 'number')}</div></div>}
           {operationCode === '3' && <div className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h4 className="mb-2 text-sm font-bold">Dados para localizar o contrato de refinanciamento</h4><p className="text-xs text-[var(--text-secondary)]">A busca usa o CPF e o benefício informados na primeira etapa.</p></div>}
           {operationCode === '4' && <div className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h4 className="mb-3 text-sm font-bold">Parâmetros do refinanciamento adicional</h4><div className="grid gap-3 sm:grid-cols-3">{selectField('Prazo do refinanciamento (meses)', refinanceTerm, setRefinanceTerm, availableTerms, 'Selecione o prazo')}{selectField('Taxa mensal do refinanciamento (%)', refinanceRate, setRefinanceRate, availableRates, 'Selecione a taxa')}{field('Parcela adicional (R$; 0 para manter a parcela atual)', refinanceInstallmentValue, setRefinanceInstallmentValue, 'number')}</div></div>}
-          {operationCode === '1' && <div className="space-y-3"><div className="inline-flex rounded-lg border border-[var(--field-border)] p-1 dark:border-[var(--field-border)]"><button type="button" onClick={() => { setNewSimulationMode('INSTALLMENT'); setCalculation(null); setQuotes([]); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${newSimulationMode === 'INSTALLMENT' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>Simular por parcela</button><button type="button" onClick={() => { setNewSimulationMode('AMOUNT'); setCalculation(null); setQuotes([]); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${newSimulationMode === 'AMOUNT' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>Simular por valor liberado</button></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{newSimulationMode === 'AMOUNT' ? field('Valor liberado desejado (R$)', loanValue, value => { setLoanValue(value); setCalculation(null); setQuotes([]); }, 'number') : field('Valor da parcela desejado (R$)', installmentValue, value => { setInstallmentValue(value); setCalculation(null); setQuotes([]); }, 'number')}<label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]`}><input type="checkbox" checked={hasInsurance} onChange={e => { setHasInsurance(e.target.checked); setCalculation(null); setQuotes([]); }} />Incluir seguro</label><label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]`}><input type="checkbox" checked={nossaFintechLegalRepresentative} onChange={e => setNossaFintechLegalRepresentative(e.target.checked)} />Possui representante legal</label></div></div>}
+          {operationCode === '1' && <div className="space-y-3"><div className="inline-flex rounded-lg border border-[var(--field-border)] p-1 dark:border-[var(--field-border)]"><button type="button" onClick={() => { setNewSimulationMode('INSTALLMENT'); setCalculation(null); setQuotes([]); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${newSimulationMode === 'INSTALLMENT' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>Simular por parcela</button><button type="button" onClick={() => { setNewSimulationMode('AMOUNT'); setCalculation(null); setQuotes([]); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${newSimulationMode === 'AMOUNT' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>Simular por valor liberado</button></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{newSimulationMode === 'AMOUNT' ? field('Valor liberado desejado (R$)', loanValue, value => { setLoanValue(value); setCalculation(null); setQuotes([]); }, 'number') : field('Valor da parcela desejado (R$)', installmentValue, value => { setInstallmentValue(value); setCalculation(null); setQuotes([]); }, 'number')}<label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]`}><input type="checkbox" checked={hasInsurance} onChange={e => { setHasInsurance(e.target.checked); setCalculation(null); setQuotes([]); }} />Incluir seguro</label>{!statement && <label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]`}><input type="checkbox" checked={nossaFintechLegalRepresentative} onChange={e => setNossaFintechLegalRepresentative(e.target.checked)} />Possui representante legal</label>}</div></div>}
           <div className="grid gap-3 sm:grid-cols-2">{selectField('Taxa mensal (%)', rate, value => { setRate(value); setCalculation(null); setQuotes([]); }, availableRates, 'Selecione a taxa')}{selectField('Prazo (meses)', term, value => { setTerm(value); setCalculation(null); setQuotes([]); }, availableTerms, 'Selecione o prazo')}</div>
           {operationCode === '3' && <div className="space-y-3 rounded-lg border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]">
             <label className={labelClass}>Contrato C6<input value={c6Contract} onChange={e => setC6Contract(e.target.value)} className={inputClass} /></label>
@@ -516,7 +520,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
           {operationCode === '1' && <label className={labelClass}>Renda mensal para C6 (R$)<CurrencyInput min="0.01" step="0.01" value={income} onValueChange={value => setIncome(value)} className={inputClass} /></label>}
           {!canCalculate && <div id="inss-simulation-pending" role="status" className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-sm text-[var(--warning-text)] dark:border-[var(--warning-border)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]"><p className="font-semibold">Para comparar as ofertas, confira:</p><ul className="mt-2 list-disc space-y-1 pl-5">{[...clientIssues,...conditionIssues].map(issue=><li key={issue}>{issue}</li>)}</ul>{clientIssues.length>0&&<button type="button" onClick={()=>setStep(0)} className="mt-3 rounded-lg border px-3 py-2 font-semibold">Corrigir dados do cliente</button>}</div>}<button type="button" aria-describedby={!canCalculate?'inss-simulation-pending':undefined} onClick={compareOffers} disabled={loading || loadingRules} className="rounded-xl bg-[var(--action)] px-5 py-3 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-90">{loading ? 'Calculando...' : 'Comparar ofertas'}</button>
           <BmgCustomerAuthorization input={{ product: 'INSS', operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], ...portabilityContext,benefitStartDate,cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, income: parseAmount(income), term: Number(term), value: newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : parseAmount(installmentValue), mode: newSimulationMode }} onRows={setBmgRows} />
-          <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/></section></fieldset>
+          <SimulationBack onBack={statement ? onBack : ()=>setStep(0)} disabled={loading} label={statement ? "Voltar ao extrato" : "Voltar ao cliente"}/></section></fieldset>
           <fieldset hidden={step!==2 || typing} disabled={step!==2 || typing} className="space-y-5">{['2','4'].includes(operationCode)&&playbooksPanel}<SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar às condições"/>{loading && <p role="status" className="rounded-xl bg-[var(--info-bg)] p-5 text-sm">Consultando as condições disponíveis…</p>}
           <section className="space-y-5"><h3 className="text-lg font-bold">Ofertas disponíveis</h3><OrderedSimulationBanks operation={({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode]} groups={[
             { bank: 'BMG', visible: bmgRows.length > 0, resultRank:bmgRows.some(row=>row.state==='OFFER')?0:2, content: <>{bmgRows.map((row, index) => row.state === 'OFFER' ? <SimulationOfferCard key={index} name={row.name || 'Oferta BMG'} description="Integração: BMG" amount={row.amount} contractAmount={row.contractAmount} installment={row.installment} term={row.term} rate={row.rate} /> : <EligibilityResult key={index} canViewDiagnostics={eligibilityDiagnostics} input={{bank:'BMG',product:'INSS',message:row.message,table:row.name}}/>)}</> },

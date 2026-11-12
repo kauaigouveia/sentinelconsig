@@ -1,3 +1,4 @@
+import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {PortabilityResults} from './PortabilityResults';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -21,7 +22,7 @@ import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
 
 type SimulationRow = { installmentChanges?: {label?:string;originalInstallment:number;newInstallment:number|null}[]; originalInstallment?: number; contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
-type Props = { onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
+type Props = { statement?: ReviewedInssStatement; onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
 const currency = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
 const labelClass = 'text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]';
@@ -34,11 +35,11 @@ const EMPTY_FORM={
     lastDueBalance: '', installmentFaceValue: '', openedInstallmentNumber: '', numberOfInstallments: '108', refinancingRate: '', benefitContractCount:'', legalRepresentative: false,
 };
 
-export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue }) => {
-  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
-  const [form, setForm] = useState<typeof EMPTY_FORM & {reviewMetadata?:Record<string,string>}>({...EMPTY_FORM});
+export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue, statement }) => {
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>(statement ? { illiterate: statement.illiterate, negativeMarginAmount: statement.loanMargin, benefitStartDate: statement.benefitStart } : {});
+  const [form, setForm] = useState<typeof EMPTY_FORM & {reviewMetadata?:Record<string,string>}>({...EMPTY_FORM, ...statement?.customer, benefitContractCount: statement?.benefitContractCount ?? '', legalRepresentative: statement ? statement.legalRepresentative : false});
   type FormSnapshot=typeof form & {reviewMetadata?:Record<string,string>};
-  const [contractQueue,setContractQueue]=useState<PortabilityContractDraft[]>([]);
+  const [contractQueue,setContractQueue]=useState<PortabilityContractDraft[]>(statement?.contracts ?? []);
   const [unify,setUnify]=useState(false);
   const [progress,setProgress]=useState('');
   const running=React.useRef(false);
@@ -58,7 +59,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     window.addEventListener('credit_gestao_storage_update',check);window.addEventListener('storage',check);
     return()=>{transport.current?.abort();window.removeEventListener('credit_gestao_storage_update',check);window.removeEventListener('storage',check);};
   },[]);
-  const [step,setStep]=useState(0);
+  const [step,setStep]=useState(statement ? 1 : 0);
   const [rows, setRows] = useState<SimulationRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -68,11 +69,22 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [saved, setSaved] = useState(false);
 
   useEffect(()=>{if(!isOpen)transport.current?.abort();else if(!running.current)scope.current=identity();},[isOpen]);
-  useEffect(()=>{setPortabilityContext({});setContractQueue([]);},[form.cpf,form.benefitNumber]);
+  const previousCustomer = React.useRef([normalizeCpf(form.cpf), form.benefitNumber]);
+  useEffect(() => {
+    const nextCpf = normalizeCpf(form.cpf);
+    if (previousCustomer.current[0] !== nextCpf || previousCustomer.current[1] !== form.benefitNumber) {
+      previousCustomer.current = [nextCpf, form.benefitNumber];
+      setPortabilityContext({});
+      setContractQueue([]);
+    }
+  }, [form.cpf, form.benefitNumber]);
   if (!isOpen) return null;
 
   const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null); setProviderNotes([]); setError(''); };
   const calculateNossaFintech = async (form:FormSnapshot): Promise<SimulationRow[]> => {
+    if (statement && statement.legalRepresentative === undefined) {
+      throw new Error('O extrato não informa se há representante legal. A Nossa Fintech utiliza esse dado para escolher as tabelas.');
+    }
     const response = await request('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...(form.reviewMetadata??portabilityContext),originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: parseCurrency(form.lastDueBalance), installmentFaceValue: parseCurrency(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined }),
@@ -215,13 +227,13 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   };
 
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || parseCurrency(row.sourceForm?.installmentFaceValue??form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : ['FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
-  const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
+  const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
   const save = async () => {
     if (!selected || selected.requiresReview || !Number.isFinite(selected.troco) || !(Number(selected.troco) > 0) || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
     const form:FormSnapshot=selected.sourceForm;
     setLoading(true); setError('');
     try {
-      const response = await request('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance } } }) });
+      const response = await request('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { ...(statement ? { illiterate: statement.illiterate === 'YES' } : {}), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance } } }) });
       const data = await readJsonResponse(response); if (!response.ok) throw new Error(data.error);
       setSaved(true); onSuccess?.(data);
     } catch (error: any) { setError(error.message); } finally { setLoading(false); }
@@ -229,9 +241,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
-      <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">INSS · Portabilidade + Refinanciamento</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">Informe cliente e dívida para comparar as condições nas integrações habilitadas.</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
-      <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>{step===2 && <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>}<div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
-        <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">INSS · Portabilidade + Refinanciamento</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
+      {!statement && <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>}{step===2 && <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>}<div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
+        {!statement && <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className={labelClass}>CPF<input required value={form.cpf} onChange={e => update('cpf', formatCpf(e.target.value))} className={inputClass} /></label>
           <label className={labelClass}>Nome do cliente (opcional)<input value={form.name} onChange={e=>update('name',e.target.value)} className={inputClass}/></label>
           <label className={labelClass}>Data de nascimento<input required type="date" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} className={inputClass} /></label>
@@ -239,34 +251,35 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <InssBenefitTypeSelect className={labelClass} required value={form.benefitType} onChange={value => update('benefitType', value)} />
         </div></section>
         <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);setRows([]);setSelected(null);}}/>
-        <SimulationContinue onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset><fieldset hidden={step!==1} disabled={step!==1||loading} className="space-y-5"><section className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">2. Contrato de origem</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <BankCodeSelect required={contractRequired} label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
+        <SimulationContinue onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset>}
+        <fieldset hidden={step!==1} disabled={step!==1||loading} className="space-y-5"><section className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">{statement ? `Contratos selecionados no extrato: ${contractQueue.length}` : '2. Contrato de origem'}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {!statement && <><BankCodeSelect required={contractRequired} label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
           <label className={labelClass}>Número do contrato<input required={contractRequired} value={form.originContractNumber} onChange={e => update('originContractNumber', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Prazo original (meses)<input required={contractRequired} type="number" min="1" value={form.originalTerm} onChange={e => update('originalTerm', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Parcelas restantes<input required={contractRequired} type="number" min="1" value={form.openedInstallmentNumber} onChange={e => update('openedInstallmentNumber', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Saldo devedor (R$)<CurrencyInput required={contractRequired} min="0.01" step="0.01" value={form.lastDueBalance} onValueChange={value => update('lastDueBalance', value)} className={inputClass} /></label>
-          <label className={labelClass}>Parcela atual (R$)<CurrencyInput required={contractRequired} min="0.01" step="0.01" value={form.installmentFaceValue} onValueChange={value => update('installmentFaceValue', value)} className={inputClass} /></label>
+          <label className={labelClass}>Parcela atual (R$)<CurrencyInput required={contractRequired} min="0.01" step="0.01" value={form.installmentFaceValue} onValueChange={value => update('installmentFaceValue', value)} className={inputClass} /></label></>}
           <label className={labelClass}>Prazo do novo refinanciamento<select value={form.numberOfInstallments} onChange={e => update('numberOfInstallments', e.target.value)} className={inputClass}>{INSS_TERMS.map(term => <option key={term} value={term}>{term} meses</option>)}</select></label>
-          <label className={labelClass}>Taxa da tabela oficial (opcional)<input type="number" min="0" step="0.01" value={form.refinancingRate} onChange={e=>update('refinancingRate',e.target.value)} className={inputClass} placeholder="Em branco: condições retornadas pelo banco"/></label>
+          {!statement && <><label className={labelClass}>Taxa da tabela oficial (opcional)<input type="number" min="0" step="0.01" value={form.refinancingRate} onChange={e=>update('refinancingRate',e.target.value)} className={inputClass} placeholder="Em branco: condições retornadas pelo banco"/></label>
           <label className={labelClass}>Total de contratos no benefício (Paraná)<select value={form.benefitContractCount} onChange={e=>update('benefitContractCount',e.target.value)} className={inputClass}><option value="">Informar para calcular Paraná</option>{Array.from({length:13},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></label>
-          <label className="mt-5 inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={form.legalRepresentative} onChange={e => update('legalRepresentative', e.target.checked)} />Possui representante legal</label>
+          <label className="mt-5 inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={form.legalRepresentative} onChange={e => update('legalRepresentative', e.target.checked)} />Possui representante legal</label></>}
         </div></section>
         <section className="space-y-3 rounded-xl border p-4">
-          <h3 className="font-semibold">Múltiplos contratos · até {MAX_SIMULATION_CONTRACTS}</h3>
+          {!statement && <><h3 className="font-semibold">Múltiplos contratos · até {MAX_SIMULATION_CONTRACTS}</h3>
           <p className="text-xs text-[var(--text-secondary)]">Adicione o contrato atual e preencha o próximo. Ao adicionar, os campos são limpos para o próximo contrato. Você pode comparar somente os contratos da lista; um novo contrato preenchido também será incluído, sem duplicar banco e número.</p>
           <button type="button" disabled={loading} className="rounded-lg border px-3 py-2 text-sm" onClick={event=>{
             if(!event.currentTarget.closest('form')?.reportValidity())return;
             try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setForm(current=>({...current,...EMPTY_ORIGIN_CONTRACT}));setError('');setRows([]);setSelected(null);}catch(error:any){setError(error.message);}
-          }}>Adicionar contrato à lista</button>
-          {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span><button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);}}>Remover</button></div>)}
+          }}>Adicionar contrato à lista</button></>}
+          {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span>{!statement && <button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);}}>Remover</button>}</div>)}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unify} disabled={loading} onChange={e=>setUnify(e.target.checked)}/>Calcular também unificações Daycoval de 2 ou 3 contratos</label>
           <p className="text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)]">Alternativas que usam o mesmo contrato não podem ser somadas. Unificações são estimativas para revisão e não geram propostas.</p>
         </section>
         <p className="rounded-lg bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">As integrações retornam propostas de simulação separadas. Os dados pessoais são usados para identificar a modalidade; confirme autorização do cliente antes de consultar os bancos.</p>
         {error && <div role="alert" className="rounded-lg bg-[var(--danger-bg)] p-3 text-sm text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]"><AlertCircle className="mr-2 inline h-4 w-4" />{error}</div>}
-        <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/><button type="submit" disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-[var(--action)] px-4 py-2.5 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-90"><Activity className="h-4 w-4" />{loading ? <><LoaderCircle className="h-4 w-4 animate-spin" />Calculando…</> : 'Comparar ofertas'}</button>
+        {!statement && <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/>}<button type="submit" disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-[var(--action)] px-4 py-2.5 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-90"><Activity className="h-4 w-4" />{loading ? <><LoaderCircle className="h-4 w-4 animate-spin" />Calculando…</> : 'Comparar ofertas'}</button>
       </fieldset></form>
-      {step===2 && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar ao contrato"/>}
+      {step===2 && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label={statement ? "Voltar à comparação" : "Voltar ao contrato"}/>}
       {step===2 && error && <p role="alert" className="my-3 rounded-lg bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)]">{error}</p>}
       <div hidden={step!==2}>{loading && <p role="status" className="my-4 rounded-xl bg-[var(--info-bg)] p-5 text-sm">{progress||'Consultando as condições disponíveis…'}</p>}
 

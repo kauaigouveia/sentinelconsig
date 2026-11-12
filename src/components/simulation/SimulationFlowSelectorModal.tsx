@@ -5,7 +5,7 @@ import { SimulationType } from '../../types';
 interface SimulationFlowSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectFlow: (flow: SimulationType | 'PORT_REFIN_PLANILHAS' | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN' | 'CLT_MULTI' | 'FGTS_MULTI') => void;
+  onSelectFlow: (flow: SimulationType | 'INSS_EXTRATO' | 'PORT_REFIN_PLANILHAS' | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN' | 'CLT_MULTI' | 'FGTS_MULTI') => void;
   happySimulationAccessEnabled?: boolean;
   finantoEnabled?: boolean;
   nossaFintechEnabled?: boolean;
@@ -18,7 +18,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
  if(!isOpen)return null;
  const inss=finantoEnabled || nossaFintechEnabled || happySimulationAccessEnabled;
  const options: {flow:Parameters<typeof onSelectFlow>[0];title:string;description:string}[]=[
-  ...(inss?[{flow:'FINANTO_INSS' as const,title:'Novo empréstimo',description:'Simule um novo contrato para aposentado ou pensionista.'},{flow:'FINANTO_INSS_PORTABILIDADE' as const,title:'Portabilidade',description:'Transfira um contrato de outro banco.'},{flow:'FINANTO_INSS_REFIN' as const,title:'Refinanciamento',description:'Consulte contratos para refinanciar.'},{flow:'NOSSA_FINTECH_PORTABILIDADE_REFIN' as const,title:'Portabilidade + refinanciamento',description:'Transfira o contrato e consulte o troco disponível.'}]:[]),
+  ...(inss?[{flow:'INSS_EXTRATO' as const,title:'Simular por extrato',description:'Leia o PDF da consulta e compare oportunidades por benefício e contrato.'},{flow:'FINANTO_INSS' as const,title:'Novo empréstimo',description:'Simule um novo contrato para aposentado ou pensionista.'},{flow:'FINANTO_INSS_PORTABILIDADE' as const,title:'Portabilidade',description:'Transfira um contrato de outro banco.'},{flow:'FINANTO_INSS_REFIN' as const,title:'Refinanciamento',description:'Consulte contratos para refinanciar.'},{flow:'NOSSA_FINTECH_PORTABILIDADE_REFIN' as const,title:'Portabilidade + refinanciamento',description:'Transfira o contrato e consulte o troco disponível.'}]:[]),
   {flow:'PORT_REFIN_PLANILHAS',title:'Portabilidade por planilha',description:'Condições de Daycoval, C6 e Paraná nas planilhas disponíveis.'}
  ];
  function choose(flow:Parameters<typeof onSelectFlow>[0]){onSelectFlow(flow);}
