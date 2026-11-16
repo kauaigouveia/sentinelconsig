@@ -87,3 +87,108 @@
 @media(prefers-reduced-motion:reduce) {
  .s4-root.s3-root .sentinel-stage > .wb-navigation {transition:none;}
 }
+
+
+/* Responsive repair: the legacy horizontal navigation must not position the v4 map in the sidebar. */
+.s4-root.s3-root .wb-map-scrim {
+  position:fixed; inset:0; z-index:190; width:100%; height:100dvh;
+  border:0; border-radius:0; background:rgb(2 12 24 / .76); cursor:default;
+}
+.s4-root.s3-root .wb-system-map {
+  position:fixed; z-index:200; inset:50% auto auto 50%; transform:translate(-50%,-50%);
+  display:flex; flex-direction:column;
+  width:min(1000px,calc(100vw - 48px)); max-width:none;
+  height:auto; max-height:min(760px,calc(100dvh - 64px));
+  margin:0; padding:0; overflow-y:auto; overflow-x:hidden;
+  background:var(--bg-surface); border:1px solid var(--border-strong); border-radius:14px;
+  box-shadow:0 24px 100px rgb(0 0 0 / .32); isolation:isolate;
+  color:var(--text-primary); overscroll-behavior:contain;
+}
+.s4-root.s3-root .wb-system-map-header {
+  display:flex; position:sticky; top:0; z-index:1; flex-shrink:0;
+  align-items:flex-start; justify-content:space-between; gap:24px;
+  padding:24px 28px; border-bottom:1px solid var(--border-default);
+  background:var(--bg-surface);
+}
+.s4-root.s3-root .wb-system-map-header > div {display:grid; min-width:0; gap:5px;}
+.s4-root.s3-root .wb-system-map-header strong {font-size:19px; line-height:1.3; font-weight:750;}
+.s4-root.s3-root .wb-system-map-header span {font-size:12px; line-height:1.5; overflow-wrap:anywhere;}
+.s4-root.s3-root .wb-system-map-header button {display:grid; flex-shrink:0; place-items:center; width:36px; height:36px; border-radius:8px;}
+.s4-root.s3-root .wb-system-map-grid {
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:start; gap:22px; padding:24px 28px 32px;
+}
+.s4-root.s3-root .wb-system-map-group {min-width:0; overflow-wrap:anywhere;}
+.s4-root.s3-root .wb-system-map-group nav {display:grid;gap:4px;}
+.s4-root.s3-root .wb-system-map-group h2 {font-size:14px;line-height:1.4;}
+.s4-root.s3-root .wb-system-map-group a {
+  display:grid; min-width:0; gap:3px; padding:10px 12px;
+  border:1px solid transparent; border-radius:8px; overflow-wrap:anywhere;
+}
+.s4-root.s3-root .wb-system-map-group a[aria-current="page"] {border-color:var(--border-strong);}
+.s4-root.s3-root .wb-system-map-group a strong {font-size:12px;line-height:1.4;}
+.s4-root.s3-root .wb-system-map-group a small {font-size:11px;line-height:1.45;}
+
+/* Available width differs from viewport width because the sidebar occupies 248px. */
+.s4-root.s3-root .sentinel-view-body {container:sentinel-workspace / inline-size;}
+.s4-root.s3-root .sentinel-view-body > * {max-width:100%;min-width:0;}
+.s4-root.s3-root .wb-guide {min-width:0; max-width:100%;}
+.s4-root.s3-root .wb-guide > div:first-child {min-width:0; flex-wrap:wrap;}
+.s4-root.s3-root .wb-guide > div:first-child > span {
+  min-width:0; white-space:normal; overflow-wrap:anywhere;
+}
+.s4-root.s3-root .ui-page-header {min-width:0;}
+.s4-root.s3-root :is(.p2-bi-workspace,.p2-live-pendencies,.p2-live-production,.p2-live-administration) {
+  min-width:0;max-width:100%;
+}
+.s4-root.s3-root :is(.p2-bi-workspace,.p2-live-pendencies) :is(h1,h2,h3) {
+  min-width:0;overflow-wrap:anywhere;
+}
+.s4-root.s3-root .p2-bi-workspace .p2-analytics-tabs {
+  display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; max-width:100%;
+  scrollbar-width:thin; overscroll-behavior-x:contain; padding-bottom:8px;
+}
+.s4-root.s3-root .p2-bi-workspace .p2-analytics-tabs > button {flex:0 0 auto;min-width:max-content;}
+.s4-root.s3-root .p2-bi-workspace .recharts-responsive-container {min-width:0;max-width:100%;}
+.s4-root.s3-root .p2-live-pendencies .ui-metrics-strip {min-width:0;}
+.s4-root.s3-root .p2-live-pendencies .ui-metrics-strip > * {min-width:0; overflow-wrap:anywhere;}
+.s4-root.s3-root .p2-live-pendencies .p2-pendency-filters {min-width:0;}
+.s4-root.s3-root .p2-live-pendencies .p2-pendency-filters :is(input,select) {max-width:100%;min-width:0;}
+
+/* Dashboard/pendency grids break by panel width, not Tailwind viewport breakpoints. */
+@container sentinel-workspace (max-width:1120px) {
+  .s4-root.s3-root .p2-bi-workspace .xl\:grid-cols-6 {grid-template-columns:repeat(3,minmax(0,1fr));}
+  .s4-root.s3-root .p2-live-pendencies .ui-metrics-strip {grid-template-columns:repeat(3,minmax(0,1fr));}
+  .s4-root.s3-root .p2-live-pendencies .p2-pendency-filters > div:first-child {
+    flex-wrap:wrap;align-items:stretch;
+  }
+}
+@container sentinel-workspace (max-width:670px) {
+  .s4-root.s3-root .p2-bi-workspace .xl\:grid-cols-6 {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .s4-root.s3-root .p2-live-pendencies .ui-metrics-strip {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .s4-root.s3-root .p2-live-pendencies .p2-pendency-filters > div:first-child {
+    flex-direction:column;align-items:stretch;
+  }
+}
+@container sentinel-workspace (max-width:420px) {
+  .s4-root.s3-root .p2-bi-workspace .xl\:grid-cols-6 {grid-template-columns:minmax(0,1fr);}
+  .s4-root.s3-root .p2-live-pendencies .ui-metrics-strip {grid-template-columns:minmax(0,1fr);}
+  .s4-root.s3-root .p2-bi-workspace h1 {font-size:clamp(19px,5vw,25px);line-height:1.25;}
+}
+@media(max-width:1030px) {
+  .s4-root.s3-root .wb-system-map {width:min(740px,calc(100vw - 24px)); max-height:calc(100dvh - 24px);}
+  .s4-root.s3-root .wb-system-map-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+}
+@media(max-width:600px) {
+  .s4-root.s3-root .wb-system-map {
+    inset:0; transform:none; width:100vw; height:100dvh; max-height:100dvh;
+    border-radius:0; border:0;
+  }
+  .s4-root.s3-root .wb-system-map-header {padding:18px 16px;}
+  .s4-root.s3-root .wb-system-map-header strong {font-size:17px;}
+  .s4-root.s3-root .wb-system-map-grid {grid-template-columns:minmax(0,1fr);gap:17px;padding:16px 18px 28px;}
+  .s4-root.s3-root .wb-map-scrim {display:none;}
+  .s4-root.s3-root .sentinel-main .ui-page-header {gap:12px;}
+  .s4-root.s3-root :is(.sentinel-view-body,.p2-bi-workspace,.p2-live-pendencies) {max-width:100%; min-width:0;}
+  .s4-root.s3-root .wb-guide {padding:10px 12px;}
+}
