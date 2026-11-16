@@ -39,7 +39,7 @@ function scenario(authorized=true){
   partner:{findFirst:vi.fn(async({where}:any)=>authorized&&where.id==='partner-a'&&where.tenantId==='tenant-evolve'
    ?{id:'partner-a',name:'Parceiro de teste',code:'010',
       tenant:{whiteLabel:{companyName:'Evolve'},tradeName:'Evolve',name:'Evolve'}}:null)},
-  proposal:{findMany:vi.fn(async()=>[])},
+  proposal:{findMany:vi.fn(async(_query:any)=>[])},
  };
  const db={$transaction:async(callback:any)=>callback(tx)};
  const binding=async(_tx:any,_tenant:string,_partner:string)=>{
