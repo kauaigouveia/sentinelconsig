@@ -24,3 +24,13 @@ Nenhuma alteração em APIs, integrações, dados, `server.ts`, banco, Prisma, m
 6. Segmentar backend e armazenamento por domínio com contrato de API testado.
 
 **Não declarar a refatoração total concluída com base apenas nesta entrega.**
+
+## Gate de publicação — 16/11/2026
+
+- Revisão `d1042998b99ae324ffe232adb067c38de85434c1` validada em sandbox efêmero (sem acesso a dados ou APIs operacionais).
+- `npm ci`, `npm run lint` (TypeScript) e `npm run build`: aprovados.
+- **141 testes aprovados, 0 reprovados, em 18 arquivos**: navegação, busca, novo layout, Propostas, Kanban, Simulações, Atendimento, Administração, design system, rodapé e segurança multiempresa.
+- O preview automático da Vercel terminou em estado **READY**, no commit `d1042998b99ae324ffe232adb067c38de85434c1`.
+- Consolidado também o seletor lista/cartões entre workspace legado, Propostas e Simulações, sem mudança de callbacks ou semântica de `aria-pressed`.
+- Os **26 testes preexistentes com falhas na base original** (25 de paridade estática e 1 de Propostas, conforme `docs/refactor-20261116-roadmap.md`) não foram alterados nem reclassificados como sucesso.
+- **Limite da validação:** não houve testes E2E com sessão real de cliente, dados de produção, chamadas bancárias ou validação visual completa no browser autenticado. Build pronto não equivale a homologação funcional integral.
