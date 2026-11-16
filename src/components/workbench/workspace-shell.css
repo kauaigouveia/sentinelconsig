@@ -11,7 +11,7 @@
   padding:18px 12px 14px; scrollbar-width:thin; isolation:isolate;
 }
 .s4-root .sentinel-stage > .sentinel-main {grid-column:2; grid-row:2; min-height:0; min-width:0; padding:26px clamp(16px,2.6vw,40px) 40px;}
-.s4-root .sentinel-stage > .sentinel-status-footer {grid-column:2; grid-row:3;}
+.s4-root .sentinel-stage > .sentinel-institutional-footer {grid-column:2; grid-row:3;}
 .s4-root .wb-mobile-toolbar, .s4-root .wb-mobile-close {display:none;}
 .s4-root .wb-sidebar-heading {display:flex; justify-content:space-between; align-items:center; padding:8px 12px 22px;}
 .s4-root .wb-sidebar-heading > div {display:grid; gap:7px; min-width:0;}
