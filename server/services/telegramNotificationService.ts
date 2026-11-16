@@ -5,6 +5,8 @@ import type { Express, Request } from 'express';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { PartnerPortalService } from './partnerPortalService.js';
 import { AuditLogService } from './auditLogService.js';
+import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
+import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
 import {telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,type TelegramProductSection} from './telegramProductMenu.js';
 const BOT = 'SentinelConectaBot';
 const GLOBAL_ID = 'sentinel-telegram-global-v1';
@@ -284,16 +286,28 @@ export function registerTelegramRoutes(app:Express,db:PrismaClient,getSession:(r
 }
 type TelegramAccount={tenantId:string;partnerId:string;label:string;linkedAt:string};
 type ProposalQueryState = {
-    phase: 'MENU' | 'PRODUCT' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS';
+    phase: 'MENU' | 'PRODUCT' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS' | 'PDF_WAIT' | 'PDF_PROCESSING' | 'PDF_SELECT' | 'PDF_CONFIRM';
     section?: TelegramProductSection;
     postSelection?: 'MENU'|'QUERY';
     selected?: TelegramAccount;
     choices?: TelegramAccount[];
     page?: number;
     results?: string[];
+    pendingPdf?:{review:TelegramPdfReview;expires:number;selectedIndices?:number[]};
     expires: number;
 };
 
+type TelegramPdfWork=
+    |{kind:'READ';account:TelegramAccount;document:{file_id:string;file_name?:string;mime_type?:string;file_size?:number}}
+    |{kind:'CALCULATE';account:TelegramAccount;review:TelegramPdfReview;indices:number[];illiterate:'YES'|'NO'};
+async function telegramAccountStillValid(db:PrismaClient,config:BotConfig,chatId:string,account:TelegramAccount):Promise<boolean>{
+    if(config.ownerTenant && account.tenantId!==config.ownerTenant)return false;
+    const current=await activeBot(db,account.tenantId);
+    if(!current?.registered||botId(current)!==botId(config)||!(await company(db,account.tenantId)).enabled)return false;
+    const linked=await binding(db,account.tenantId,account.partnerId,current);
+    if(!linked||linked.chatId!==chatId||linked.linkedAt!==account.linkedAt)return false;
+    return !!await db.partner.findFirst({where:{id:account.partnerId,tenantId:account.tenantId,status:'ATIVO',deletedAt:null,tenant:{status:'ACTIVE',deletedAt:null}}});
+}
 async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any) {
     if (!Number.isSafeInteger(msg.message_id)) return;
     const chatId = String(msg.chat.id);
@@ -309,6 +323,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         let response = 'Conecte seu Telegram ao Portal do Parceiro para iniciar.';
         let keyboard: string[][] = [['👤 Trocar parceiro']];
         let htmlMode = false;
+        let pdfWork:TelegramPdfWork|undefined;
         const valid = async (account: TelegramAccount) => {
             if (config.ownerTenant && account.tenantId !== config.ownerTenant) return false;
             const current = await activeBot(tx, account.tenantId);
@@ -333,12 +348,12 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         };
         const showMain = () => {
             const menu=telegramMainMenu(state.selected?.label||'');
-            state.phase='MENU';state.section='ROOT';state.postSelection=undefined;
+            state.phase='MENU';state.section='ROOT';state.postSelection=undefined;state.pendingPdf=undefined;
             response=menu.response;keyboard=menu.keyboard;
         };
         const showProduct = (section:Exclude<TelegramProductSection,'ROOT'>) => {
             const menu=telegramSectionMenu(section);
-            state.phase='PRODUCT';state.section=section;
+            state.phase='PRODUCT';state.section=section;state.pendingPdf=undefined;
             response=menu.response;keyboard=menu.keyboard;
         };
         const openPortal = (target: ReturnType<typeof telegramSimulationTarget>|'PROFILE') => {
@@ -412,15 +427,56 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         } else if (state.selected && await valid(state.selected)) {
             keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
             if(msg.document){
-                response='Este bot ainda não processa extratos ou arquivos PDF. Não envie documentos de clientes neste chat. Use o Portal do Parceiro e, para análise de extrato, solicite o fluxo autorizado à mesa da empresa.';
-                if(state.phase==='PRODUCT' && state.section && state.section!=='ROOT') keyboard=telegramSectionMenu(state.section).keyboard;
-                else keyboard=telegramMainMenu(state.selected.label).keyboard;
+                if(state.phase!=='PDF_WAIT'||state.section!=='PORT'){
+                    response='Para enviar um extrato INSS, abra Portabilidade INSS → Simular pelo extrato e siga as orientações. O documento não foi baixado.';
+                    keyboard=telegramSectionMenu('PORT').keyboard;
+                }else {
+                    try{
+                        validateTelegramPdfDocument(msg.document);
+                        state.phase='PDF_PROCESSING';
+                        response='📄 PDF recebido. Vou conferir o documento antes de calcular. Não envie outro arquivo enquanto este estiver sendo analisado.';
+                        keyboard=[['🏠 Menu principal']];
+                        pdfWork={kind:'READ',account:state.selected!,document:msg.document};
+                    }catch{
+                        response='Envie um arquivo PDF textual INSS de até 5 MB, usando a opção Documento. Não envie imagens, prints ou PDFs protegidos por senha.';
+                        keyboard=[['🏠 Menu principal']];
+                    }
+                }
+            } else if (state.phase==='PDF_SELECT' && state.pendingPdf) {
+                const review=state.pendingPdf;
+                const indices=parseTelegramSelectedContracts(text,review.review.contracts.length);
+                if(indices){
+                    state.phase='PDF_CONFIRM';
+                    review.selectedIndices=indices;
+                    response='Contratos selecionados: '+indices.map(i=>i+1).join(', ')+
+                      '\n\nConfirme que o titular autorizou esta consulta e informe se ele é analfabeto. Isso influencia a elegibilidade nos bancos. Nenhuma contratação será realizada.';
+                    keyboard=[['✅ Autorizado · NÃO analfabeto'],['✅ Autorizado · Analfabeto'],['🏠 Menu principal']];
+                }else {
+                    response='Selecione de 1 a 3 números distintos de contratos válidos, separados por vírgula (ex.: 1,2,4).\n\n'+telegramPdfReviewText(review.review);
+                    keyboard=[['🏠 Menu principal']];
+                }
+            } else if(state.phase==='PDF_CONFIRM' && state.pendingPdf?.selectedIndices?.length){
+                const answer=normalizeTelegramMenuInput(text);
+                const illiterate=answer==='autorizado nao analfabeto'?'NO':answer==='autorizado analfabeto'?'YES':null;
+                if(!illiterate){
+                    response='Antes da simulação, confirme a autorização do titular e selecione se ele é analfabeto.';
+                    keyboard=[['✅ Autorizado · NÃO analfabeto'],['✅ Autorizado · Analfabeto'],['🏠 Menu principal']];
+                }else{
+                    pdfWork={kind:'CALCULATE',account:state.selected!,review:state.pendingPdf.review,
+                        indices:state.pendingPdf.selectedIndices,illiterate};
+                    state.pendingPdf=undefined;
+                    state.phase='PRODUCT';state.section='PORT';
+                    response='🔎 Conferência registrada. Calculando as planilhas disponíveis da empresa. Os valores são estimativas, não aprovações bancárias.';
+                    keyboard=telegramSectionMenu('PORT').keyboard;
+                }
             } else if(menuChoice==='CLT'||menuChoice==='FGTS'||menuChoice==='INSS'||menuChoice==='PORT'){
                 showProduct(menuChoice);
             }else if(menuChoice==='EXTRACT'){
-                state.phase='PRODUCT';state.section='PORT';
-                keyboard=telegramSectionMenu('PORT').keyboard;
-                response='📄 Simulação por extrato INSS pelo Telegram está em implantação. O bot NÃO baixa ou armazena o PDF enviado. Para simular agora, use o Portal do Parceiro com login ou encaminhe a solicitação pela mesa da empresa. Não envie documentos pessoais aqui.';
+                state.phase='PDF_WAIT';state.section='PORT';state.pendingPdf=undefined;
+                keyboard=[['🏠 Menu principal']];
+                response='📄 Envie agora o extrato de empréstimos INSS em PDF textual (até 5 MB, máximo 20 páginas).'+
+                  '\n\nO titular deve ter autorizado a consulta. O bot apenas lê o documento em memória, extrai os contratos para conferência e calcula estimativas das planilhas ativas. O PDF original não é guardado no Sentinel.'+
+                  '\n\nDepois de conferir os contratos você escolherá até 3 por comparação, e informará se o titular é analfabeto. Para cancelar, toque em Menu principal.';
             }else if(menuChoice==='CLIENT'){
                 // The partner's profile is NOT a client-data lookup. Require a
                 // logged-in portal session and use the CLT vínculos/margem flow.
@@ -456,9 +512,74 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             keyboard=[['👤 Trocar parceiro']];
         }
         state.expires = Date.now() + 10 * 60_000;
+        if(state.pendingPdf?.expires && state.pendingPdf.expires<Date.now())state.pendingPdf=undefined;
         await tx.systemConfig.upsert({ where: { id: stateId }, create: { id: stateId, configKey: 'TELEGRAM_PROPOSAL_QUERY_V1', configValue: encrypt(state), isSecret: true }, update: { configValue: encrypt(state) } });
         await tx.systemConfig.create({ data: { id: receiptId, configKey: 'TELEGRAM_QUERY_RECEIPT_V1', configValue: 'done', isSecret: true } });
-        return { response, keyboard, htmlMode };
+        return { response, keyboard, htmlMode, pdfWork };
     }, { isolationLevel: 'Serializable', maxWait: 3000, timeout: 15000 });
-    if (result) await telegram(config, 'sendMessage', { chat_id: chatId, text: result.response, ...(result.htmlMode ? { parse_mode: 'HTML' } : {}), reply_markup: { keyboard: result.keyboard.map(row => row.map(text => ({ text }))), resize_keyboard: true }, protect_content: true });
+    if(!result)return;
+    await telegram(config,'sendMessage',{chat_id:chatId,text:result.response,
+        ...(result.htmlMode?{parse_mode:'HTML'}:{}),
+        reply_markup:{keyboard:result.keyboard.map(row=>row.map(text=>({text}))),resize_keyboard:true},
+        protect_content:true});
+    const job=result.pdfWork;
+    if(!job)return;
+    // No PDF download, external Telegram request or workbook calculation runs under Prisma transaction.
+    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    if(job.kind==='READ'){
+        let review:TelegramPdfReview|undefined;
+        try{
+            const bytes=await downloadTelegramPdf(config.token,job.document);
+            review=await readTelegramInssPdf(bytes);
+        }catch{
+            const row=await db.systemConfig.findUnique({where:{id:stateId}});
+            if(row){
+                const state=decrypt<ProposalQueryState>(row.configValue);
+                if(state.phase==='PDF_PROCESSING' && state.selected?.tenantId===job.account.tenantId &&
+                    state.selected.partnerId===job.account.partnerId){
+                    const update={...state,phase:'PDF_WAIT' as const,pendingPdf:undefined,expires:Date.now()+10*60_000};
+                    await db.systemConfig.updateMany({where:{id:stateId,configValue:row.configValue},data:{configValue:encrypt(update)}});
+                }
+            }
+            await telegram(config,'sendMessage',{chat_id:chatId,
+                text:'Não foi possível interpretar esse PDF com segurança. Envie o extrato INSS textual, íntegro e sem senha, com CPF, benefício e os empréstimos legíveis. Nenhuma simulação foi salva.',
+                protect_content:true});
+            return;
+        }
+        const row=await db.systemConfig.findUnique({where:{id:stateId}});
+        if(!row)return;
+        const state=decrypt<ProposalQueryState>(row.configValue);
+        if(state.phase!=='PDF_PROCESSING'||state.selected?.tenantId!==job.account.tenantId||
+            state.selected.partnerId!==job.account.partnerId||state.selected.linkedAt!==job.account.linkedAt)return;
+        const updated={...state,phase:'PDF_SELECT' as const,pendingPdf:{review,expires:Date.now()+TELEGRAM_PDF_TTL_MS},
+            expires:Date.now()+TELEGRAM_PDF_TTL_MS};
+        const claim=await db.systemConfig.updateMany({
+            where:{id:stateId,configValue:row.configValue},
+            data:{configValue:encrypt(updated)},
+        });
+        if(claim.count===1 && await telegramAccountStillValid(db,config,chatId,job.account))
+            await telegram(config,'sendMessage',{chat_id:chatId,
+                text:telegramPdfReviewText(review),
+                reply_markup:{keyboard:[[{text:'🏠 Menu principal'}]],resize_keyboard:true},protect_content:true});
+        return;
+    }
+    try{
+        const output=await calculateTelegramInssQuotes(db,job.account.tenantId,job.review,job.indices,job.illiterate);
+        if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+        for(const line of output.texts)
+            await telegram(config,'sendMessage',{chat_id:chatId,text:line,protect_content:true});
+        if(output.unavailableBanks.length)
+            await telegram(config,'sendMessage',{chat_id:chatId,
+                text:'Bancos sem resultado nesta consulta: '+output.unavailableBanks.join('; ').slice(0,1200)+
+                  '. Para esclarecer condições ou dados faltantes, use o Portal do Parceiro.',
+                protect_content:true});
+        await telegram(config,'sendMessage',{chat_id:chatId,
+            text:'✅ Consulta finalizada sem contratação ou aprovação bancária. Para revisar contratos e registrar cotações na esteira, entre no portal autenticado:\n'+
+              telegramPortalLink({product:'INSS',operation:'PORT_REFIN'},process.env.APP_URL||'https://sentinelconsig.com.br'),
+            protect_content:true});
+    }catch{
+        await telegram(config,'sendMessage',{chat_id:chatId,
+            text:'Não foi possível concluir o cálculo das planilhas. Revise as condições no Portal do Parceiro. O PDF não foi armazenado e nenhuma proposta foi contratada.',
+            protect_content:true});
+    }
 }
