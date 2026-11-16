@@ -1,6 +1,7 @@
 import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {PortabilityResults} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
+import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
 import {EligibilityResult} from './EligibilityResult';
@@ -56,7 +57,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     return response;
   };
   useEffect(()=>{
-    const check=()=>{if(scope.current!==identity()){transport.current?.abort();setForm({...EMPTY_FORM});setRows([]);setSelected(null);setContractQueue([]);setProviderNotes([]);setError('Empresa ou sessão alterada. Abra uma nova simulação.');}};
+    const check=()=>{if(scope.current!==identity()){transport.current?.abort();setForm({...EMPTY_FORM});setRows([]);setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage('');setContractQueue([]);setProviderNotes([]);setError('Empresa ou sessão alterada. Abra uma nova simulação.');}};
     window.addEventListener('credit_gestao_storage_update',check);window.addEventListener('storage',check);
     return()=>{transport.current?.abort();window.removeEventListener('credit_gestao_storage_update',check);window.removeEventListener('storage',check);};
   },[]);
@@ -66,6 +67,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [error, setError] = useState('');
   const [providerNotes, setProviderNotes] = useState<string[]>([]);
   const [selected, setSelected] = useState<SimulationRow | null>(null);
+  const [selectedRows, setSelectedRows] = useState<SimulationRow[]>([]);
+  const [savedRows, setSavedRows] = useState<SimulationRow[]>([]);
+  const [saveMessage, setSaveMessage] = useState('');
   const [partnerId, setPartnerId] = useState('');
   const [saved, setSaved] = useState(false);
 
@@ -81,7 +85,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   }, [form.cpf, form.benefitNumber]);
   if (!isOpen) return null;
 
-  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null); setProviderNotes([]); setError(''); };
+  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setProviderNotes([]); setError(''); };
   const calculateNossaFintech = async (form:FormSnapshot): Promise<SimulationRow[]> => {
     const response = await request('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -174,7 +178,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const contractRequired=contractQueue.length===0||hasOriginContractDraft(form);
   const calculate = async (event: React.FormEvent) => {
-    event.preventDefault(); if(running.current)return;transport.current=new AbortController();running.current=true; setSelected(null); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
+    event.preventDefault(); if(running.current)return;transport.current=new AbortController();running.current=true; setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
     if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false);running.current=false; return; }
     if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false);running.current=false; return; }
     try {
@@ -227,16 +231,82 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> =>
     portabilityQuoteCondition(row, parseCurrency(row.sourceForm?.installmentFaceValue ?? form.installmentFaceValue));
   const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
+  const toggleQuote = (row:SimulationRow) => {
+    if (loading || savedRows.includes(row)) return;
+    const next = toggleInssQuoteSelection(selectedRows,row);
+    setSelectedRows(next);
+    setSelected(next[next.length - 1] ?? null);
+    setSaved(false);
+    setSaveMessage('');
+    setError('');
+  };
   const save = async () => {
-    if (!selected || !Number.isFinite(selected.troco) || !(Number(selected.troco) > 0) || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
-    const form:FormSnapshot=selected.sourceForm || {...EMPTY_FORM,...(statement?.customer||{})};
-    setLoading(true); setError('');
+    const quotes = selectedRows.filter(row => !savedRows.includes(row));
+    if (!quotes.length || !partnerId) {
+      setError('Selecione ao menos uma cotação e informe o parceiro responsável.');
+      return;
+    }
+    setLoading(true); setError(''); setSaveMessage('');
+    const savedNow:SimulationRow[] = [];
+    const failures:string[] = [];
+    let lastSaved:SimulationRequest | null = null;
     try {
-      const response = await request('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { name: form.name, ...(statement ? { illiterate: statement.illiterate === 'YES' } : {}), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance },
-      ...(selected.sourceContracts?.length ? {originContracts: selected.sourceContracts.map(c=>({lenderCode:c.originLenderCode,contractNumber:c.originContractNumber,term:c.originalTerm,installmentsRemaining:c.openedInstallmentNumber,installmentValue:c.installmentFaceValue,dueBalanceValue:c.lastDueBalance}))} : {}) } }) });
-      const data = await readJsonResponse(response); if (!response.ok) throw new Error(data.error);
-      setSaved(true); onSuccess?.(data);
-    } catch (error: any) { setError(error.message); } finally { setLoading(false); }
+      // Sequential writes avoid simultaneous requests for the same benefit and
+      // preserve independent records for each originating contract.
+      for (const row of quotes) {
+        const source:FormSnapshot = row.sourceForm || { ...EMPTY_FORM, ...(statement?.customer || {}) };
+        if (!Number.isFinite(row.troco) || Number(row.troco) <= 0 || !source.originContractNumber || !source.originLenderCode) {
+          failures.push((row.contractLabel || 'Contrato') + ': dados ou cotação inválidos.');
+          continue;
+        }
+        try {
+          const response = await request('/api/simulations', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              cpf:normalizeCpf(source.cpf),partnerId,simulationType:'INSS_MULTI',operationType:'PORT_REFIN',
+              selectedCondition:conditionFor(row),
+              customerData:{
+                name:source.name,...(statement ? { illiterate:statement.illiterate === 'YES' } : {}),
+                birthDate:source.birthDate,benefitNumber:source.benefitNumber,benefitType:Number(source.benefitType),
+                originContract:{
+                  lenderCode:source.originLenderCode,contractNumber:source.originContractNumber,
+                  term:source.originalTerm,installmentsRemaining:source.openedInstallmentNumber,
+                  installmentValue:source.installmentFaceValue,dueBalanceValue:source.lastDueBalance,
+                },
+                ...(row.sourceContracts?.length ? {originContracts:row.sourceContracts.map(contract=>({
+                  lenderCode:contract.originLenderCode,contractNumber:contract.originContractNumber,
+                  term:contract.originalTerm,installmentsRemaining:contract.openedInstallmentNumber,
+                  installmentValue:contract.installmentFaceValue,dueBalanceValue:contract.lastDueBalance,
+                }))} : {}),
+              },
+            }),
+          });
+          const data = await readJsonResponse(response);
+          if (!response.ok) {
+            failures.push((row.contractLabel || 'Contrato') + ': ' + (data.error || 'Não foi possível salvar.'));
+            if (response.status !== 409) break;
+            continue;
+          }
+          savedNow.push(row);
+          lastSaved=data as SimulationRequest;
+          setSavedRows(previous=>[...previous,row]);
+        } catch (error:any) {
+          failures.push((row.contractLabel || 'Contrato') + ': ' + (error.message || 'Falha de conexão.'));
+          break;
+        }
+      }
+      if (savedNow.length) {
+        setSelectedRows(previous=>previous.filter(row=>!savedNow.includes(row)));
+        setSelected(null);
+        setSaved(true);
+        if (lastSaved) onSuccess?.(lastSaved);
+      }
+      if (savedNow.length) setSaveMessage(savedNow.length + (savedNow.length === 1 ? ' cotação salva' : ' cotações salvas') + ' para conferência. Cada contrato possui registro independente.');
+      if (failures.length) setError(failures.join(' '));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
@@ -250,7 +320,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <label className={labelClass}>Número do benefício<input required value={form.benefitNumber} onChange={e => update('benefitNumber', e.target.value.replace(/\D/g, '').slice(0, 20))} className={inputClass} /></label>
           <InssBenefitTypeSelect className={labelClass} required value={form.benefitType} onChange={value => update('benefitType', value)} />
         </div></section>
-        <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);setRows([]);setSelected(null);}}/>
+        <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);setRows([]);setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage('');}}/>
         <SimulationContinue onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset>}
         <fieldset hidden={step!==1} disabled={step!==1||loading} className="space-y-5"><section className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">{statement ? `Contratos selecionados no extrato: ${contractQueue.length}` : '2. Contrato de origem'}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {!statement && <><BankCodeSelect required={contractRequired} label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
@@ -269,9 +339,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <p className="text-xs text-[var(--text-secondary)]">Adicione o contrato atual e preencha o próximo. Ao adicionar, os campos são limpos para o próximo contrato. Você pode comparar somente os contratos da lista; um novo contrato preenchido também será incluído, sem duplicar banco e número.</p>
           <button type="button" disabled={loading} className="rounded-lg border px-3 py-2 text-sm" onClick={event=>{
             if(!event.currentTarget.closest('form')?.reportValidity())return;
-            try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setForm(current=>({...current,...EMPTY_ORIGIN_CONTRACT}));setError('');setRows([]);setSelected(null);}catch(error:any){setError(error.message);}
+            try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setForm(current=>({...current,...EMPTY_ORIGIN_CONTRACT}));setError('');setRows([]);setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage('');}catch(error:any){setError(error.message);}
           }}>Adicionar contrato à lista</button></>}
-          {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span>{!statement && <button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);}}>Remover</button>}</div>)}
+          {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span>{!statement && <button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage('');}}>Remover</button>}</div>)}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unify} disabled={loading} onChange={e=>setUnify(e.target.checked)}/>Calcular também unificações Daycoval de 2 ou 3 contratos</label>
           <p className="text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)]">Alternativas que usam o mesmo contrato não podem ser somadas. Unificações são estimativas para revisão e não geram propostas.</p>
         </section>
@@ -287,8 +357,19 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
       {rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
       {providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
-      {rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} conditionFor={conditionFor} onSelect={row => {setSelected(row);setSaved(false);}}/>}
-      {selected && <section className="mt-4 space-y-3 rounded-xl border p-4"><p className="font-semibold">Cotação selecionada: {selected.table?.name} · {selected.provider}</p>{conditionFor(selected).reviewRequired && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">A cotação será salva para análise pela mesa. Não está liberada para contratação ou digitação bancária.</p>}<label className={labelClass}>Parceiro responsável<select className={inputClass} value={partnerId} onChange={e => setPartnerId(e.target.value)}><option value="">Selecione</option>{partners.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.name || p.fullName}</option>)}</select></label>{saved ? <p role="status" className="text-[var(--success-text)]">Cotação registrada para conferência. É uma estimativa e não representa aprovação do banco.</p> : <div className="flex gap-3"><button type="button" disabled={loading} onClick={save} className="rounded-lg border px-4 py-2">{loading ? 'Salvando...' : (conditionFor(selected).reviewRequired ? 'Salvar cotação para conferência' : 'Salvar simulação')}</button>{onContinue && !conditionFor(selected).reviewRequired && <button type="button" disabled={loading} onClick={() => { if (!partnerId) { setError('Selecione o parceiro responsável.'); return; } onContinue({ condition: conditionFor(selected), values: draftValues(), calculation: selected.provider === 'FINANTO' ? selected.data : undefined }); }} className="rounded-lg bg-[var(--action)] px-4 py-2 text-[var(--action-ink)]">Seguir para digitação</button>}</div>}</section>}
+      {rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows} conditionFor={conditionFor} onSelect={toggleQuote}/>}
+      {(selectedRows.length > 0 || savedRows.length > 0 || saveMessage) && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] p-4" aria-label="Salvar cotações selecionadas">
+        <h3 className="font-semibold">Cotações dos contratos</h3>
+        <p className="text-sm text-[var(--text-secondary)]">Selecione uma condição por contrato. É possível salvar contratos distintos do mesmo cliente e parceiro de uma só vez.</p>
+        <p className="text-sm font-semibold">{selectedRows.length} {selectedRows.length === 1 ? 'cotação selecionada' : 'cotações selecionadas'}{savedRows.length ? ' · ' + savedRows.length + ' salva(s) nesta comparação' : ''}</p>
+        {selectedRows.some(row=>conditionFor(row).reviewRequired) && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">Cotações de planilha são estimativas para conferência. Não há liberação automática para contratação ou digitação bancária.</p>}
+        <label className={labelClass}>Parceiro responsável<select className={inputClass} value={partnerId} onChange={event=>setPartnerId(event.target.value)}><option value="">Selecione</option>{partners.filter(partner=>partner.active).map(partner=><option key={partner.id} value={partner.id}>{partner.name || partner.fullName}</option>)}</select></label>
+        {selectedRows.length > 0 && <div className="flex flex-wrap gap-3">
+          <button type="button" disabled={loading} onClick={()=>void save()} className="rounded-lg bg-[var(--action)] px-4 py-2.5 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-60">{loading ? 'Salvando...' : 'Salvar ' + selectedRows.length + (selectedRows.length === 1 ? ' cotação' : ' cotações') + ' para conferência'}</button>
+          {onContinue && selectedRows.length === 1 && selected && !conditionFor(selected).reviewRequired && <button type="button" disabled={loading} onClick={()=>{if(!partnerId){setError('Selecione o parceiro responsável.');return;}onContinue({condition:conditionFor(selected),values:draftValues(),calculation:selected.provider==='FINANTO'?selected.data:undefined});}} className="rounded-lg border border-[var(--field-border)] px-4 py-2 text-sm">Seguir para digitação</button>}
+        </div>}
+        {saveMessage && <p role="status" className="text-sm text-[var(--success-text)]">{saveMessage}</p>}
+      </section>}
       {rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.contractLabel} · {row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
       <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />
       </div>
