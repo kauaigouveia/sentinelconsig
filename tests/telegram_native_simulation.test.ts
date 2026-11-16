@@ -37,7 +37,7 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   expect(full.index).toBe(5);
   expect(toTelegramNativeInput(full,'partner-a')).toMatchObject({
    product:'CLT',operation:'NEW',cpf:CPF,phone:'82999998888',mode:'Payment',
-   value:450,term:0,mode:'Payment',partnerId:'partner-a',automaticAuthorization:false,
+   value:450,term:0,partnerId:'partner-a',automaticAuthorization:false,
   });
   const text=telegramNativeSummary(full);
   expect(text).not.toContain(CPF);
