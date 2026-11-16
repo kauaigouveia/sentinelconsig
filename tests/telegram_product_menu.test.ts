@@ -32,7 +32,7 @@ describe('Menu produto + empresa do SentinelConectaBot',()=>{
   expect(inss.keyboard.flat()).toContain('🔁 Refinanciamento INSS');
   expect(port.keyboard.flat()).toContain('🔄 Portabilidade pura');
   expect(port.keyboard.flat()).toContain('🔁 Portabilidade + refinanciamento');
-  expect(port.response).toContain('em desenvolvimento');
+  expect(port.response).toContain('Enviar extrato INSS em PDF para simular');
   expect(telegramMenuAction('📄 Simular pelo extrato','PORT')).toBe('EXTRACT');
  });
  it('direciona ações para o simulador existente, nunca para uma URL de banco',()=>{

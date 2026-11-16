@@ -80,7 +80,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(parsed.birthDate).toBe('1960-02-29');
   expect(parsed.loanMargin).toBe(100);
   expect(parsed.contracts).toHaveLength(2);
-  expect(parsed.contracts[0]).toMatchObject({bank:'237',numberSuffix:'1A1',originalTerm:84,remaining:27,installment:50,balance:1300.44});
+  expect(parsed.contracts[0]).toMatchObject({bank:'237',numberSuffix:'01A1',originalTerm:84,remaining:27,installment:50,balance:1300.44});
   const raw=JSON.stringify(parsed);
   expect(raw).not.toContain('12345678909');
   expect(raw).not.toContain('0000000001');
