@@ -1,17 +1,17 @@
 /* Sentinel v4 workspace: left-hand task navigation (authenticated shell only). */
-.s4-root .sentinel-stage {
+.s4-root.s3-root .sentinel-stage {
   display:grid; grid-template-columns:248px minmax(0,1fr);
   grid-template-rows:76px minmax(0,1fr) auto; min-height:0;
 }
-.s4-root .sentinel-stage > .sentinel-header { grid-column:1/-1; grid-row:1; min-width:0; }
-.s4-root .sentinel-stage > .wb-navigation {
+.s4-root.s3-root .sentinel-stage > .sentinel-header { grid-column:1/-1; grid-row:1; min-width:0; }
+.s4-root.s3-root .sentinel-stage > .wb-navigation {
   grid-column:1; grid-row:2/4; position:relative; min-height:0; height:100%;
   display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden;
   background:var(--bg-surface); border-right:1px solid var(--border-default); border-bottom:0;
   padding:18px 12px 14px; scrollbar-width:thin; isolation:isolate;
 }
-.s4-root .sentinel-stage > .sentinel-main {grid-column:2; grid-row:2; min-height:0; min-width:0; padding:26px clamp(16px,2.6vw,40px) 40px;}
-.s4-root .sentinel-stage > .sentinel-institutional-footer {grid-column:2; grid-row:3;}
+.s4-root.s3-root .sentinel-stage > .sentinel-main {grid-column:2; grid-row:2; min-height:0; min-width:0; padding:26px clamp(16px,2.6vw,40px) 40px;}
+.s4-root.s3-root .sentinel-stage > .sentinel-institutional-footer {grid-column:2; grid-row:3;}
 .s4-root .wb-mobile-toolbar, .s4-root .wb-mobile-close {display:none;}
 .s4-root .wb-sidebar-heading {display:flex; justify-content:space-between; align-items:center; padding:8px 12px 22px;}
 .s4-root .wb-sidebar-heading > div {display:grid; gap:7px; min-width:0;}
@@ -66,24 +66,24 @@
 .s4-root .wb-guide-actions a:hover {background:var(--bg-surface-elevated);}
 .s4-root .wb-app-no-sidebar {display:flex; flex-direction:column;}
 @media(max-width:1030px) {
- .s4-root .sentinel-stage {display:flex; flex-direction:column;}
+ .s4-root.s3-root .sentinel-stage {display:flex; flex-direction:column;}
  .s4-root .wb-mobile-toolbar {display:flex; align-items:center; gap:13px; min-height:47px; flex-shrink:0; padding:5px 16px; border-bottom:1px solid var(--border-default); background:var(--bg-surface);}
  .s4-root .wb-mobile-toolbar > span {min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:700; color:var(--text-primary);}
  .s4-root .wb-mobile-toolbar button {display:flex; align-items:center; gap:7px; min-height:36px; padding:6px 9px; border:1px solid var(--border-default); border-radius:7px; background:var(--bg-surface); color:var(--text-primary); font-size:12px; font-weight:700;}
- .s4-root .sentinel-stage > .wb-navigation {position:fixed; z-index:120; top:0; left:0; width:min(300px,88vw); height:100dvh; max-height:none;
+ .s4-root.s3-root .sentinel-stage > .wb-navigation {position:fixed; z-index:120; top:0; left:0; width:min(300px,88vw); height:100dvh; max-height:none;
   border-right:1px solid var(--border-default); border-radius:0; padding:20px 13px; transform:translateX(-103%); visibility:hidden; pointer-events:none;
   transition:transform .18s ease,visibility .18s ease;}
- .s4-root .sentinel-stage > .wb-navigation.wb-mobile-open {transform:translateX(0); visibility:visible; pointer-events:auto;}
+ .s4-root.s3-root .sentinel-stage > .wb-navigation.wb-mobile-open {transform:translateX(0); visibility:visible; pointer-events:auto;}
  .s4-root .wb-mobile-close {display:grid; place-items:center; width:32px; height:32px; background:var(--bg-surface-elevated); border:1px solid var(--border-default); border-radius:7px; color:var(--text-primary);}
  .s4-root .wb-mobile-scrim {position:fixed; z-index:110; inset:0; background:rgb(0 0 0 / .55); border:0; width:100%; height:100dvh;}
- .s4-root .sentinel-stage > .sentinel-main {flex:1 1 0%; width:100%; min-height:0; padding:22px clamp(15px,3vw,26px) 35px;}
+ .s4-root.s3-root .sentinel-stage > .sentinel-main {flex:1 1 0%; width:100%; min-height:0; padding:22px clamp(15px,3vw,26px) 35px;}
 }
 @media(max-width:600px) {
- .s4-root .sentinel-stage > .sentinel-main {padding:17px 14px 26px;}
+ .s4-root.s3-root .sentinel-stage > .sentinel-main {padding:17px 14px 26px;}
  .s4-root .wb-guide {font-size:11px; padding:10px;}
  .s4-root .wb-guide > div:first-child {display:grid; gap:4px;}
  .s4-root .wb-guide > div:first-child > span {white-space:normal;}
 }
 @media(prefers-reduced-motion:reduce) {
- .s4-root .sentinel-stage > .wb-navigation {transition:none;}
+ .s4-root.s3-root .sentinel-stage > .wb-navigation {transition:none;}
 }
