@@ -5,7 +5,7 @@ import { readJsonResponse } from '../../lib/httpJson';
 export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOVAL' | 'C6' | 'PARANA' | 'NOSSA_FINTECH' }) {
   const label = { DAYCOVAL: 'Daycoval', C6: 'C6', PARANA: 'Paraná', NOSSA_FINTECH: 'Nossa Fintech' }[bank];
   const endpoint = bank === 'DAYCOVAL' ? '/api/daycoval' : `/api/${bank.toLowerCase()}-spreadsheet`;
-  const [config, setConfig] = useState<any>(null), [file, setFile] = useState<File | null>(null), [versionDate, setVersionDate] = useState('');
+  const [config, setConfig] = useState<any>(null), [file, setFile] = useState<File | null>(null), [versionDate, setVersionDate] = useState(() => new Date().toISOString().slice(0,10));
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
   const [metadataDate,setMetadataDate] = useState('');
   const [workbookReview,setWorkbookReview] = useState<any>(null);
@@ -20,7 +20,7 @@ export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOV
       const data=await readJsonResponse(response);
       if(!response.ok)throw new Error(data.error||'Não foi possível conferir a planilha.');
       setWorkbookReview(data);
-      setMessage('Arquivo analisado sem alterar a planilha ativa, as taxas ou o histórico.');
+      setMessage(data.automaticValidation?.ok ? 'Modelo compatível: a planilha pode ser importada e ativada.' : 'Análise concluída. A versão ativa continua inalterada.');
     }catch(error:any){setError(error.message||'Erro de análise.');}
     finally{setBusy(false);}
   };
@@ -29,13 +29,11 @@ export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOV
     try {
       const body = new FormData(); body.append('workbook', file); body.append('versionDate', versionDate);
       const response = await fetch(`${endpoint}/import`, { method: 'POST', body }); const data = await readJsonResponse(response);
-      if (!response.ok) {
-        const detail=String(data.error||'Não foi possível importar.');
-        throw new Error(/fórmulas ou a estrutura mudaram/i.test(detail)
-          ? detail+' O arquivo novo NÃO foi ativado. A correção de data abaixo altera somente o cadastro da planilha já ativa; não importa taxas ou fórmulas do arquivo novo.'
-          : detail);
-      }
-      setConfig(data); setFile(null); setMessage('Planilha atualizada e ativada para as simulações de Portabilidade + Refinanciamento da empresa.');
+      if (!response.ok) throw new Error(String(data.error||'Não foi possível importar. A planilha ativa foi preservada.'));
+      setConfig(data); setFile(null);
+      setMessage(bank==='DAYCOVAL'
+        ? 'Planilha Daycoval validada automaticamente, importada e ativada. A versão anterior foi substituída nesta empresa.'
+        : 'Planilha atualizada e ativada para as simulações de Portabilidade + Refinanciamento da empresa.');
     } catch (err: any) { setError(err.message); } finally { setBusy(false); }
   };
   const correctDateOnly = async () => {
@@ -65,8 +63,9 @@ export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOV
   return <section className="space-y-4 rounded-xl border border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><header><h2 className="flex items-center gap-2 text-lg font-bold"><FileSpreadsheet className="text-[var(--link)]" />{label} · planilha INSS</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">Condições semanais para Portabilidade + Refinanciamento. Usuários com permissão de gerenciar integrações podem atualizar e ativar o arquivo.</p></header>
     {error && <p role="alert" className="text-sm text-[var(--danger-text)]">{error}</p>}{message && <p role="status" className="text-sm text-[var(--success-text)]">{message}</p>}
     {config && <div className="rounded-lg bg-[var(--bg-canvas)] p-3 text-sm dark:bg-[var(--bg-surface-elevated)]"><strong>{config.enabled ? 'Ativa' : config.configured ? 'Desativada' : 'Não configurada'}</strong>{config.configured && <><p>{config.fileName}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">Versão: {config.versionDate?.split('-').reverse().join('/') || '—'}</p></>}</div>}
-    {config?.canImport && <form onSubmit={event => { event.preventDefault(); void importFile(); }} className="space-y-3"><fieldset disabled={busy} className="grid items-end gap-3 sm:grid-cols-3"><label className="text-xs font-semibold">Planilha XLSX<input className={input} type="file" accept={bank === "C6" ? ".xlsm,.xlsx" : ".xlsx"} required onChange={event => { const selected = event.target.files?.[0] || null; if (selected && selected.size > 3500000) { setError('Envie uma planilha de até 3,5 MB.'); setFile(null); return; } setError('');setWorkbookReview(null); setFile(selected); const match = selected?.name.match(/(\d{2})(\d{2})(\d{4})/); if (match) setVersionDate(`${match[3]}-${match[2]}-${match[1]}`); else { const shortDate=selected?.name.match(/(\d{2})[.](\d{2})[.](\d{2})/); if (shortDate) setVersionDate(`20${shortDate[3]}-${shortDate[2]}-${shortDate[1]}`); } }} /></label><label className="text-xs font-semibold">Data da versão<input className={input} type="date" required value={versionDate} onChange={event => setVersionDate(event.target.value)} /></label><button type="submit" disabled={!file || busy} className="rounded-lg bg-[var(--action)] p-2 text-sm font-bold text-[var(--action-ink)] disabled:opacity-90">{busy ? 'Processando…' : 'Importar e ativar'}</button></fieldset>{config.configured && <button type="button" disabled={busy} onClick={() => void activate()} className="rounded-lg border border-[var(--field-border)] px-3 py-2 text-sm dark:border-[var(--field-border)]">{config.enabled ? 'Desativar planilha' : 'Ativar planilha'}</button>}</form>}
-    {bank === 'DAYCOVAL' && config?.configured && config.canImport && <section className="space-y-3 rounded-xl border border-[var(--border-default)] p-4">
+    {bank==='DAYCOVAL' && config?.canImport && <p className="text-xs text-[var(--text-secondary)]">Atualização simples: escolha o XLSX semanal, confira a data sugerida e clique em <strong>Importar e ativar</strong>. O sistema verifica automaticamente a compatibilidade dos cálculos; não é necessário comparar hashes.</p>}
+    {config?.canImport && <form onSubmit={event => { event.preventDefault(); void importFile(); }} className="space-y-3"><fieldset disabled={busy} className="grid items-end gap-3 sm:grid-cols-3"><label className="text-xs font-semibold">Planilha XLSX<input className={input} type="file" accept={bank === "C6" ? ".xlsm,.xlsx" : ".xlsx"} required onChange={event => { const selected = event.target.files?.[0] || null; if (selected && selected.size > 3500000) { setError('Envie uma planilha de até 3,5 MB.'); setFile(null); return; } setError('');setWorkbookReview(null); setFile(selected); const match = selected?.name.match(/(\d{2})(\d{2})(\d{4})/); if (match) setVersionDate(`${match[3]}-${match[2]}-${match[1]}`); else { const shortDate=selected?.name.match(/(\d{2})[.](\d{2})[.](\d{2})/); if (shortDate) setVersionDate(`20${shortDate[3]}-${shortDate[2]}-${shortDate[1]}`); else setVersionDate(new Date().toISOString().slice(0,10)); } }} /></label><label className="text-xs font-semibold">Data da versão (preenchida automaticamente)<input className={input} type="date" required value={versionDate} onChange={event => setVersionDate(event.target.value)} /></label><button type="submit" disabled={!file || busy} className="rounded-lg bg-[var(--action)] p-2 text-sm font-bold text-[var(--action-ink)] disabled:opacity-90">{busy ? 'Processando…' : 'Importar e ativar'}</button></fieldset>{config.configured && <button type="button" disabled={busy} onClick={() => void activate()} className="rounded-lg border border-[var(--field-border)] px-3 py-2 text-sm dark:border-[var(--field-border)]">{config.enabled ? 'Desativar planilha' : 'Ativar planilha'}</button>}</form>}
+    {bank==='DAYCOVAL' && config?.canImport && <details className="rounded-xl border border-[var(--border-default)] p-3"><summary className="cursor-pointer text-xs font-semibold text-[var(--text-secondary)]">Ferramentas avançadas (opcional)</summary><div className="mt-3 space-y-3">{bank === 'DAYCOVAL' && config?.configured && config.canImport && <section className="space-y-3 rounded-xl border border-[var(--border-default)] p-4">
       <h3 className="font-semibold text-sm">Corrigir somente a data da planilha cadastrada</h3>
       <p className="text-xs leading-relaxed text-[var(--text-secondary)]">Use exclusivamente quando for necessário corrigir a data informada para o <strong>mesmo arquivo já homologado</strong>. Esta operação não importa o XLSX selecionado acima e não atualiza fórmulas, tabelas, taxas ou valores comerciais. Se o novo arquivo mudou, ele precisa de validação específica.</p>
       <div className="flex flex-wrap items-end gap-3"><label className="text-xs font-semibold">Nova data de referência<input className={input} type="date" value={metadataDate} onChange={event=>setMetadataDate(event.target.value)}/></label></div>
@@ -79,15 +78,16 @@ export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOV
       <p>Arquivo ativo: <strong>{workbookReview.currentVersion?.fileName||'Nenhum arquivo cadastrado'}</strong></p>
       <p>Arquivo analisado: <strong>{workbookReview.uploadedVersion?.fileName}</strong></p>
       <p>Estrutura das colunas obrigatórias: <strong>{workbookReview.requiredStructureValid?'Compatível':'Divergente'}</strong></p>
-      <p>Assinatura de modelo já homologado: <strong>{workbookReview.reviewedModel?'Sim':'Não'}</strong></p>
+      <p>Verificação automática: <strong>{workbookReview.automaticValidation?.ok?'Compatível para importação':'Exige revisão'}</strong></p>
       {workbookReview.formulaComparison && <p>Diferenças entre fórmulas: <strong>{workbookReview.formulaComparison.changed||0} alteradas, {workbookReview.formulaComparison.added||0} adicionadas e {workbookReview.formulaComparison.removed||0} removidas</strong>.</p>}
       {workbookReview.formulaComparison?.sample?.length>0 && <details className="rounded-lg border border-[var(--border-default)] p-2"><summary className="cursor-pointer font-semibold">Ver primeiras células com diferenças</summary>
         <ul className="mt-2 list-inside list-disc space-y-1">{workbookReview.formulaComparison.sample.map((item:string,index:number)=><li key={index}>{item}</li>)}</ul>
       </details>}
       {workbookReview.columnErrors?.length>0 && <p role="alert" className="text-[var(--warning-text)]">{workbookReview.columnErrors.join('. ')}</p>}
-      <p className="font-semibold text-[var(--warning-text)]">{workbookReview.warning}</p>
-      <p className="text-[var(--text-secondary)]">Esta função é somente diagnóstica. Não aprova novas taxas nem ativa a planilha enviada.</p>
+      <p className="font-semibold">{workbookReview.automaticValidation?.message||workbookReview.warning}</p>
+      <p className="text-[var(--text-secondary)]">Esta conferência não substitui o arquivo. Para instalar a versão validada, utilize Importar e ativar acima.</p>
     </section>}
+    </div></details>}
     {config && !config.canImport && <p className="text-sm text-[var(--text-secondary)]">Seu perfil não permite importar planilhas. Solicite ao administrador a permissão de gerenciar integrações nesta empresa.</p>}
     <p className="text-xs text-[var(--text-secondary)]">Configuração exclusiva da empresa atual. Resultados já registrados permanecem no histórico quando a planilha é substituída.</p>
   </section>;
