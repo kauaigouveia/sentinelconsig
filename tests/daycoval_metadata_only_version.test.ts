@@ -20,7 +20,7 @@ function handler(deps:Record<string,unknown>){
 }
 function setup(authorize=true,compatible=true){
  const book={fileName:'planilha-oficial.xlsx',enabled:true,formulaHash:'homologated',hash:'sha256-original',versionDate:'2026-10-30',terms:[108,96]};
- const update=vi.fn(async()=>({})),audit=vi.fn(async()=>({}));
+ const update=vi.fn(async (_input:any)=>({})),audit=vi.fn(async (..._args:any[])=>({}));
  const deps={
    context:async()=>authorize?{canImport:true,tenantId:'tenant-a',userId:'user-a',userName:'Operador'}:null,
    bank:'DAYCOVAL',read:async()=>({...book}),
