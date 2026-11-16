@@ -29,13 +29,13 @@ describe('Mapa do sistema e simplificação da navegação', () => {
     const navigate = vi.fn();
     render(<WorkbenchNavigation role="SIMULACAO" permissions={['clients.view']} path="/clientes" navigate={navigate} />);
     fireEvent.click(screen.getByRole('button', { name: /Todas as telas/ }));
-    const region = screen.getByRole('region', { name: 'Mapa de telas autorizadas' });
+    const region = screen.getByRole('dialog', { name: 'Mapa de telas autorizadas' });
     expect(within(region).getByText('Encontre sua próxima ação')).toBeTruthy();
     expect(within(region).getByRole('link', { name: 'Clientes 360°' })).toBeTruthy();
     expect(within(region).queryByRole('link', { name: 'Usuários e acessos' })).toBeNull();
     fireEvent.click(within(region).getByRole('link', { name: 'Clientes 360°' }));
     expect(navigate).toHaveBeenCalledWith('/clientes');
-    expect(screen.queryByRole('region', { name: 'Mapa de telas autorizadas' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Mapa de telas autorizadas' })).toBeNull();
   });
 
   it('fecha mapa pelo teclado e devolve foco ao controle', () => {
@@ -43,7 +43,7 @@ describe('Mapa do sistema e simplificação da navegação', () => {
     const button = screen.getByRole('button', { name: /Todas as telas/ });
     fireEvent.click(button);
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('region', { name: 'Mapa de telas autorizadas' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Mapa de telas autorizadas' })).toBeNull();
     expect(document.activeElement).toBe(button);
   });
 });

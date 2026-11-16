@@ -22,8 +22,8 @@ describe('Sentinel v4: navegação por tarefa e orientação operacional',()=>{
   render(<WorkbenchNavigation role="MASTER" path="/propostas/123" navigate={navigate}/>);
   expect(within(screen.getByRole('navigation',{name:'Ferramentas de Operação'})).getByRole('link',{name:'Propostas'}).getAttribute('aria-current')).toBe('page');
   fireEvent.click(screen.getByRole('button',{name:'Todas as telas'}));
-  expect(screen.getByRole('region',{name:'Mapa de telas autorizadas'})).toBeTruthy();
-  fireEvent.click(within(screen.getByRole('region',{name:'Mapa de telas autorizadas'})).getByRole('link',{name:'Simular crédito'}));
+  expect(screen.getByRole('dialog',{name:'Mapa de telas autorizadas'})).toBeTruthy();
+  fireEvent.click(within(screen.getByRole('dialog',{name:'Mapa de telas autorizadas'})).getByRole('link',{name:'Simular crédito'}));
   expect(navigate).toHaveBeenCalledWith('/simulacoes');
  });
  it('oferece menu móvel acionável e fechamento sem alterações no router',()=>{

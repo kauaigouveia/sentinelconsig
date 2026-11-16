@@ -34,3 +34,12 @@ Nenhuma alteração em APIs, integrações, dados, `server.ts`, banco, Prisma, m
 - Consolidado também o seletor lista/cartões entre workspace legado, Propostas e Simulações, sem mudança de callbacks ou semântica de `aria-pressed`.
 - Os **26 testes preexistentes com falhas na base original** (25 de paridade estática e 1 de Propostas, conforme `docs/refactor-20261116-roadmap.md`) não foram alterados nem reclassificados como sucesso.
 - **Limite da validação:** não houve testes E2E com sessão real de cliente, dados de produção, chamadas bancárias ou validação visual completa no browser autenticado. Build pronto não equivale a homologação funcional integral.
+
+## Correção responsiva — 16/11/2026 (capturas reais)
+
+- A antiga folha `workbench-navigation.css` mantinha um mapa de telas com posicionamento absoluto e três colunas mesmo dentro de uma sidebar de 248px. Esse conflito causava sobreposição de menus e textos ao abrir "Todas as telas".
+- O mapa passou a ser renderizado **fora** da navegação lateral, como diálogo com máscara, rolagem independente, retorno de foco, Escape e tabulação circular.
+- Layout adaptável: modal de três colunas em telas largas, duas abaixo de 1030px e uma coluna em tela cheia abaixo de 600px.
+- Os cartões de BI e de pendências são agrupados pela largura disponível do conteúdo (`@container sentinel-workspace`), em vez de depender apenas do tamanho da janela.
+- Abas analíticas podem rolar horizontalmente sem comprimir o texto; cabeçalhos e guias quebram linha.
+- Nenhuma regra financeira, API, migração, tabela de banco, segredo ou tenant foi modificado.
