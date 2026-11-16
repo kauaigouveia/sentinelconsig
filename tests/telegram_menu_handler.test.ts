@@ -4,8 +4,9 @@ import ts from 'typescript';
 import {describe,it,expect,vi} from 'vitest';
 import {
  telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,
- telegramPortalLink,
+ telegramPortalLink,normalizeTelegramMenuInput,
 } from '../server/services/telegramProductMenu';
+import {parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS} from '../server/services/telegramInssPdfService';
 
 /** Exercise the real Telegram message handler with in-memory transactional doubles; no bot token, DB or HTTP. */
 const source=ts.createSourceFile('telegramNotificationService.ts',fs.readFileSync(new URL('../server/services/telegramNotificationService.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true);
@@ -29,6 +30,12 @@ function scenario(authorized=true){
  const tx={
   systemConfig:{
    findUnique:vi.fn(async({where:{id}}:any)=>records.get(id)||null),
+   updateMany:vi.fn(async({where,data}:any)=>{
+    const current=records.get(where.id);
+    if(!current||current.configValue!==where.configValue)return {count:0};
+    records.set(where.id,{...current,...data});
+    return {count:1};
+   }),
    findMany:vi.fn(async()=>[candidate]),
    upsert:vi.fn(async({where,create,update}:any)=>{
     const old=records.get(where.id);
@@ -41,7 +48,7 @@ function scenario(authorized=true){
       tenant:{whiteLabel:{companyName:'Evolve'},tradeName:'Evolve',name:'Evolve'}}:null)},
   proposal:{findMany:vi.fn(async(_query:any)=>[])},
  };
- const db={$transaction:async(callback:any)=>callback(tx)};
+ const db={...tx,$transaction:async(callback:any)=>callback(tx)};
  const binding=async(_tx:any,_tenant:string,_partner:string)=>{
   return authorized?{chatId:'1001',linkedAt:'2026-11-10T12:00:00Z'}:null;
  };
@@ -51,6 +58,25 @@ function scenario(authorized=true){
   activeBot:async()=>config,company:async()=>({enabled:true}),binding,
   telegram:vi.fn(async(_config:any,_method:string,payload:any)=>{sends.push(payload);return{};}),
   telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,
+  normalizeTelegramMenuInput,parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,
+  telegramAccountStillValid:async()=>authorized,
+  validateTelegramPdfDocument:(document:any)=>{
+    if(document.mime_type!=='application/pdf'||!document.file_name?.endsWith('.pdf')||document.file_size>5e6)throw Error('PDF inválido');
+  },
+  downloadTelegramPdf:vi.fn(async()=>new Uint8Array([37,80,68,70,45])),
+  readTelegramInssPdf:vi.fn(async()=>({
+    birthDate:'1966-06-15',benefitType:32,benefitStartDate:'2020-01-01',uf:'AL',
+    benefitContractCount:3,loanMargin:120,
+    contracts:[
+      {bank:'237',numberSuffix:'1111',originalTerm:84,remaining:50,balance:500,installment:30},
+      {bank:'041',numberSuffix:'2222',originalTerm:84,remaining:52,balance:600,installment:40},
+      {bank:'237',numberSuffix:'3333',originalTerm:84,remaining:44,balance:700,installment:50},
+    ],
+  })),
+  telegramPdfReviewText:(data:any)=>'📄 Extrato conferido · contratos: '+data.contracts.length+
+    '\\nSelecione contratos 1,2 ou 3',
+  calculateTelegramInssQuotes:vi.fn(async()=>({texts:['📊 Daycoval · parcela original → recalculada · troco estimado R$ 500,00'],
+    calculatedBanks:['DAYCOVAL'],unavailableBanks:['C6 (não cadastrado)']})),
   process:{env:{APP_URL:'https://sentinelconsig.com.br'}},
  };
  const handle=makeHandler(deps);
@@ -107,16 +133,50 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(client.text).not.toContain('tab=perfil');
   expect(client.text).toContain('Não envie CPF');
  });
- it('não recebe PDFs, não baixa extratos e mantém a navegação para empresas',async()=>{
+ it('recebe o extrato somente após selecionar a opção, confirma três contratos e calcula no bot',async()=>{
+  const s=scenario();
+  await s.send('/start');
+  const premature=await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
+  expect(premature.text).toContain('abra Portabilidade INSS');
+  await s.send('🔄 Portabilidade INSS');
+  const invite=await s.send('📄 Enviar extrato INSS');
+  expect(invite.text).toContain('Envie agora o extrato');
+  const extract=await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
+  expect(extract.text).toContain('Extrato conferido');
+  expect(extract.text).toContain('3');
+  const chosen=await s.send('1,2,3');
+  expect(chosen.text).toContain('Contratos selecionados: 1, 2, 3');
+  const done=await s.send('✅ Autorizado · NÃO analfabeto');
+  expect(s.sends.some(value=>value.text.includes('Daycoval'))).toBe(true);
+  expect(done.text).toContain('portal autenticado');
+  expect(done.text).toContain('operation=PORT_REFIN');
+  const saved=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(JSON.stringify(saved)).not.toContain('52998224725');
+  expect(JSON.stringify(saved)).not.toContain('0000000001');
+  expect(JSON.stringify(saved)).not.toContain('document12345678');
+  expect(JSON.stringify(saved)).not.toContain('numberSuffix');
+ });
+ it('bloqueia a simulação sem autorização e cancela o extrato ao trocar de parceiro',async()=>{
   const s=scenario();
   await s.send('/start');
   await s.send('🔄 Portabilidade INSS');
-  const extract=await s.send('📄 Simular pelo extrato');
-  expect(extract.text).toContain('em implantação');
-  const document=await s.send('',{document:{file_id:'unused',mime_type:'application/pdf',file_size:1200}});
-  expect(document.text).toContain('não processa extratos');
-  const change=await s.send('👤 Trocar parceiro');
-  expect(change.text).toContain('Menu principal');
+  await s.send('📄 Enviar extrato INSS');
+  await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
+  const wrong=await s.send('qualquer coisa');
+  expect(wrong.text).toContain('Selecione de 1 a 3 números');
+  await s.send('1');
+  const no=await s.send('não autorizou');
+  expect(no.text).toContain('confirme');
+  await s.send('🏠 Menu principal');
+  const state=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(state.configValue.pendingPdf).toBeUndefined();
+  expect(state.configValue.phase).toBe('MENU');
+ });
+ it('não devolve informações financeiras quando o vínculo é revogado',async()=>{
+  const s=scenario(false);
+  const response=await s.send('/start');
+  expect(response.text).toContain('vincule seu Telegram');
+  expect(s.sends.every(payload=>!payload.text.includes('troco estimado'))).toBe(true);
  });
  it('ignora replay de message_id e não responde duas vezes',async()=>{
   const s=scenario();
