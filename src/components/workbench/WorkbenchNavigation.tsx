@@ -41,7 +41,7 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
   const items = visibleNavigation(role, permissions);
   const matched = matchRoute(path);
   const canonical = matched?.route.isDynamic
-    ? matched.route.path.replace(/\\/:[^/]+/g, '')
+    ? matched.route.path.split('/').filter(segment => !segment.startsWith(':')).join('/')
     : matched?.route.path;
   const current = items.find(item => item.path === canonical)
     || [...items].sort((a, b) => b.path.length - a.path.length)
