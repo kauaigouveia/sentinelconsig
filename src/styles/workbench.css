@@ -1,34 +1,8 @@
 @import './workbench-records.css';
 @import './workbench-overlays.css';
 
-/* Shared foundation for the new workbench, login and partner portal. */
-:root {
-  --bg-canvas:#f5f7fb; --bg-surface:#ffffff; --bg-surface-elevated:#eef2f7;
-  --text-primary:#202b3d; --text-secondary:#59677b; --text-muted:#59677b;
-  --border-default:#dce2eb; --border-subtle:#e8edf4; --border-strong:#a7b3c4; --field-border:#8795aa;
-  --action-default:#315fbd; --action-hover-default:#244b9c; --action-default-ink:#ffffff;
-  --link:#315fbd; --focus:#4778d3; --success-bg:#e5eee7; --success-text:#28563c; --success-border:#a4bca9;
-  --warning-bg:#f4ecd9; --warning-text:#806224; --warning-border:#cfbd90;
-  --danger-bg:#f4e7e2; --danger-text:#9a493a; --danger-border:#d2a399;
-  --info-bg:#edf3ff; --info-text:#315ba0; --info-border:#afc5ed;
-  --font-ui:'Segoe UI',Arial,sans-serif; --font-sans:var(--font-ui);
-  --text-xs:12px; --text-sm:14px; --text-base:15px; --text-heading:23px; --text-title:30px;
-  --radius-control:7px; --radius-panel:10px; --radius-dialog:14px;
-  --header-height:76px; --header-control-height:40px;
-  --chart-series-1:#4778cf; --chart-series-2:#c49a57; --chart-series-3:#8094b8; --chart-series-4:#667998;
-}
-.dark {
-  --bg-canvas:#121826; --bg-surface:#1b2333; --bg-surface-elevated:#242f43;
-  --text-primary:#edf2fb; --text-secondary:#b4c0d2; --text-muted:#b4c0d2;
-  --border-default:#354157; --border-subtle:#2b364b; --border-strong:#70829f; --field-border:#7c8da8;
-  --action-default:#90b5fa; --action-hover-default:#b0ccff; --action-default-ink:#142442;
-  --link:#a9c6fc; --focus:#90b5fa; --info-bg:#233551; --info-text:#c4d8fb; --info-border:#5676a8;
-  --success-bg:#2b3e30; --success-text:#c1d6c4; --success-border:#57725c;
-  --warning-bg:#3c3528; --warning-text:#e0c997; --warning-border:#8e7c54;
-  --danger-bg:#412e29; --danger-text:#e6b5a7; --danger-border:#966f62;
-  --chart-series-1:#90b5fa; --chart-series-2:#d6b27a; --chart-series-3:#8fa7cc; --chart-series-4:#b3c4df;
-}
-.s3-root,.wb-auth,.s3-portal {--action:var(--action-default);--action-hover:var(--action-hover-default);--action-ink:var(--action-default-ink);--s2-blue:var(--action);font-family:var(--font-ui);color:var(--text-primary)}
+/* Workspace, login and portal share the canonical tokens from styles/tokens.css. */
+.s3-root,.wb-auth,.s3-portal {--action:var(--primary-color,var(--action-default));--action-hover:var(--primary-color,var(--action-hover-default));--action-ink:var(--brand-ink,var(--action-default-ink));--s2-blue:var(--action);font-family:var(--font-ui);color:var(--text-primary)}
 .s3-root {height:100dvh;display:flex;flex-direction:column;width:100%;overflow:hidden;background:var(--bg-canvas)}
 .s3-root * {box-sizing:border-box}
 .s3-root button {cursor:pointer}

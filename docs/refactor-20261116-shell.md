@@ -8,6 +8,10 @@ Base: `819116152939101cdd742fbd945783e0eee3d7f0`.
 - **Guia contextual:** nas principais telas de Propostas, Simulações, Esteira, Portabilidade, Pendências, Clientes, CRM, Atendimento, BI, Financeiro, Administração e Integrações, mostra explicação objetiva e próximos passos. Links passam pelo `APP_ROUTES` e `canAccessRoute`.
 - **Leituras do início:** consultas por IDs (cliente, banco, parceiro, produto e status) passaram de múltiplas buscas lineares por proposta para índices `Map`. Dados, escopo por empresa, RBAC e projeção mantidos.
 
+## Consolidação de tema
+- Removida duplicação de tokens de tema em `src/styles/workbench.css`. A paleta, tipografia e cores semânticas passam a usar `src/styles/tokens.css`, evitando que a folha do workspace substitua silenciosamente valores oficiais.
+- Respeitada a cor primária e a tinta de contraste do tenant no workspace e no portal. Não foram editadas preferências ou configurações salvas.
+
 ## Contratos preservados
 Nenhuma alteração em APIs, integrações, dados, `server.ts`, banco, Prisma, migrações, chaves ou rotas. Os componentes dos módulos operacionais são montados nas mesmas views do `App.tsx`.
 
