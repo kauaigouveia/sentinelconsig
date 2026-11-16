@@ -138,7 +138,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
           <strong className="mt-1 block break-words text-xl font-bold tabular-nums text-[var(--success-text)]">{amount(row.troco)}</strong>
         </div>
         <div className="min-w-0 p-2">
-          <span className="block text-[11px] text-[var(--text-secondary)]">Parcela atual</span>
+          <span className="block text-[11px] text-[var(--text-secondary)]">{row.unified ? "Soma das parcelas originais" : "Parcela original da portabilidade"}</span>
           <strong className="mt-1 block text-base tabular-nums">{amount(original)}</strong>
         </div>
         <div className="min-w-0 p-2">
