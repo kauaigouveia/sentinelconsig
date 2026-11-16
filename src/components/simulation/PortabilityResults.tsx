@@ -37,9 +37,11 @@ const bankName = (provider:string) => ({
 } as Record<string,string>)[provider] || provider;
 
 /** Financial values are estimates from the configured calculation. Selection saves a reviewable quote, not a bank approval. */
-export function PortabilityResults<T extends PortabilityResult>({rows, selected, onSelect, conditionFor}:{
+export function PortabilityResults<T extends PortabilityResult>({rows, selected, selectedRows, savedRows, onSelect, conditionFor}:{
   rows:T[];
   selected:T|null;
+  selectedRows?:T[];
+  savedRows?:T[];
   onSelect:(row:T)=>void;
   conditionFor:(row:T)=>Condition;
 }) {
@@ -65,18 +67,20 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
   const lastPage = Math.max(0, Math.ceil(grouped.length / 3) - 1);
   const currentPage = Math.min(page, lastPage);
 
-  const shareText = selected ? [
-    'SIMULAÇÃO INSS · PORTABILIDADE + REFINANCIAMENTO',
-    'Instituição: ' + bankName(selected.provider),
-    'Contrato: ' + (selected.contractLabel || 'Contrato informado'),
-    'Tabela: ' + (selected.table?.name || selected.table?.cod_tabela || 'Condição calculada'),
-    'Troco estimado: ' + amount(selected.troco),
-    'Parcela atual: ' + amount(selected.originalInstallment),
-    'Parcela projetada: ' + amount(conditionFor(selected).installment),
-    'Prazo: ' + (selected.term ? String(selected.term) + ' meses' : 'Não informado'),
-    'Taxa: ' + formatMonthlyRate(conditionFor(selected).rate),
-    'Estimativa sujeita à conferência documental, política de crédito e vigência da tabela. Não representa aprovação ou contratação.',
-  ].join('\n') : '';
+  const sharing = selectedRows?.length ? selectedRows : selected ? [selected] : [];
+  const shareText = sharing.map((row,index) => [
+    'COTAÇÃO ' + (index + 1) + ' · INSS PORTABILIDADE + REFINANCIAMENTO',
+    'Instituição: ' + bankName(row.provider),
+    'Contrato: ' + (row.contractLabel || 'Contrato informado'),
+    'Tabela: ' + (row.table?.name || row.table?.cod_tabela || 'Condição calculada'),
+    'Troco estimado: ' + amount(row.troco),
+    'Parcela atual: ' + amount(row.originalInstallment),
+    'Parcela projetada: ' + amount(conditionFor(row).installment),
+    'Prazo: ' + (row.term ? String(row.term) + ' meses' : 'Não informado'),
+    'Taxa: ' + formatMonthlyRate(conditionFor(row).rate),
+    'Estimativa sujeita à conferência comercial e documental; não representa aprovação ou contratação.',
+  ].join('\n')).join('\n\n');
+
 
   const copy = async () => {
     try {
@@ -91,7 +95,8 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
   const renderCondition = (row:T, key:string) => {
     const condition = conditionFor(row);
     const selectable = row.success && positive(row.troco);
-    const isSelected = selected === row;
+    const isSelected = selectedRows ? selectedRows.includes(row) : selected === row;
+    const isSaved = Boolean(savedRows?.includes(row));
     const original = row.originalInstallment;
     const installment = condition.installment;
     const changed = positive(original) && positive(installment) &&
@@ -111,15 +116,15 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
             {row.requiresReview ? 'Estimativa · documentação e vigência para conferir' : 'Cotação calculada · sujeita à aprovação'}
           </p> : <p className="mt-2 text-sm text-[var(--warning-text)]">{row.error || 'Condição indisponível para este contrato.'}</p>}
         </div>
-        {row.success && <button type="button" aria-pressed={isSelected} disabled={!selectable}
+        {row.success && <button type="button" aria-pressed={isSelected} disabled={!selectable || isSaved}
           onClick={() => {setCopyStatus(''); onSelect(row);}}
           className={'inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold ' +
             (isSelected
               ? 'bg-[var(--success-bg)] text-[var(--success-text)] ring-1 ring-[var(--success-border)]'
               : 'bg-[var(--action)] text-[var(--action-ink)]') +
             ' disabled:cursor-not-allowed disabled:opacity-50'}>
-          {isSelected ? <Check size={15} aria-hidden="true"/> : <ArrowRight size={15} aria-hidden="true"/>}
-          {isSelected ? 'Cotação selecionada' : 'Selecionar cotação'}
+          {isSelected || isSaved ? <Check size={15} aria-hidden="true"/> : <ArrowRight size={15} aria-hidden="true"/>}
+          {isSaved ? 'Cotação salva' : isSelected ? 'Cotação selecionada' : 'Selecionar cotação'}
         </button>}
       </div>
       {row.success && <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -225,10 +230,10 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       <span>Página {currentPage+1} de {lastPage+1} · {grouped.length} grupos</span>
       <button type="button" disabled={currentPage===lastPage} onClick={() => setPage(currentPage+1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Próxima</button>
     </nav>}
-    {selected && <aside className="rounded-xl border border-[var(--success-border)] bg-[var(--bg-surface)] p-4" aria-label="Resumo selecionado para o parceiro">
+    {sharing.length > 0 && <aside className="rounded-xl border border-[var(--success-border)] bg-[var(--bg-surface)] p-4" aria-label="Resumo selecionado para o parceiro">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h4 className="font-semibold">Resumo da cotação selecionada</h4>
+          <h4 className="font-semibold">Resumo {sharing.length === 1 ? 'da cotação selecionada' : 'das ' + sharing.length + ' cotações selecionadas'}</h4>
           <p className="mt-1 text-xs text-[var(--text-secondary)]">Dados prontos para copiar e encaminhar ao parceiro com aviso de conferência.</p>
         </div>
         <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--field-border)] px-3 py-2 text-xs font-semibold">
