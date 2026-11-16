@@ -38,9 +38,11 @@ const parsedMoney=(value:string):number|null=> {
 const boundMessage=(text:string)=>text.slice(0,3850);
 
 export function validateTelegramPdfDocument(document:TelegramFile):void{
-  if(!document||document.mime_type!=='application/pdf'||!String(document.file_name||'').toLowerCase().endsWith('.pdf'))
+  if(!document||!String(document.file_name||'').toLowerCase().endsWith('.pdf')||
+      (document.mime_type!=null && document.mime_type!=='application/pdf'))
     throw Error('Envie um arquivo PDF textual válido, pelo botão de documento.');
-  if(!Number.isSafeInteger(document.file_size)||(document.file_size as number)<200||(document.file_size as number)>TELEGRAM_PDF_MAX_BYTES)
+  if(document.file_size!=null && (!Number.isSafeInteger(document.file_size)||document.file_size<200||
+      document.file_size>TELEGRAM_PDF_MAX_BYTES))
     throw Error('O PDF deve ter entre 200 bytes e 5 MB.');
   if(!/^[A-Za-z0-9_-]{12,256}$/.test(document.file_id))
     throw Error('Identificador de documento inválido.');
