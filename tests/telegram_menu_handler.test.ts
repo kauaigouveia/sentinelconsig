@@ -143,7 +143,7 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   const calculated=await s.send('✅ Confirmar simulação');
   expect(calculated.text).toContain('Banco Teste');
   expect(s.deps.executeTelegramNativeSimulation).toHaveBeenCalledTimes(1);
-  const args=s.deps.executeTelegramNativeSimulation.mock.calls[0];
+  const args=(s.deps.executeTelegramNativeSimulation as any).mock.calls[0] as any[];
   expect(args[1]).toBe('tenant-evolve');
   expect(args[2]).toMatchObject({id:'partner-a',code:'010'});
   expect(args[3].values.cpf).toBe('52998224725');

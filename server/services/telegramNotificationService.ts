@@ -491,7 +491,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 keyboard=[['🏠 Menu principal']];
             }else if(state.phase==='SIM_INPUT'&&state.native){
                 const next=acceptTelegramNativeAnswer(state.native,text);
-                if(!next.ok){
+                if('error' in next){
                     response=next.error;keyboard=[['🏠 Menu principal']];
                 }else{
                     state.native=next.draft;

@@ -20,7 +20,7 @@ function fill(product:'CLT'|'FGTS'|'INSS',operation?:'NEW'|'REFIN'|'PORT'|'PORT_
  while(state.index<telegramNativeSteps(state).length){
   const current=telegramNativeSteps(state)[state.index];
   const result=acceptTelegramNativeAnswer(state,values[current.field]||'PULAR');
-  if(!result.ok)throw Error('Falhou na etapa '+current.field+': '+result.error);
+  if('error' in result)throw Error('Falhou na etapa '+current.field+': '+result.error);
   state=result.draft;
  }
  return state;
@@ -118,8 +118,8 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   expect(result.offerCount).toBe(1);
   expect(spy).toHaveBeenCalledWith(expect.anything(),'tenant-a',
     expect.objectContaining({partnerId:'partner-a',cpf:CPF,product:'CLT'}),'SIMULATE');
-  expect(saved.mock.calls[0][1]).toMatchObject({tenantId:'tenant-a',partnerId:'partner-a',partnerCode:'011'});
-  expect(saved.mock.calls[0][4]).toHaveLength(1);
+  expect((saved as any).mock.calls[0][1]).toMatchObject({tenantId:'tenant-a',partnerId:'partner-a',partnerCode:'011'});
+  expect((saved as any).mock.calls[0][4]).toHaveLength(1);
   await expect(executeTelegramNativeSimulation({} as any,'tenant-a',
     {id:'partner-a',code:'011',name:'Teste'},{...draft,expires:Date.now()-1},'0123456789ABCDEF',
     {run:spy as any,record:saved as any})).rejects.toThrow('expiraram');
