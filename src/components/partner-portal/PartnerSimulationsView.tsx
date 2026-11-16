@@ -18,12 +18,22 @@ import { formatCpf } from '../../lib/utils';
 
 const money = (value: unknown) => value == null ? 'Não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const control = 'mt-1 w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
+/** Only presentation defaults come from the URL; all actual simulation permissions are checked on the server. */
+export function initialTelegramSimulationSelection(search:string){
+  const params=new URLSearchParams(search);
+  const requested=params.get('product');
+  const product=requested==='CLT'||requested==='FGTS'||requested==='INSS'?requested:'INSS';
+  const operation=params.get('operation');
+  const approvedOperation=product==='INSS' && ['NEW','REFIN','PORT','PORT_REFIN'].includes(operation||'') ? operation! : 'NEW';
+  return {product,operation:approvedOperation,term:product==='FGTS'?'4':product==='CLT'?'0':'108'};
+}
 export function PartnerSimulationsView() {
   const [step,setStep]=useState(0);
+  const initialSelection=initialTelegramSimulationSelection(typeof window==='undefined'?'':window.location.search);
   const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [spreadsheetVisited,setSpreadsheetVisited]=useState(false);
   const [daycovalOpen, setDaycovalOpen] = useState(false);
-  const [form, setForm] = useState({ product: 'INSS', operation: 'NEW', cpf: '', name: '', phone: '', birthDate: '', benefitNumber: '', benefitType: '', mode: 'Payment', term: '108', value: '', rate: '', debt: '', originalTerm: '', remainingTerm: '', originalInstallment: '', originalBank: '', originalContract: '', income: '', c6Contract: '', contract: '', happyPlan: '', employerDocument: '', factaRegistration: '', v8ConsultId: '', v8PromoterId: '', legalRepresentative: false, hasInsurance: false });
+  const [form, setForm] = useState({ product: initialSelection.product, operation: initialSelection.operation, cpf: '', name: '', phone: '', birthDate: '', benefitNumber: '', benefitType: '', mode: 'Payment', term: initialSelection.term, value: '', rate: '', debt: '', originalTerm: '', remainingTerm: '', originalInstallment: '', originalBank: '', originalContract: '', income: '', c6Contract: '', contract: '', happyPlan: '', employerDocument: '', factaRegistration: '', v8ConsultId: '', v8PromoterId: '', legalRepresentative: false, hasInsurance: false });
   const [rows, setRows] = useState<any[]>([]), [clients, setClients] = useState<any[]>([]), [history, setHistory] = useState<any[]>([]), [contracts, setContracts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
   useEffect(()=>{setPortabilityContext({});},[form.cpf]);

@@ -513,7 +513,10 @@ function AppMainContent() {
 
   // 0. Se a rota for do Portal do Parceiro (/parceiro/*), renderiza o layout isolado
   if (pathname === '/parceiro' || pathname.startsWith('/parceiro/')) {
-    let initialTab: 'dashboard' | 'propostas' | 'atendimento' | 'perfil' = 'dashboard';
+    let initialTab: 'dashboard' | 'propostas' | 'atendimento' | 'perfil' | 'simulacoes' = 'dashboard';
+    const partnerTab = new URLSearchParams(search).get('tab');
+    if (pathname === '/parceiro' && partnerTab === 'simulacoes') initialTab = 'simulacoes';
+    else if (pathname === '/parceiro' && partnerTab === 'perfil') initialTab = 'perfil';
     if (pathname.startsWith('/parceiro/propostas')) initialTab = 'propostas';
     else if (pathname.startsWith('/parceiro/atendimento') || pathname.startsWith('/parceiro/suporte') || pathname.startsWith('/parceiro/chat')) initialTab = 'atendimento';
     else if (pathname.startsWith('/parceiro/perfil') || pathname.startsWith('/parceiro/cadastro')) initialTab = 'perfil';

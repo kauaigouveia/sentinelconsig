@@ -36,7 +36,7 @@ import { PartnerProfileView } from './PartnerProfileView';
 import { PartnerSimulationsView } from './PartnerSimulationsView';
 
 interface PartnerPortalLayoutProps {
-  initialTab?: 'dashboard' | 'propostas' | 'atendimento' | 'perfil';
+  initialTab?: 'dashboard' | 'propostas' | 'atendimento' | 'perfil' | 'simulacoes';
   proposalIdParam?: string;
 }
 
