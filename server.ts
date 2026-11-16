@@ -12,6 +12,7 @@ import { registerC6CltRoutes } from './server/services/c6CltService.js';
 import { registerTelegramRoutes } from './server/services/telegramNotificationService.js';
 import { registerBankPlaybookCatalog } from './server/services/bankPlaybookCatalog.js';
 import { ParanaBankService } from './server/services/paranaBankService.js';
+import { hasPendingOriginOverlap, quoteOriginKeys } from './server/services/inssQuoteDeduplication.js';
 import { partnerPublicResponse } from './server/services/partnerPublicResponse.js';
 import { withIntegrationPromoter, resolveBankPromoter } from './server/services/bankPromoterConfig.js';
 import 'dotenv/config';
@@ -2327,20 +2328,27 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
-      // Check duplicate pending simulation (for manual simulation with partner)
-      if ((simulationType === 'MANUAL' || simulationType === 'INSS_MULTI') && partnerId) {
-        const existing = await SimulationService.checkExistingPendingSimulation(
-          prisma,
-          tenantId,
-          cleanCpf,
-          partnerId
-        );
-        if (existing) {
+      // A client may hold several INSS contracts. Check the originating contract(s),
+      // not only CPF + partner, while retaining the legacy manual duplicate guard.
+      if (simulationType === 'INSS_MULTI' && operationType === 'PORT_REFIN' && partnerId && draft) {
+        const requestedKeys = quoteOriginKeys(draft.customerData);
+        if (!requestedKeys.length) return res.status(400).json({ error: 'Informe o banco e o número do contrato de origem para registrar uma cotação.' });
+        const pending = await prisma.simulationRequest.findMany({
+          where: { tenantId, partnerId, cpf: cleanCpf, status: 'SIMULAÇÃO ENVIADA',
+            deletedAt: null, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN' },
+          select: { id: true, customerData: true },
+        });
+        if (hasPendingOriginOverlap(requestedKeys, pending)) {
           return res.status(409).json({
-            error: 'Já existe uma solicitação de simulação pendente para este CPF e Parceiro.',
-            existing,
+            error: 'Já existe uma cotação pendente para este contrato de origem e parceiro. Selecione outro contrato ou confira o histórico.',
           });
         }
+      } else if ((simulationType === 'MANUAL' || simulationType === 'INSS_MULTI') && partnerId) {
+        const existing = await SimulationService.checkExistingPendingSimulation(prisma, tenantId, cleanCpf, partnerId);
+        if (existing) return res.status(409).json({
+          error: 'Já existe uma solicitação de simulação pendente para este CPF e Parceiro.',
+          existing,
+        });
       }
 
       const newSimulation = await prisma.simulationRequest.create({
