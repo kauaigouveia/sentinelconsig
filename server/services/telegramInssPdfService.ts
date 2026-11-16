@@ -101,7 +101,7 @@ export async function readTelegramInssPdf(bytes:Uint8Array):Promise<TelegramPdfR
   const { getDocument }=await import('pdfjs-dist/legacy/build/pdf.mjs');
   const task=getDocument({
     data:bytes,disableFontFace:true,useSystemFonts:false,useWorkerFetch:false,
-    stopAtErrors:true,isEvalSupported:false,verbosity:0,
+    stopAtErrors:true,verbosity:0,
   });
   const timeout=setTimeout(()=>{void task.destroy();},18000);
   try{
