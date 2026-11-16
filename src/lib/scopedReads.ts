@@ -28,9 +28,20 @@ export class ScopedReads {
 }
 export const scopedReads=new ScopedReads();
 export const LEGACY_SYNC_ENDPOINTS=['/api/clients','/api/proposals','/api/tasks','/api/notifications','/api/banks','/api/promoters','/api/partners','/api/products','/api/convenios?includeInactive=true','/api/operational-rules','/api/bank-promoters','/api/whitelabel','/api/documents','/api/financial','/api/audit-logs','/api/users','/api/tenants'];
+/**
+ * BI keeps client/proposal snapshots for the global command palette; filter bar
+ * needs catalog lists. Finance, audit, documents and banking administration
+ * are not read on BI. Navigating to those modules triggers their own sync.
+ */
+export const BI_SYNC_ENDPOINTS=[
+ '/api/clients','/api/proposals','/api/tasks','/api/notifications',
+ '/api/banks','/api/partners','/api/products','/api/convenios?includeInactive=true',
+ '/api/whitelabel','/api/users','/api/tenants',
+];
 /** Unknown routes retain the complete legacy data set until their consumers are migrated. */
 export function syncEndpoints(path:string):string[]{
  if(/^\/(login|parceiro)(\/|$)/.test(path))return [];
+ if(/^\/(bi|dashboard-executivo)(\/|$)/.test(path))return BI_SYNC_ENDPOINTS;
  if(/^\/(integracoes|saude-apis|bancos-promotoras|empresas-assinaturas|meu-plano|crm-parceiros)(\/|$)/.test(path))return ['/api/promoters','/api/users','/api/whitelabel'];
  return LEGACY_SYNC_ENDPOINTS;
 }
