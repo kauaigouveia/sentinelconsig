@@ -7,6 +7,8 @@ import { PartnerPortalService } from './partnerPortalService.js';
 import { AuditLogService } from './auditLogService.js';
 import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
 import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
+import {beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,type TelegramNativeDraft} from './telegramNativeSimulation.js';
+import {executeTelegramNativeSimulation} from './telegramNativeSimulationExecutor.js';
 import {telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,type TelegramProductSection} from './telegramProductMenu.js';
 const BOT = 'SentinelConectaBot';
 const GLOBAL_ID = 'sentinel-telegram-global-v1';
@@ -287,7 +289,7 @@ export function registerTelegramRoutes(app:Express,db:PrismaClient,getSession:(r
 }
 type TelegramAccount={tenantId:string;partnerId:string;label:string;linkedAt:string};
 type ProposalQueryState = {
-    phase: 'MENU' | 'PRODUCT' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS' | 'PDF_WAIT' | 'PDF_PROCESSING' | 'PDF_SELECT' | 'PDF_CONFIRM';
+    phase: 'MENU' | 'PRODUCT' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS' | 'PDF_WAIT' | 'PDF_PROCESSING' | 'PDF_SELECT' | 'PDF_CONFIRM' | 'SIM_INPUT' | 'SIM_CONFIRM';
     section?: TelegramProductSection;
     postSelection?: 'MENU'|'QUERY';
     selected?: TelegramAccount;
@@ -295,12 +297,14 @@ type ProposalQueryState = {
     page?: number;
     results?: string[];
     pendingPdf?:{review:TelegramPdfReview;expires:number;selectedIndices?:number[]};
+    native?:TelegramNativeDraft;
     expires: number;
 };
 
 type TelegramPdfWork=
     |{kind:'READ';account:TelegramAccount;document:{file_id:string;file_name?:string;mime_type?:string;file_size?:number}}
-    |{kind:'CALCULATE';account:TelegramAccount;review:TelegramPdfReview;indices:number[];illiterate:'YES'|'NO'};
+    |{kind:'CALCULATE';account:TelegramAccount;review:TelegramPdfReview;indices:number[];illiterate:'YES'|'NO'}
+    |{kind:'NATIVE';account:TelegramAccount;draft:TelegramNativeDraft;attemptKey:string};
 async function telegramAccountStillValid(db:PrismaClient,config:BotConfig,chatId:string,account:TelegramAccount):Promise<boolean>{
     if(config.ownerTenant && account.tenantId!==config.ownerTenant)return false;
     const current=await activeBot(db,account.tenantId);
@@ -350,12 +354,12 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         };
         const showMain = () => {
             const menu=telegramMainMenu(state.selected?.label||'');
-            state.phase='MENU';state.section='ROOT';state.postSelection=undefined;state.pendingPdf=undefined;
+            state.phase='MENU';state.section='ROOT';state.postSelection=undefined;state.pendingPdf=undefined;state.native=undefined;
             response=menu.response;keyboard=menu.keyboard;
         };
         const showProduct = (section:Exclude<TelegramProductSection,'ROOT'>) => {
             const menu=telegramSectionMenu(section);
-            state.phase='PRODUCT';state.section=section;state.pendingPdf=undefined;
+            state.phase='PRODUCT';state.section=section;state.pendingPdf=undefined;state.native=undefined;
             response=menu.response;keyboard=menu.keyboard;
         };
         const openPortal = (target: ReturnType<typeof telegramSimulationTarget>|'PROFILE') => {
@@ -485,13 +489,47 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             }else if(state.phase==='PDF_PROCESSING'){
                 response='Seu extrato está sendo analisado. Aguarde a lista de contratos ou volte ao Menu principal para cancelar.';
                 keyboard=[['🏠 Menu principal']];
+            }else if(state.phase==='SIM_INPUT'&&state.native){
+                const next=acceptTelegramNativeAnswer(state.native,text);
+                if(!next.ok){
+                    response=next.error;keyboard=[['🏠 Menu principal']];
+                }else{
+                    state.native=next.draft;
+                    if(next.finished){
+                        state.phase='SIM_CONFIRM';
+                        response=telegramNativeSummary(next.draft);
+                        keyboard=[['✅ Confirmar simulação'],['🏠 Menu principal']];
+                    }else{
+                        response=telegramNativePrompt(next.draft);
+                        keyboard=[['🏠 Menu principal']];
+                    }
+                }
+            }else if(state.phase==='SIM_CONFIRM'&&state.native){
+                if(normalizeTelegramMenuInput(text)==='confirmar simulacao'){
+                    pdfWork={kind:'NATIVE',account:state.selected!,draft:state.native,
+                        attemptKey:randomBytes(16).toString('hex')};
+                    const section=state.section||'INSS';
+                    state.native=undefined;state.phase='PRODUCT';
+                    response='🔎 Consulta confirmada. Verificando as instituições habilitadas da sua empresa. '+
+                        'O resultado chegará nesta conversa; algumas instituições podem exigir autorização adicional.';
+                    keyboard=telegramSectionMenu(section==='ROOT'?'INSS':section).keyboard;
+                }else{
+                    response='A consulta ainda não foi enviada aos bancos. '+
+                        'Toque em ✅ Confirmar simulação para prosseguir ou em 🏠 Menu principal para cancelar.';
+                    keyboard=[['✅ Confirmar simulação'],['🏠 Menu principal']];
+                }
             }else if(menuChoice==='CLIENT'){
                 // The partner's profile is NOT a client-data lookup. Require a
                 // logged-in portal session and use the CLT vínculos/margem flow.
                 openPortal({product:'CLT'});
                 response+='\n\nPara consultar os dados do cliente CLT, preencha o CPF no portal e escolha “Consultar vínculos e margem”. Não envie CPF ou documentos pelo bot.';
             }else if(telegramSimulationTarget(state.section||'ROOT',menuChoice)){
-                openPortal(telegramSimulationTarget(state.section||'ROOT',menuChoice));
+                const target=telegramSimulationTarget(state.section||'ROOT',menuChoice)!;
+                state.native=beginTelegramNativeSimulation(target);
+                state.section=target.product==='CLT'?'CLT':target.product==='FGTS'?'FGTS':target.operation==='PORT'||target.operation==='PORT_REFIN'?'PORT':'INSS';
+                state.phase='SIM_INPUT';state.pendingPdf=undefined;
+                response=telegramNativePrompt(state.native);
+                keyboard=[['🏠 Menu principal']];
             }else if (command === 'número da proposta') { state.phase = 'NUMBER'; response = 'Digite o número completo da proposta.'; }
             else if (command === 'cpf do cliente') { state.phase = 'CPF'; response = 'Digite o CPF completo do cliente, com ou sem pontuação.'; }
             else if (state.phase === 'RESULTS' && state.results && /^\d{1,2}$/.test(text)) {
@@ -533,6 +571,30 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
     if(!job)return;
     // No PDF download, external Telegram request or workbook calculation runs under Prisma transaction.
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    if(job.kind==='NATIVE'){
+        try{
+            const partner=await db.partner.findFirst({
+                where:{id:job.account.partnerId,tenantId:job.account.tenantId,status:'ATIVO',deletedAt:null},
+                select:{id:true,name:true,code:true},
+            });
+            if(!partner)return;
+            const output=await executeTelegramNativeSimulation(
+                db,job.account.tenantId,partner,job.draft,job.attemptKey,
+            );
+            if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+            for(const text of output.messages)
+                await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:true});
+        }catch{
+            if(await telegramAccountStillValid(db,config,chatId,job.account))
+                await telegram(config,'sendMessage',{
+                    chat_id:chatId,
+                    text:'Não foi possível concluir esta simulação no momento. Nenhuma contratação foi realizada. '+
+                        'Revise as condições ou tente novamente. Se o banco exigir autorização, procure a mesa da empresa.',
+                    protect_content:true,
+                });
+        }
+        return;
+    }
     if(job.kind==='READ'){
         let review:TelegramPdfReview|undefined;
         try{
