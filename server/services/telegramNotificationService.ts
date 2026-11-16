@@ -311,7 +311,15 @@ async function telegramAccountStillValid(db:PrismaClient,config:BotConfig,chatId
     if(!current?.registered||botId(current)!==botId(config)||!(await company(db,account.tenantId)).enabled)return false;
     const linked=await binding(db,account.tenantId,account.partnerId,current);
     if(!linked||linked.chatId!==chatId||linked.linkedAt!==account.linkedAt)return false;
-    return !!await db.partner.findFirst({where:{id:account.partnerId,tenantId:account.tenantId,status:'ATIVO',deletedAt:null,tenant:{status:'ACTIVE',deletedAt:null}}});
+    const partner=await db.partner.findFirst({where:{id:account.partnerId,tenantId:account.tenantId,status:'ATIVO',deletedAt:null,tenant:{status:'ACTIVE',deletedAt:null}}});
+    if(!partner)return false;
+    // A chat binding is not a substitute for current portal access. Revoking
+    // every portal access for a partner must disable bank consultations here.
+    const access=await db.partnerPortalAccess.findFirst({
+        where:{tenantId:account.tenantId,partnerId:account.partnerId,active:true},
+        select:{id:true},
+    });
+    return !!access;
 }
 async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any) {
     if (!Number.isSafeInteger(msg.message_id)) return;
@@ -545,12 +553,21 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 openPortal({product:'CLT'});
                 response+='\n\nPara consultar os dados do cliente CLT, preencha o CPF no portal e escolha “Consultar vínculos e margem”. Não envie CPF ou documentos pelo bot.';
             }else if(telegramSimulationTarget(state.section||'ROOT',menuChoice)){
-                const target=telegramSimulationTarget(state.section||'ROOT',menuChoice)!;
-                state.native=beginTelegramNativeSimulation(target);
-                state.section=target.product==='CLT'?'CLT':target.product==='FGTS'?'FGTS':target.operation==='PORT'||target.operation==='PORT_REFIN'?'PORT':'INSS';
-                state.phase='SIM_INPUT';state.pendingPdf=undefined;
-                response=telegramNativePrompt(state.native);
-                keyboard=[['🏠 Menu principal']];
+                const access=await tx.partnerPortalAccess.findFirst({
+                    where:{tenantId:state.selected!.tenantId,partnerId:state.selected!.partnerId,active:true},
+                    select:{id:true},
+                });
+                if(!access){
+                    response='O acesso de simulação deste parceiro está inativo. Solicite ao gestor a reativação do acesso ao Portal do Parceiro antes de consultar bancos pelo Telegram.';
+                    keyboard=telegramSectionMenu(state.section==='ROOT'?'INSS':state.section||'INSS').keyboard;
+                }else{
+                    const target=telegramSimulationTarget(state.section||'ROOT',menuChoice)!;
+                    state.native=beginTelegramNativeSimulation(target);
+                    state.section=target.product==='CLT'?'CLT':target.product==='FGTS'?'FGTS':target.operation==='PORT'||target.operation==='PORT_REFIN'?'PORT':'INSS';
+                    state.phase='SIM_INPUT';state.pendingPdf=undefined;
+                    response=telegramNativePrompt(state.native);
+                    keyboard=[['🏠 Menu principal']];
+                }
             }else if (command === 'número da proposta') { state.phase = 'NUMBER'; response = 'Digite o número completo da proposta.'; }
             else if (command === 'cpf do cliente') { state.phase = 'CPF'; response = 'Digite o CPF completo do cliente, com ou sem pontuação.'; }
             else if (state.phase === 'RESULTS' && state.results && /^\d{1,2}$/.test(text)) {
