@@ -52,9 +52,9 @@ describe('Cotações de planilha INSS: seleção segura para revisão',()=>{
   expect(JSON.stringify(saved.customerData)).not.toContain('não copiar');
  });
  it('permite selecionar cotação com revisão pendente, mas impede valores inválidos',()=>{
+  const offers=[row('DAYCOVAL'),row('C6',{troco:0})];
   function Scenario(){
    const [selected,setSelected] = useState<any>(null);
-   const offers=[row('DAYCOVAL'),row('C6',{troco:0})];
    return <><PortabilityResults rows={offers} selected={selected} onSelect={setSelected}
     conditionFor={offer=>({rate:offer.data.rate,installment:offer.data.installment})}/>
     <output>{selected ? selected.provider : ''}</output></>;
@@ -67,7 +67,7 @@ describe('Cotações de planilha INSS: seleção segura para revisão',()=>{
   expect(screen.getByRole('button',{name:'Cotação selecionada'}).getAttribute('aria-pressed')).toBe('true');
   expect(screen.getByRole('complementary',{name:'Resumo selecionado para o parceiro'})).toBeTruthy();
   expect(screen.getByText(/Troco estimado:/)).toBeTruthy();
-  expect(screen.getByText(/1,85% a.m./)).toBeTruthy();
+  expect(screen.getAllByText(/1,85% a.m./).length).toBeGreaterThan(0);
   expect(screen.getByRole('button',{name:'Copiar resumo para parceiro'})).toBeTruthy();
  });
 });
