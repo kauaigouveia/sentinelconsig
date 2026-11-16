@@ -506,13 +506,34 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 }
             }else if(state.phase==='SIM_CONFIRM'&&state.native){
                 if(normalizeTelegramMenuInput(text)==='confirmar simulacao'){
-                    pdfWork={kind:'NATIVE',account:state.selected!,draft:state.native,
-                        attemptKey:randomBytes(16).toString('hex')};
-                    const section=state.section||'INSS';
-                    state.native=undefined;state.phase='PRODUCT';
-                    response='🔎 Consulta confirmada. Verificando as instituições habilitadas da sua empresa. '+
-                        'O resultado chegará nesta conversa; algumas instituições podem exigir autorização adicional.';
-                    keyboard=telegramSectionMenu(section==='ROOT'?'INSS':section).keyboard;
+                    // Bank integrations may consume external quota or initiate
+                    // authorization. Enforce an independent per-partner+tenant
+                    // throttle, not just the Telegram update replay receipt.
+                    const rateKey='TELEGRAM_NATIVE_RATE_V1_'+hash(chatId+':'+state.selected!.partnerId).slice(0,32);
+                    const oldRate=await tx.systemConfig.findUnique({
+                        where:{tenantId_configKey:{tenantId:state.selected!.tenantId,configKey:rateKey}},
+                    });
+                    const limit=oldRate?JSON.parse(oldRate.configValue):null;
+                    const active=limit && typeof limit.since==='number' && limit.since>Date.now()-15*60_000;
+                    const previousCount=active?Number(limit.count)||0:0;
+                    if(previousCount>=10){
+                        response='Limite de consultas desta empresa/parceiro atingido neste intervalo. Aguarde alguns minutos antes de solicitar outra simulação. Nenhum banco foi consultado.';
+                        keyboard=[['🏠 Menu principal']];
+                    }else{
+                        await tx.systemConfig.upsert({
+                            where:{tenantId_configKey:{tenantId:state.selected!.tenantId,configKey:rateKey}},
+                            create:{tenantId:state.selected!.tenantId,configKey:rateKey,
+                                configValue:JSON.stringify({since:active?limit.since:Date.now(),count:previousCount+1})},
+                            update:{configValue:JSON.stringify({since:active?limit.since:Date.now(),count:previousCount+1})},
+                        });
+                        pdfWork={kind:'NATIVE',account:state.selected!,draft:state.native,
+                            attemptKey:randomBytes(16).toString('hex')};
+                        const section=state.section||'INSS';
+                        state.native=undefined;state.phase='PRODUCT';
+                        response='🔎 Consulta confirmada. Verificando as instituições habilitadas da sua empresa. '+
+                            'O resultado chegará nesta conversa; algumas instituições podem exigir autorização adicional.';
+                        keyboard=telegramSectionMenu(section==='ROOT'?'INSS':section).keyboard;
+                    }
                 }else{
                     response='A consulta ainda não foi enviada aos bancos. '+
                         'Toque em ✅ Confirmar simulação para prosseguir ou em 🏠 Menu principal para cancelar.';
