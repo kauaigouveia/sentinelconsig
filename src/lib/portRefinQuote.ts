@@ -1,5 +1,6 @@
 import type { SimulationRequest } from '../types';
 import { nossaFintechTableRate } from './inssEligibility';
+import { buildPortRefinBreakdown,type PortedInstallmentChange } from './portRefinBreakdown';
 
 /** Spreadsheet previews are not bank approvals; their source stays explicit for review. */
 export const SPREADSHEET_PORT_REFIN_PROVIDERS = {
@@ -20,6 +21,7 @@ type QuoteRow = {
     refinancing?: { installmentValue?: number };
   };
   sourceVersionDate?: string | null;
+  installmentChanges?:PortedInstallmentChange[];
 };
 
 export function portabilityQuoteCondition(row: QuoteRow, fallbackInstallment?: number | null):
@@ -33,7 +35,9 @@ export function portabilityQuoteCondition(row: QuoteRow, fallbackInstallment?: n
     : ['FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) ? row.data?.rate ?? null
     : nossaFintechTableRate(row.table || {});
   const parsedRate = typeof rate === 'number' ? rate : Number(String(rate ?? '').replace(',', '.'));
+  const breakdown=row.provider==='DAYCOVAL' ? buildPortRefinBreakdown(row.installmentChanges,installment) : undefined;
   return {
+    ...(breakdown ? {portabilityBreakdown:breakdown} : {}),
     provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''),
     tableName: row.table?.name || 'Portabilidade + refinanciamento',
     amount: Number(row.troco),
