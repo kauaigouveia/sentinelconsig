@@ -13,7 +13,9 @@ import { PartnerPortalService } from './partnerPortalService.js';
 import { simulationDeadline } from './partnerSimulationTracking.js';
 import { AuditLogService } from './auditLogService.js';
 import { eventBus } from './pusherService.js';
-import { decodeDaycoval, encodeDaycoval } from './daycovalWorkbook.js';
+import { decodeDaycoval, encodeDaycoval, importDaycoval } from './daycovalWorkbook.js';
+import {DAYCOVAL_FORMULA_HASHES} from './daycovalModelVersions.js';
+import {compareDaycovalWorkbook} from './daycovalWorkbookCompare.js';
 import {previewPortRefin} from './portRefinPreview.js';
 
 import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRatePolicies, isPortRefinModelCompatible, type SpreadsheetBank } from './portRefinWorkbooks.js';
@@ -129,6 +131,23 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
       } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível calcular a simulação Daycoval.' }); }
     });
   }
+  if (bank === 'DAYCOVAL') app.post('/api/daycoval/inspect', limiter, async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try {
+      const ctx=await context(req,false,'simulations.view');
+      if(!ctx?.canImport)return res.status(403).json({error:'Apenas responsáveis por integrações podem conferir o arquivo.'});
+      upload(req,res,async error=>{
+        if(error)return res.status(400).json({error:'Envie um arquivo XLSX de até 3,5 MB.'});
+        try{
+          if(!req.file?.originalname.toLowerCase().endsWith('.xlsx'))return res.status(400).json({error:'Selecione um arquivo XLSX Daycoval.'});
+          // Parser accepts a new signature ONLY for inspection, never to activate it.
+          const proposed=await importDaycoval(req.file.buffer,req.file.originalname);
+          const installed=await read(ctx.tenantId,'DAYCOVAL');
+          return res.json(compareDaycovalWorkbook(proposed,installed,DAYCOVAL_FORMULA_HASHES));
+        }catch(err:any){return res.status(422).json({error:err.message||'Planilha inválida para análise.'});}
+      });
+    }catch{return res.status(500).json({error:'Não foi possível analisar a planilha.'});}
+  });
   app.post(`/api/${routeName}/import`, limiter, async (req, res) => {
     try {
     const ctx = await context(req, false, 'simulations.view');
