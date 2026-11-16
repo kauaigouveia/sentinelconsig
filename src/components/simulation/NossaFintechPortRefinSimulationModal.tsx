@@ -1,6 +1,7 @@
 import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {PortabilityResults} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
+import {originContractSuffix} from '../../lib/portRefinBreakdown';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -194,7 +195,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         const calls=await Promise.allSettled([calculateNossaFintech(snapshot),calculateFinanto(snapshot),calculateFacta(snapshot),calculateWorkbook('DAYCOVAL',snapshot),calculateWorkbook('C6',snapshot),calculateWorkbook('PARANA',snapshot)]);
         calls.forEach((result,index)=>{
           const provider=['Nossa Fintech','FINANTO','FACTA','DAYCOVAL','C6','PARANA'][index];
-          if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot,originalInstallment:parseCurrency(snapshot.installmentFaceValue)??undefined,installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`}))})));
+          if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot,originalInstallment:parseCurrency(snapshot.installmentFaceValue)??undefined,installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`,bankCode:contract.originLenderCode,contractSuffix:originContractSuffix(contract.originContractNumber)}))})));
           else notes.push(`${label} · ${provider}: ${result.reason?.message||'não foi possível simular'}`);
         });
         if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
@@ -214,7 +215,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           if(result.error||!result.offers?.length)notes.push(`${label}: ${result.error||result.message||'Sem oferta'}`);
           const originals=result.indices.map((index:number)=>parseCurrency(contracts[index]?.installmentFaceValue));
           const originalInstallment=originals.length&&originals.every((value:number|null)=>value!==null&&Number.isFinite(value)&&value>0)?Math.round(originals.reduce((sum:number,value:number)=>sum+value,0)*100)/100:undefined;
-          for(const offer of result.offers||[])combined.push({provider:'DAYCOVAL',contractLabel:label,originalInstallment,unified:true,requiresReview:true,success:true,sourceForm:{...form,...contracts[0]},sourceContracts:result.indices.map((index:number)=>contracts[index]),term:offer.term,troco:offer.amount,data:offer,sourceVersionDate:result.version?.versionDate || null,installmentChanges:offer.installmentChanges?.map((change:any,index:number)=>({...change,label:`Contrato ${result.indices[index]+1}`})),table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate}});
+          for(const offer of result.offers||[])combined.push({provider:'DAYCOVAL',contractLabel:label,originalInstallment,unified:true,requiresReview:true,success:true,sourceForm:{...form,...contracts[result.indices[0]]},sourceContracts:result.indices.map((index:number)=>contracts[index]),term:offer.term,troco:offer.amount,data:offer,sourceVersionDate:result.version?.versionDate || null,installmentChanges:offer.installmentChanges?.map((change:any,index:number)=>({...change,label:`Contrato ${result.indices[index]+1}`,bankCode:contracts[result.indices[index]]?.originLenderCode,contractSuffix:originContractSuffix(contracts[result.indices[index]]?.originContractNumber)})),table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate}});
         }
         if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
         setRows(combined.filter(row=>row.troco==null||row.troco>=0));setProviderNotes([...notes]);

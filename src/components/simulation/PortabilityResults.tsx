@@ -2,9 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { ArrowRight, Check, ClipboardCopy, Info } from 'lucide-react';
 import { higherMonthlyRateFirst } from '../../lib/monthlyRateOrder';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
+import {buildPortRefinBreakdown,portabilityBreakdownText,money,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
+import {PortRefinInstallmentsTable} from './PortRefinInstallmentsTable';
 
 export type PortabilityResult = {
-  installmentChanges?: {label?: string; originalInstallment: number; newInstallment: number | null}[];
+  installmentChanges?: PortedInstallmentChange[];
   originalInstallment?: number;
   contractLabel?: string;
   provider: string;
@@ -74,8 +76,11 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
     'Contrato: ' + (row.contractLabel || 'Contrato informado'),
     'Tabela: ' + (row.table?.name || row.table?.cod_tabela || 'Condição calculada'),
     'Troco estimado: ' + amount(row.troco),
-    'Parcela atual: ' + amount(row.originalInstallment),
-    'Parcela projetada: ' + amount(conditionFor(row).installment),
+    'Soma das parcelas originais portadas: ' + amount(row.originalInstallment),
+    'Parcela do novo refinanciamento: ' + amount(conditionFor(row).installment),
+    ...(row.provider==='DAYCOVAL' ? [buildPortRefinBreakdown(row.installmentChanges,conditionFor(row).installment)
+      ? portabilityBreakdownText(buildPortRefinBreakdown(row.installmentChanges,conditionFor(row).installment)!)
+      : 'Parcela recalculada de cada portabilidade não informada pela planilha.'] : []),
     'Prazo: ' + (row.term ? String(row.term) + ' meses' : 'Não informado'),
     'Taxa: ' + formatMonthlyRate(conditionFor(row).rate),
     'Estimativa sujeita à conferência comercial e documental; não representa aprovação ou contratação.',
@@ -137,7 +142,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
           <strong className="mt-1 block text-base tabular-nums">{amount(original)}</strong>
         </div>
         <div className="min-w-0 p-2">
-          <span className="block text-[11px] text-[var(--text-secondary)]">{showProjected ? (row.unified ? 'Parcela unificada projetada' : 'Nova parcela do refinanciamento') : 'Parcela mantida'}</span>
+          <span className="block text-[11px] text-[var(--text-secondary)]">{row.provider==='DAYCOVAL' ? 'Parcela do novo refinanciamento' : showProjected ? 'Parcela projetada do refinanciamento' : 'Parcela proposta'}</span>
           <strong className="mt-1 block text-base tabular-nums">{amount(installment)}</strong>
         </div>
         <div className="min-w-0 p-2">
@@ -147,24 +152,9 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
         </div>
       </div>}
       {row.success && positive(row.data?.contractAmount) && <p className="mt-2 text-xs text-[var(--text-secondary)]">Valor do contrato calculado: <strong>{amount(row.data?.contractAmount)}</strong></p>}
-      {Boolean(row.installmentChanges?.length) && <details className="mt-3 rounded-lg border border-[var(--border-default)] p-3 text-xs">
-        <summary className="cursor-pointer font-semibold">Ver composição das parcelas da portabilidade</summary>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-[var(--text-secondary)]">
-          <span>Contrato</span><span>Original</span><span>Recalculada</span>
-          {row.installmentChanges!.map((change,index) => <React.Fragment key={index}>
-            <span>{change.label || 'Contrato ' + String(index + 1)}</span>
-            <strong>{amount(change.originalInstallment)}</strong>
-            <strong>{amount(change.newInstallment)}</strong>
-          </React.Fragment>)}
-          {row.installmentChanges!.length > 1 && <>
-            <strong>Total</strong>
-            <strong>{row.installmentChanges!.every(item => positive(item.originalInstallment))
-              ? amount(row.installmentChanges!.reduce((sum,item) => sum + item.originalInstallment,0)) : 'Não informado'}</strong>
-            <strong>{row.installmentChanges!.every(item => positive(item.newInstallment))
-              ? amount(row.installmentChanges!.reduce((sum,item) => sum + Number(item.newInstallment),0)) : 'Não informado'}</strong>
-          </>}
-        </div>
-      </details>}
+      {row.provider==='DAYCOVAL' && (row.installmentChanges?.length
+        ? <PortRefinInstallmentsTable detail={buildPortRefinBreakdown(row.installmentChanges,condition.installment)!}/>
+        : <p role="status" className="mt-3 rounded-lg border border-[var(--warning-border)] p-3 text-xs text-[var(--warning-text)]">A composição individual das parcelas portadas não foi informada nesta cotação. Não é possível determinar se alguma parcela foi reduzida.</p>)}
       {row.requiresReview && <p className="mt-3 text-xs text-[var(--warning-text)]">
         Esta cotação pode ser salva para conferência, mas não deve seguir para contratação antes da validação.
       </p>}
