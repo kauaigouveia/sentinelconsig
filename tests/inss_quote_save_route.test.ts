@@ -29,7 +29,7 @@ const customerData={birthDate:'1966-06-15',benefitNumber:'0000000001',benefitTyp
 function setup(){
  const records:any[]=[];
  const create=vi.fn(async (query:any)=>{const record={id:'persisted-'+(records.length+1),...query.data};records.push(record);return record;});
- const findMany=vi.fn(async(query:any)=>records.filter(record=>Object.entries(query.where).every(([key,value])=>record[key]===value)).map(record=>({id:record.id,customerData:record.customerData})));
+ const findMany=vi.fn(async(query:any)=>records.filter(record=>Object.entries(query.where).every(([key,value])=>(value === null ? record[key] == null : record[key] === value))).map(record=>({id:record.id,customerData:record.customerData})));
  const partner=vi.fn(async (query:any)=>query.where.tenantId==='tenant-a'&&query.where.id==='partner-a'?{id:'partner-a',status:'ATIVO'}:null);
  const bankConfig=vi.fn(), broadcast=vi.fn(), audit=vi.fn();
  const deps={
