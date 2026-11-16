@@ -7,7 +7,7 @@ import {normalizeTelegramMenuInput,type TelegramSimulationTarget} from './telegr
  */
 export type TelegramNativeProduct=TelegramSimulationTarget['product'];
 export type TelegramNativeOperation='NEW'|'REFIN'|'PORT'|'PORT_REFIN';
-export type TelegramNativeField='cpf'|'name'|'phone'|'birthDate'|'benefitNumber'|'benefitType'|'state'|'benefitStartDate'|
+export type TelegramNativeField='cpf'|'name'|'phone'|'mode'|'birthDate'|'benefitNumber'|'benefitType'|'state'|'benefitStartDate'|
   'value'|'term'|'income'|'illiterate'|'originalBank'|'originalContract'|'debt'|'originalTerm'|'remainingTerm'|'originalInstallment'|'c6Contract';
 export type TelegramNativeDraft={
   product:TelegramNativeProduct;
@@ -21,6 +21,7 @@ const CPF:Step={field:'cpf',prompt:'Informe o CPF do cliente (11 dígitos). Use 
 const NAME:Step={field:'name',prompt:'Qual o nome completo do cliente?'};
 const PHONE:Step={field:'phone',prompt:'Qual o telefone do cliente com DDD (10 ou 11 números)?'};
 const INST:Step={field:'value',prompt:'Qual valor deseja simular como parcela mensal? Ex.: 350,00'};
+const MODE:Step={field:'mode',prompt:'Como deseja simular? Responda PARCELA (mensalidade) ou VALOR (crédito líquido).'};
 const BIRTH:Step={field:'birthDate',prompt:'Data de nascimento do beneficiário (DD/MM/AAAA).'};
 const BENEFIT:Step={field:'benefitNumber',prompt:'Número do benefício INSS (apenas números).'};
 const BENEFIT_TYPE:Step={field:'benefitType',prompt:'Código da espécie do benefício INSS (ex.: 32 ou 41).'};
@@ -50,7 +51,7 @@ const currency=(s:string):number|null=>{
   return Number.isFinite(n)&&n>0&&n<=2_000_000?Math.round(n*100)/100:null;
 };
 export function telegramNativeSteps(target:Pick<TelegramNativeDraft,'product'|'operation'>):Step[]{
-  if(target.product==='CLT')return [CPF,NAME,PHONE,INST];
+  if(target.product==='CLT')return [CPF,NAME,PHONE,MODE,INST];
   if(target.product==='FGTS')return [CPF,{field:'term',prompt:'Quantos saques-aniversário deseja antecipar? Informe de 1 a 10.'}];
   const basic=[CPF,BIRTH,BENEFIT,BENEFIT_TYPE,STATE,BENEFIT_START,OPTIONAL_NAME,OPTIONAL_PHONE];
   if(['PORT','PORT_REFIN'].includes(target.operation))return [
@@ -64,7 +65,7 @@ export function telegramNativeSteps(target:Pick<TelegramNativeDraft,'product'|'o
     ...(target.operation==='PORT_REFIN'?[INST,TERM]:[]),
     LITERACY,
   ];
-  return [...basic,INST,TERM,LITERACY,INCOME,...(target.operation==='REFIN'?[C6CONTRACT]:[])];
+  return [...basic,MODE,INST,TERM,LITERACY,INCOME,...(target.operation==='REFIN'?[C6CONTRACT]:[])];
 }
 export function beginTelegramNativeSimulation(
   target:TelegramSimulationTarget,now=Date.now(),
@@ -81,7 +82,7 @@ export function telegramNativePrompt(draft:TelegramNativeDraft):string {
   if(!step)return telegramNativeSummary(draft);
   const title=draft.product==='INSS'?'INSS '+({NEW:'Novo',REFIN:'Refinanciamento',PORT:'Portabilidade',PORT_REFIN:'Portabilidade + Refin'}[draft.operation]):draft.product;
   return '💬 Simulação '+title+' · etapa '+(draft.index+1)+'/'+steps.length+
-    '\n\n'+step.prompt+
+    '\n\n'+(step.field==='value'&&draft.values.mode==='Liquid'?'Qual valor líquido de crédito deseja solicitar? Ex.: 5.000,00':step.prompt)+
     (step.optional?'\n\nCampo opcional: utilize PULAR.':'')+
     '\n\nEnvie somente o dado solicitado. Use 🏠 Menu principal para cancelar.';
 }
@@ -93,11 +94,13 @@ export function acceptTelegramNativeAnswer(draft:TelegramNativeDraft,answer:stri
   const input=String(answer||'').trim().slice(0,200);
   const normalized=normalizeTelegramMenuInput(input);
   if(step.optional&&['pular','nao sei','não sei','ignorar'].includes(normalized)){
-    const next={...draft,index:draft.index+1,values:{...draft.values}};
+    const next={...draft,index:draft.index+1,expires:Date.now()+10*60_000,values:{...draft.values}};
     return {ok:true,draft:next,finished:next.index===telegramNativeSteps(next).length};
   }
   let value=input,ok=true;
   switch(step.field){
+    case 'mode':value=['parcela','mensalidade','payment'].includes(normalized)?'Payment':
+      ['valor','liquido','valor liquido','liquid'].includes(normalized)?'Liquid':'';ok=!!value;break;
     case 'cpf':value=input.replace(/\D/g,'');ok=/^\d{11}$/.test(value)&&isValidCpf(value);break;
     case 'name':value=input.replace(/[\x00-\x1f\x7f]/g,' ').replace(/\s+/g,' ').trim();ok=value.length>=3&&value.length<=120&&!/\d{7,}/.test(value);break;
     case 'phone':value=input.replace(/\D/g,'');ok=/^\d{10,11}$/.test(value);break;
@@ -118,7 +121,7 @@ export function acceptTelegramNativeAnswer(draft:TelegramNativeDraft,answer:stri
     case 'c6Contract':ok=value.length>=3&&value.length<=100&&!/[\x00-\x1f\x7f]/.test(value);break;
   }
   if(!ok)return {ok:false,error:'Valor inválido para este campo. Confira o formato e tente novamente.\n\n'+telegramNativePrompt(draft)};
-  const next={...draft,index:draft.index+1,values:{...draft.values,[step.field]:value}};
+  const next={...draft,index:draft.index+1,expires:Date.now()+10*60_000,values:{...draft.values,[step.field]:value}};
   if(next.values.originalTerm&&next.values.remainingTerm&&
     Number(next.values.remainingTerm)>Number(next.values.originalTerm))
     return {ok:false,error:'As parcelas em aberto não podem superar o prazo original. Corrija o valor.\n\n'+telegramNativePrompt(draft)};
@@ -136,7 +139,7 @@ export function telegramNativeSummary(draft:TelegramNativeDraft):string {
     ...(v.birthDate?['Nascimento: '+v.birthDate.split('-').reverse().join('/')]:[]),
     ...(v.benefitType?['Espécie: '+v.benefitType]:[]),
     ...(v.state?['UF: '+v.state]:[]),
-    ...(v.value?['Parcela solicitada: '+money(v.value)]:[]),
+    ...(v.value?[(v.mode==='Liquid'?'Crédito líquido solicitado: ':'Parcela solicitada: ')+money(v.value)]:[]),
     ...(v.originalInstallment?['Parcela original: '+money(v.originalInstallment)]:[]),
     ...(v.debt?['Saldo devedor: '+money(v.debt)]:[]),
     ...(v.originalBank?['Banco origem: '+v.originalBank]:[]),
@@ -154,7 +157,7 @@ export function toTelegramNativeInput(draft:TelegramNativeDraft,partnerId:string
   const product=draft.product,operation=product==='INSS'?draft.operation:'NEW';
   const input:Record<string,unknown>={
     product,operation,cpf:v.cpf,name:v.name||'',phone:v.phone||'',
-    mode:'Payment',term:Number(v.term??(product==='CLT'?'0':product==='FGTS'?'4':'108')),
+    mode:v.mode||'Payment',term:Number(v.term??(product==='CLT'?'0':product==='FGTS'?'4':'108')),
     value:Number(v.value??v.originalInstallment??'0'),
     eligibility:true,autoConditions:false,automaticAuthorization:false,observeOnly:true,
     partnerId,
