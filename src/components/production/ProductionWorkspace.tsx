@@ -2,13 +2,12 @@ import React, { useState } from "react";
 import {
   Columns3,
   SlidersHorizontal,
-  LayoutGrid,
-  List,
   Workflow,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import type { RecordPresentation } from "../ui/RecordWorkspace";
+import { RecordPresentationButtons } from "../ui/RecordPresentationButtons";
 export const PRODUCTION_COLUMNS = [
   "Seleção",
   "ADE / Proposta",
@@ -111,22 +110,7 @@ export function ProductionWorkspace({
             <Columns3 size={15} />
             Colunas
           </button>
-          <button
-            className="s2-button"
-            aria-pressed={mode === "list"}
-            onClick={() => onMode("list")}
-          >
-            <List size={15} />
-            Tabela
-          </button>
-          <button
-            className="s2-button"
-            aria-pressed={mode === "cards"}
-            onClick={() => onMode("cards")}
-          >
-            <LayoutGrid size={15} />
-            Cartões
-          </button>
+          <RecordPresentationButtons mode={mode} onMode={onMode} />
           {onKanban && (
             <button className="s2-button" onClick={onKanban}>
               <Workflow size={15} />

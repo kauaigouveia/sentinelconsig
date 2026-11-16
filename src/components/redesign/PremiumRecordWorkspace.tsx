@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
+import { RecordPresentationButtons } from '../ui/RecordPresentationButtons';
 import type { RecordPresentation } from '../ui/RecordWorkspace';
 
 export interface PremiumRecordWorkspaceProps {
@@ -20,8 +21,7 @@ export function PremiumRecordWorkspace({ filters, summary, count, mode, onMode, 
       <strong>{count} registros encontrados</strong>
       <div className="p2-actions">
         <button type="button" className="s2-button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}><SlidersHorizontal size={15} />Filtros</button>
-        <button type="button" className="s2-button" aria-pressed={mode === 'list'} onClick={() => onMode('list')}><List size={15} />Tabela</button>
-        <button type="button" className="s2-button" aria-pressed={mode === 'cards'} onClick={() => onMode('cards')}><LayoutGrid size={15} />Cartões</button>
+        <RecordPresentationButtons mode={mode} onMode={onMode} />
       </div>
     </div>
     <div className="internal-record-layout" data-filters-open={filtersOpen}>
