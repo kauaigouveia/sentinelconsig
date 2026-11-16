@@ -194,9 +194,11 @@ export function formatTelegramNativeResults(
     lines.push('\nMelhor condição calculada por banco:');
     for(const [bank,offer] of offers){
       const values=['🏦 '+bank];
-      values.push('Valor/troco: '+money(offer.amount));
+      const valueLabel=product==='FGTS'?'Líquido estimado':product==='INSS'&&['PORT','PORT_REFIN'].includes(operation)?'Troco estimado':
+        operation==='REFIN'?'Valor liberado estimado':'Valor do crédito estimado';
+      values.push(valueLabel+': '+money(offer.amount));
       if(Number.isFinite(Number(offer.installment))&&Number(offer.installment)>0)values.push('Parcela: '+money(offer.installment));
-      if(Number.isFinite(Number(offer.term))&&Number(offer.term)>0)values.push('Prazo: '+Math.trunc(offer.term)+' meses');
+      if(Number.isFinite(Number(offer.term))&&Number(offer.term)>0)values.push((product==='FGTS'?'Antecipação: ':'Prazo: ')+Math.trunc(offer.term)+(product==='FGTS'?' saques':' meses'));
       if(Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0)values.push('Taxa informada: '+Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.');
       lines.push('\n'+values.join(' · '));
     }
