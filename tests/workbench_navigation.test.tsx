@@ -8,15 +8,15 @@ afterEach(cleanup);
 it('orienta a navegação pela área e identifica uma proposta aberta por link direto', () => {
   const navigate = vi.fn();
   render(<WorkbenchNavigation role="MASTER" path="/propostas/registro" navigate={navigate}/>);
-  expect(within(screen.getByRole('navigation', {name:'Áreas do sistema'})).getByRole('link', {name:'Produção'}).getAttribute('aria-current')).toBe('true');
-  const tools = within(screen.getByRole('navigation', {name:'Ferramentas de Produção'}));
+  expect(within(screen.getByRole('navigation', {name:'Áreas do sistema'})).getByRole('link', {name:'Operação'}).getAttribute('aria-current')).toBe('true');
+  const tools = within(screen.getByRole('navigation', {name:'Ferramentas de Operação'}));
   expect(tools.getByRole('link', {name:'Propostas'}).getAttribute('aria-current')).toBe('page');
   fireEvent.click(tools.getByRole('link', {name:'Simular crédito'}));
   expect(navigate).toHaveBeenCalledWith('/simulacoes');
 });
 it('remove áreas e ferramentas não autorizadas para o perfil', () => {
   render(<WorkbenchNavigation role="SIMULACAO" permissions={['clients.view']} path="/clientes" navigate={vi.fn()}/>);
-  expect(screen.queryByRole('link', {name:'Administração'})).toBeNull();
+  expect(screen.queryByRole('link', {name:'Configurações'})).toBeNull();
   expect(screen.queryByRole('link', {name:'Propostas'})).toBeNull();
   expect(screen.getByRole('link', {name:'Relacionamento'})).toBeTruthy();
 });
