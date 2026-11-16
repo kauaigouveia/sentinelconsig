@@ -46,7 +46,7 @@ function scenario(authorized=true){
   return authorized?{chatId:'1001',linkedAt:'2026-11-10T12:00:00Z'}:null;
  };
  const deps={
-  hash:(value:string)=>value,botId:(value:any)=>value.token.split(':')[0],
+  BINDING:'TELEGRAM_BINDING_V1_',hash:(value:string)=>value,botId:(value:any)=>value.token.split(':')[0],
   decrypt:(value:any)=>value,encrypt:(value:any)=>value,
   activeBot:async()=>config,company:async()=>({enabled:true}),binding,
   telegram:vi.fn(async(_config:any,_method:string,payload:any)=>{sends.push(payload);return{};}),
