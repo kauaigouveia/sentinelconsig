@@ -2,11 +2,13 @@
 import fs from 'node:fs';
 import ts from 'typescript';
 import {describe,it,expect,vi} from 'vitest';
+import {randomBytes} from 'node:crypto';
 import {
  telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,
  telegramPortalLink,normalizeTelegramMenuInput,
 } from '../server/services/telegramProductMenu';
 import {parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS} from '../server/services/telegramInssPdfService';
+import {beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,telegramNativeSteps} from '../server/services/telegramNativeSimulation';
 
 /** Exercise the real Telegram message handler with in-memory transactional doubles; no bot token, DB or HTTP. */
 const source=ts.createSourceFile('telegramNotificationService.ts',fs.readFileSync(new URL('../server/services/telegramNotificationService.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true);
@@ -53,12 +55,17 @@ function scenario(authorized=true){
   return authorized?{chatId:'1001',linkedAt:'2026-11-10T12:00:00Z'}:null;
  };
  const deps={
-  BINDING:'TELEGRAM_BINDING_V1_',hash:(value:string)=>value,botId:(value:any)=>value.token.split(':')[0],
+  BINDING:'TELEGRAM_BINDING_V1_',hash:(value:string)=>value,botId:(value:any)=>value.token.split(':')[0],randomBytes,
   decrypt:(value:any)=>value,encrypt:(value:any)=>value,
   activeBot:async()=>config,company:async()=>({enabled:true}),binding,
   telegram:vi.fn(async(_config:any,_method:string,payload:any)=>{sends.push(payload);return{};}),
   telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,
   normalizeTelegramMenuInput,parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,
+  beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,
+  executeTelegramNativeSimulation:vi.fn(async()=>({
+    messages:['📊 Simulação realizada no Telegram · Banco Teste · R$ 1.500,00'],
+    saved:true,offerCount:1,
+  })),
   telegramAccountStillValid:async()=>authorized,
   validateTelegramPdfDocument:(document:any)=>{
     if(document.mime_type!=='application/pdf'||!document.file_name?.endsWith('.pdf')||document.file_size>5e6)throw Error('PDF inválido');
@@ -85,10 +92,10 @@ function scenario(authorized=true){
   await handle(db,config,{chat:{id:1001},message_id:++id,text,...extra});
   return sends.at(-1);
  };
- return {send,sends,tx,records,handle,db,config};
+ return {send,sends,tx,records,handle,db,config,deps};
 }
 describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa',()=>{
- it('permite INSS Novo, Refin e Portabilidade+Refin com portal autenticado e consulta de propostas',async()=>{
+ it('permite INSS Novo, Refin e Portabilidade+Refin no chat sem depender do Portal, mantendo consulta de propostas',async()=>{
   const s=scenario();
   const root=await s.send('/start');
   expect(root.text).toContain('Consignado CLT');
@@ -97,16 +104,17 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   const inss=await s.send('🏛️ INSS');
   expect(inss.text).toContain('Novo e Refinanciamento');
   const novo=await s.send('💰 Novo INSS');
-  expect(novo.text).toContain('product=INSS');
-  expect(novo.text).toContain('operation=NEW');
-  expect(novo.text).not.toMatch(/CPF\s*:/i);
+  expect(novo.text).toContain('CPF do cliente');
+  expect(novo.text).toContain('etapa 1');
+  expect(novo.text).not.toContain('/parceiro?');
   const menu=await s.send('🏠 Menu principal');
   expect(menu.text).toContain('Menu principal');
   const port=await s.send('🔄 Portabilidade INSS');
   expect(port.text).toContain('Portabilidade pura');
   const refin=await s.send('🔁 Portabilidade + refinanciamento');
-  expect(refin.text).toContain('operation=PORT_REFIN');
-  expect(refin.text).toContain('/parceiro?');
+  expect(refin.text).toContain('CPF do cliente');
+  expect(refin.text).toContain('Portabilidade + Refin');
+  expect(refin.text).not.toContain('/parceiro?');
   const query=await s.send('🔍 Consultar proposta');
   expect(query.text).toContain('Como deseja pesquisar?');
   const byNumber=await s.send('Número da proposta');
@@ -115,6 +123,56 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(empty.text).toContain('Nenhuma proposta');
   expect(s.tx.proposal.findMany).toHaveBeenCalledTimes(1);
   expect(s.tx.proposal.findMany.mock.calls[0][0].where).toMatchObject({tenantId:'tenant-evolve',partnerId:'partner-a'});
+ });
+ it('consulta CLT inteiramente no Telegram, com autorização explícita e vínculo de empresa',async()=>{
+  const s=scenario();
+  await s.send('/start');
+  await s.send('💼 CLT');
+  const start=await s.send('💰 Simular todos os bancos');
+  expect(start.text).toContain('CPF do cliente');
+  expect((await s.send('00000000000')).text).toContain('inválido');
+  expect((await s.send('52998224725')).text).toContain('nome completo');
+  expect((await s.send('Cliente Fictício')).text).toContain('telefone');
+  expect((await s.send('82999998888')).text).toContain('parcela mensal');
+  const review=await s.send('450,00');
+  expect(review.text).toContain('Confirmar simulação');
+  expect(review.text).not.toContain('52998224725');
+  const blocked=await s.send('Não autorizou');
+  expect(blocked.text).toContain('ainda não foi enviada');
+  expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
+  const calculated=await s.send('✅ Confirmar simulação');
+  expect(calculated.text).toContain('Banco Teste');
+  expect(s.deps.executeTelegramNativeSimulation).toHaveBeenCalledTimes(1);
+  const args=s.deps.executeTelegramNativeSimulation.mock.calls[0];
+  expect(args[1]).toBe('tenant-evolve');
+  expect(args[2]).toMatchObject({id:'partner-a',code:'010'});
+  expect(args[3].values.cpf).toBe('52998224725');
+  const snapshot=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(snapshot.configValue.native).toBeUndefined();
+  expect(snapshot.configValue.phase).toBe('PRODUCT');
+ });
+ it('permite FGTS diretamente na conversa em apenas duas etapas e respeita cancelamento',async()=>{
+  const s=scenario();
+  await s.send('/start');await s.send('💰 FGTS');
+  await s.send('💰 Simular FGTS');
+  const year=await s.send('52998224725');
+  expect(year.text).toContain('saques-aniversário');
+  const review=await s.send('4');
+  expect(review.text).toContain('FGTS');
+  expect(review.text).toContain('Confirmar simulação');
+  const done=await s.send('✅ Confirmar simulação');
+  expect(done.text).toContain('Banco Teste');
+  await s.send('💰 Simular FGTS');
+  await s.send('🏠 Menu principal');
+  const state=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(state.configValue.native).toBeUndefined();
+ });
+ it('não consulta bancos se o parceiro foi desvinculado entre o preenchimento e a confirmação',async()=>{
+  const s=scenario(false);
+  await s.send('/start');
+  await s.send('💼 CLT');
+  await s.send('💰 Simular todos os bancos');
+  expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
  });
  it('não acessa ofertas sem vínculo confirmado e parceiro ativo',async()=>{
   const s=scenario(false);
