@@ -135,7 +135,8 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect((await s.send('00000000000')).text).toContain('inválido');
   expect((await s.send('52998224725')).text).toContain('nome completo');
   expect((await s.send('Cliente Fictício')).text).toContain('telefone');
-  expect((await s.send('82999998888')).text).toContain('parcela mensal');
+  expect((await s.send('82999998888')).text).toContain('PARCELA');
+  expect((await s.send('PARCELA')).text).toContain('parcela mensal');
   const review=await s.send('450,00');
   expect(review.text).toContain('Confirmar simulação');
   expect(review.text).not.toContain('52998224725');
@@ -182,7 +183,7 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   const start=await s.send('💰 Novo INSS');
   expect(start.text).toContain('CPF do cliente');
   const steps=['52998224725','15/06/1966','1234567890','32','AL',
-    'PULAR','PULAR','PULAR','450,00','108','NÃO','2.800,00'];
+    'PULAR','PULAR','PULAR','PARCELA','450,00','108','NÃO','2.800,00'];
   for(const value of steps)await s.send(value);
   const review=s.sends.at(-1);
   expect(review.text).toContain('INSS');

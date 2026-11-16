@@ -10,7 +10,7 @@ const CPF='52998224725'; // Brazilian check-digit-valid synthetic test identifie
 function fill(product:'CLT'|'FGTS'|'INSS',operation?:'NEW'|'REFIN'|'PORT'|'PORT_REFIN'){
  let state=beginTelegramNativeSimulation({product,...(operation?{operation}:{})});
  const values:Record<string,string>={
-  cpf:CPF,name:'Cliente Ficticio',phone:'82999998888',
+  cpf:CPF,name:'Cliente Ficticio',phone:'82999998888',mode:'PARCELA',
   birthDate:'15/06/1966',benefitNumber:'1234567890',benefitType:'32',state:'AL',
   benefitStartDate:'PULAR',value:'450,00',term:product==='FGTS'?'4':'108',
   income:'2800,00',illiterate:'NÃO',c6Contract:'PULAR',
@@ -34,10 +34,10 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   const valid=acceptTelegramNativeAnswer(draft,CPF);
   expect(valid.ok).toBe(true);
   const full=fill('CLT');
-  expect(full.index).toBe(4);
+  expect(full.index).toBe(5);
   expect(toTelegramNativeInput(full,'partner-a')).toMatchObject({
    product:'CLT',operation:'NEW',cpf:CPF,phone:'82999998888',mode:'Payment',
-   value:450,term:0,partnerId:'partner-a',automaticAuthorization:false,
+   value:450,term:0,mode:'Payment',partnerId:'partner-a',automaticAuthorization:false,
   });
   const text=telegramNativeSummary(full);
   expect(text).not.toContain(CPF);
@@ -56,7 +56,7 @@ describe('Atendimento de simulação completo no Telegram',()=>{
     expect(toTelegramNativeInput(v,'partner-a')).toMatchObject({
       product:'INSS',cpf:CPF,birthDate:'1966-06-15',
       benefitNumber:'1234567890',benefitType:32,state:'AL',
-      value:450,term:108,income:2800,illiterate:'NO',
+      value:450,term:108,mode:'Payment',income:2800,illiterate:'NO',
     });
   }
   expect(toTelegramNativeInput(refin,'p').operation).toBe('REFIN');
@@ -74,6 +74,19 @@ describe('Atendimento de simulação completo no Telegram',()=>{
     if(op==='PORT')expect(payload.value).toBe(320.2);
     else expect(payload.value).toBe(450);
   }
+ });
+ it('simula pelo valor líquido quando o parceiro escolhe VALOR',()=>{
+  let state=beginTelegramNativeSimulation({product:'CLT'});
+  const answers=['52998224725','Cliente Teste','82999998888','VALOR','8.500,00'];
+  for(const answer of answers){
+    const response=acceptTelegramNativeAnswer(state,answer);
+    if('error' in response)throw Error(response.error);
+    state=response.draft;
+  }
+  expect(state.values.mode).toBe('Liquid');
+  expect(state.values.value).toBe('8500');
+  expect(toTelegramNativeInput(state,'p')).toMatchObject({mode:'Liquid',value:8500});
+  expect(telegramNativeSummary(state)).toContain('Crédito líquido solicitado');
  });
  it('não aceita prazo inválido, data impossível, margem negativa ou parcelas abertas acima do original',()=>{
   const draft=beginTelegramNativeSimulation({product:'INSS',operation:'PORT'});
