@@ -422,7 +422,10 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 keyboard=telegramSectionMenu('PORT').keyboard;
                 response='📄 Simulação por extrato INSS pelo Telegram está em implantação. O bot NÃO baixa ou armazena o PDF enviado. Para simular agora, use o Portal do Parceiro com login ou encaminhe a solicitação pela mesa da empresa. Não envie documentos pessoais aqui.';
             }else if(menuChoice==='CLIENT'){
-                openPortal('PROFILE');
+                // The partner's profile is NOT a client-data lookup. Require a
+                // logged-in portal session and use the CLT vínculos/margem flow.
+                openPortal({product:'CLT'});
+                response+='\n\nPara consultar os dados do cliente CLT, preencha o CPF no portal e escolha “Consultar vínculos e margem”. Não envie CPF ou documentos pelo bot.';
             }else if(telegramSimulationTarget(state.section||'ROOT',menuChoice)){
                 openPortal(telegramSimulationTarget(state.section||'ROOT',menuChoice));
             }else if (command === 'número da proposta') { state.phase = 'NUMBER'; response = 'Digite o número completo da proposta.'; }
