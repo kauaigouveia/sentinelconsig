@@ -37,7 +37,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { RecordWorkspace, OperationCard, operationLabel, type RecordPresentation } from '../ui/RecordWorkspace';
+import { RecordWorkspace, OperationCard, operationLabel, initialRecordPresentation, type RecordPresentation } from '../ui/RecordWorkspace';
 import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 const SimulationImportModal=React.lazy(()=>import('./SimulationImportModal').then(module=>({default:module.SimulationImportModal})));
@@ -72,7 +72,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const journeyScope = `${StorageService.getCurrentTenantId()}:${activeUser?.id || ''}`;
   const canSetInitialStatus = hasPermission(activeUser?.role, activeUser?.customPermissions, 'simulations.update');
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
-  const [presentation, setPresentation] = useState<RecordPresentation>('list');
+  const [presentation, setPresentation] = useState<RecordPresentation>(() => initialRecordPresentation());
   const [simulations, setSimulations] = useState<SimulationRequest[]>([]);
   const [simulationsLoadError, setSimulationsLoadError] = useState<string | null>(null);
   const [isLoadingSimulations, setIsLoadingSimulations] = useState(true);

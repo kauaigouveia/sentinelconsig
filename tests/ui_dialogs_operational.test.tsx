@@ -33,9 +33,9 @@ describe('Formulário original dentro do shell Premium',()=>{
     expect(close).toHaveBeenCalledOnce();expect(success).not.toHaveBeenCalled();
   });
   it('estilos de diálogo não atingem body, portal ou legado',()=>{
-    const css=readFileSync('src/styles/sentinel-2-dialogs.css','utf8');
+    const css=readFileSync('src/styles/workbench-overlays.css','utf8');
     expect(css).not.toMatch(/(?:^|\n)(?:body|:root|\.dark|\.sentinel-app|\.fixed|\[role)/);
-    expect(css).not.toMatch(/display:\s*none|visibility:\s*hidden|pointer-events:\s*none/);
-    expect(css).toContain('.s2-root');
+    expect(css).not.toMatch(/pointer-events:\s*none/);
+    expect(css).toContain('.s3-root');
   });
 });

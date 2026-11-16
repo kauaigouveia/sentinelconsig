@@ -273,7 +273,8 @@ describe("Propostas operacional V2 — serviços inteiramente isolados", () => {
   });
   it("colunas podem ser ocultadas/restauradas sem remover os campos da tabela", () => {
     mount();
-    fireEvent.click(screen.getByRole("button", { name: "Configurar colunas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Colunas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar todas" }));
     fireEvent.click(screen.getByLabelText("CPF", { exact: true }));
     expect(
       document
@@ -323,7 +324,7 @@ describe("Propostas operacional V2 — serviços inteiramente isolados", () => {
   });
   it("todos os formulários/modais preservam lógica e controles após migração visual", () => {
     const baseline = JSON.parse(
-      readFileSync("docs/redesign-v4/blue-behavior-baseline.json", "utf8"),
+      readFileSync("docs/workbench-behavior-baseline.json", "utf8"),
     );
     for (const file of baseline.files.filter(
       (f: any) => /\/production\/(NewProductionModal|ProposalDetailModal|BulkStatusModal|ExcelImportModal|ExcelExportModal)\.tsx$/.test(f.path),
@@ -363,7 +364,8 @@ describe("Propostas operacional V2 — serviços inteiramente isolados", () => {
       screen.getByPlaceholderText("Buscar CPF, Nome, ADE ou Parceiro..."),
       { target: { value: "UNIT-1000" } },
     );
-    fireEvent.click(screen.getByRole("button", { name: "Configurar colunas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Colunas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar todas" }));
     fireEvent.click(screen.getByLabelText("CPF", { exact: true }));
     expect(document.querySelectorAll("tbody tr")).toHaveLength(1);
     try {
@@ -386,7 +388,7 @@ describe("Propostas operacional V2 — serviços inteiramente isolados", () => {
         document
           .querySelector(".p2-live-results")
           ?.getAttribute("data-hidden-columns"),
-      ).toBe("");
+      ).toBe("4 5 8 9 11 12");
       expect(screen.queryByText("UNIT-1000")).toBeNull();
       fx.scope = "unit-A";
       fx.rows = original;

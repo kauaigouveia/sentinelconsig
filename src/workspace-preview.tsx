@@ -4,7 +4,9 @@ import { Menu, Moon, Sun } from 'lucide-react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { RouterProvider } from './router';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { PreviewSidebar } from './components/redesign/PreviewSidebar';
+import { WorkbenchBrand, WorkbenchNavigation } from './components/workbench/WorkbenchNavigation';
+import { Header } from './components/layout/Header';
+import { PreviewSearch } from './components/redesign/PreviewSearch';
 import { WorkspaceHome } from './components/redesign/WorkspaceHome';
 import { galleryRows } from './components/redesign/galleryFixtures';
 import { installPreviewEnvironment } from './components/redesign/previewEnvironment';
@@ -12,13 +14,7 @@ import { visibleNavigation } from './components/redesign/navigation';
 import { operationalFamily } from './components/redesign/operationalFamilies';
 import { ToastContainer } from './components/ui/ToastContainer';
 import './index.css';
-import './styles/sentinel-2-preview.css';
-import './styles/sentinel-2-production.css';
-import './styles/sentinel-2-modules.css';
-import './styles/sentinel-2-dialogs.css';
-import './styles/sentinel-2-finishing.css';
-import './styles/workspace-refresh.css';
-import './styles/internal-workspaces.css';
+import './styles/workbench.css';
 
 installPreviewEnvironment();
 const lazyNamed = (loader: () => Promise<any>, name: string) => React.lazy(() => loader().then(module => ({default: module[name] as React.ComponentType<any>})));
@@ -96,7 +92,8 @@ const readPath = () => new URLSearchParams(window.location.search).get('view') |
 function WorkspacePreview() {
   const { isDark, toggleTheme, setTheme } = useTheme();
   const [path, setPath] = useState(readPath);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notice,setNotice] = useState('');
   const [modal, setModal] = useState<'new' | 'import' | null>(() => new URLSearchParams(window.location.search).get('modal') === 'new' ? 'new' : null);
   const [proposal, setProposal] = useState<string | null>(null);
   const previewTheme = new URLSearchParams(window.location.search).get('theme');
@@ -105,17 +102,21 @@ function WorkspacePreview() {
   const navigate = (next: string) => {
     const route = available.find(item => item.path === next || item.viewId === next);
     if (!route) return;
-    setPath(route.path);setMobileOpen(false);
+    setPath(route.path);
     const url = new URL(window.location.href);url.searchParams.set('view',route.path);window.history.pushState({},'',url);
   };
   const route = available.find(item => item.path === path);
   const Screen = route ? screens[route.viewId] : undefined;
-  return <div className="sentinel-app s2-root internal-full-preview flex w-screen overflow-hidden">
-    <PreviewSidebar role="MASTER" path={path} navigate={navigate} mobileOpen={mobileOpen} closeMobile={() => setMobileOpen(false)}/>
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="sentinel-header flex items-center justify-between gap-4"><div className="flex items-center gap-3"><button className="workspace-secondary workspace-preview-menu" aria-label="Abrir menu" onClick={() => setMobileOpen(true)}><Menu size={18}/></button><strong>{route?.title || 'Meu espaço'}</strong></div><div className="flex items-center gap-3"><span className="text-xs">Prévia · dados fictícios · gravações desativadas</span><button className="workspace-secondary" onClick={toggleTheme} aria-label={isDark ? 'Usar tema claro' : 'Usar tema escuro'}>{isDark ? <Sun size={18}/> : <Moon size={18}/>}</button></div></header>
+  const mode = new URLSearchParams(window.location.search).get('mode');
+  if (mode === 'partner') return <React.Suspense fallback={<div>Carregando portal…</div>}><PartnerPortalLayout initialTab={['dashboard','propostas','atendimento','perfil'].includes(new URLSearchParams(window.location.search).get('partnerTab') || '') ? new URLSearchParams(window.location.search).get('partnerTab') : 'dashboard'}/></React.Suspense>;
+  if (mode === 'login') return <React.Suspense fallback={<div>Carregando acesso…</div>}><LoginView onLoginSuccess={() => {}}/></React.Suspense>;
+  return <div className="sentinel-app s2-root s3-root">
+    <div className="sentinel-stage">
+      <Header leadingContent={<WorkbenchBrand onHome={() => navigate('/')}/>} redesignPreview onOpenSearch={() => setSearchOpen(true)} onOpenNotifications={() => setNotice('Prévia com dados fictícios. Notificações reais indisponíveis.')} onOpenTestRunner={() => setNotice('Os testes de produção não são executados pela prévia.')} onGlobalSearch={() => setSearchOpen(true)} searchTerm="" onNavigate={navigate}/>
+      <WorkbenchNavigation role="MASTER" path={path} navigate={navigate}/>
       <main className="sentinel-main min-h-0 flex-1 overflow-y-auto"><div className="sentinel-view-body" data-ui-module={route?.viewId} data-ui-family={route ? operationalFamily(route.viewId) : undefined}>
-        <ErrorBoundary key={path}><React.Suspense fallback={<div className="workspace-empty">Carregando tela…</div>}>
+        {notice && <div className="wb-error" role="status">{notice}<button onClick={() => setNotice('')}>Fechar</button></div>}
+        <ErrorBoundary key={path}><React.Suspense fallback={<div className="wb-empty">Carregando tela…</div>}>
           {path === '/' ? <WorkspaceHome rows={galleryRows} bottlenecks={null} role="MASTER" name="Ana Demonstração" navigate={navigate} openProposal={setProposal} newProposal={() => setModal('new')}/> : Screen ? <Screen premium onNavigate={navigate} onNavigateToView={navigate} onKanban={() => navigate('/esteira')} onOpenNewProduction={() => setModal('new')} onOpenImportExcel={() => setModal('import')} onOpenProposalDetail={setProposal}/> : <div className="workspace-empty">Selecione uma área no menu.</div>}
         </React.Suspense></ErrorBoundary>
       </div></main>
@@ -124,6 +125,7 @@ function WorkspacePreview() {
       {modal === 'new' && <NewProductionModal isOpen onClose={() => setModal(null)} onSuccess={() => setModal(null)}/>}
       {modal === 'import' && <ExcelImportModal isOpen onClose={() => setModal(null)} onImportSuccess={() => setModal(null)}/>}
       {proposal && <ProposalDetailModal proposalId={proposal} onClose={() => setProposal(null)} onProposalUpdated={() => {}}/>}
+      {searchOpen && <PreviewSearch role="MASTER" rows={galleryRows} navigate={navigate} openProposal={setProposal} recent={['/','/propostas','/simulacoes']} close={() => setSearchOpen(false)}/>}
     </React.Suspense><ToastContainer/>
   </div>;
 }

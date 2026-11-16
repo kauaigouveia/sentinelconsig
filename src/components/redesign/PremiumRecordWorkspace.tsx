@@ -13,7 +13,7 @@ export interface PremiumRecordWorkspaceProps {
 
 /** Presentation adapter. Filters, records and actions belong to the original module. */
 export function PremiumRecordWorkspace({ filters, summary, count, mode, onMode, children }: PremiumRecordWorkspaceProps) {
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   return <section className="p2-operational-workspace internal-record-workspace" aria-label="Workspace de registros">
     {summary && <details className="ui-operational-insights"><summary>Visão operacional</summary><div className="p2-operational-summary">{summary}</div></details>}
     <div className="p2-operational-toolbar">

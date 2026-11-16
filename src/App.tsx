@@ -4,25 +4,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
-import { PreviewSidebar } from './components/redesign/PreviewSidebar';
-import { WorkTabs } from './components/redesign/WorkTabs';
-import { WorkspaceHome as PreviewDashboard } from './components/redesign/WorkspaceHome';
+import { WorkbenchBrand, WorkbenchNavigation } from './components/workbench/WorkbenchNavigation';
+import { WorkspaceHome as DailyWorkspace } from './components/redesign/WorkspaceHome';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
 import { usePreviewData } from './components/redesign/PreviewData';
 import { useTaskSearch } from './components/redesign/useTaskSearch';
 import { operationalFamily } from './components/redesign/operationalFamilies';
-import { rememberDevelopmentPresentation } from './components/redesign/developmentPresentation';
-import { initialPresentation } from './components/redesign/productionPresentation';
-import './styles/sentinel-2-preview.css';
-import './styles/sentinel-2-production.css';
-import './styles/sentinel-2-modules.css';
-import './styles/sentinel-2-dialogs.css';
-import './styles/sentinel-2-finishing.css';
-import './styles/workspace-refresh.css';
+
 import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import { WorkspaceToolbar } from './components/layout/WorkspaceToolbar';
-import { RouteContextPanel } from './components/layout/RouteContextPanel';
 import { useWorkspacePreferences, workspaceKey } from './hooks/useWorkspacePreferences';
 import { useTenantBranding } from './hooks/useTenantBranding';
 import { resolveAuthenticatedBranding } from './lib/branding';
@@ -30,7 +19,6 @@ import { InstitutionalFooter } from './components/layout/InstitutionalFooter';
 
 import { ResponsibleAlçada, User } from './types';
 import { Maximize2, Minimize2, Plus, Search, Keyboard } from 'lucide-react';
-import { Breadcrumbs } from './components/ui/Breadcrumbs';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { toastService } from './components/ui/toastService';
 import { hasPermission } from './lib/permissions';
@@ -44,7 +32,6 @@ const lazyNamed = (loader: () => Promise<any>, exportName: string) =>
   React.lazy(() => loader().then(module => ({ default: module[exportName] as React.ComponentType<any> })));
 
 const ExecutiveBIDashboard = lazyNamed(() => import('./components/bi/ExecutiveBIDashboard'), 'ExecutiveBIDashboard');
-const ControlTower = lazyNamed(() => import('./components/dashboard/ControlTower'), 'ControlTower');
 const StatusBottleneckReport = lazyNamed(() => import('./components/dashboard/StatusBottleneckReport'), 'StatusBottleneckReport');
 const DigitizerHome = lazyNamed(() => import('./components/dashboard/DigitizerHome'), 'DigitizerHome');
 const ProductionList = lazyNamed(() => import('./components/production/ProductionList'), 'ProductionList');
@@ -74,7 +61,6 @@ const PlatformMasterCentral = lazyNamed(() => import('./components/saas/Platform
 const TenantSaaSCapacityView = lazyNamed(() => import('./components/admin/TenantSaaSCapacityView'), 'TenantSaaSCapacityView');
 const AnnouncementsManagement = lazyNamed(() => import('./components/admin/AnnouncementsManagement'), 'AnnouncementsManagement');
 const OperationsCentral = lazyNamed(() => import('./components/operations/OperationsCentral'), 'OperationsCentral');
-const UniversalCommandPalette = lazyNamed(() => import('./components/search/UniversalCommandPalette'), 'UniversalCommandPalette');
 const BankIntegrationsView = lazyNamed(() => import('./components/integrations/BankIntegrationsView'), 'BankIntegrationsView');
 const CentralAdministracao = lazyNamed(() => import('./components/admin/CentralAdministracao'), 'CentralAdministracao');
 const CentralPendencias = lazyNamed(() => import('./components/admin/CentralPendencias'), 'CentralPendencias');
@@ -98,9 +84,7 @@ const TenantSelectionView = lazyNamed(() => import('./components/auth/TenantSele
 const ForcePasswordChangeModal = lazyNamed(() => import('./components/auth/ForcePasswordChangeModal'), 'ForcePasswordChangeModal');
 
 function AppMainContent() {
-  const [newUI, setNewUI] = useState(() => initialPresentation((import.meta as any).env.DEV, (import.meta as any).env.VITE_SENTINEL_UI_MODE, window.location.search));
-  useEffect(() => { if ((import.meta as any).env.DEV) rememberDevelopmentPresentation(newUI); }, [newUI]);
-  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
+  const newUI = true;
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
   const [activeUser, setActiveUser] = useState<User | null>(null);
@@ -123,9 +107,7 @@ function AppMainContent() {
   } = useRouter();
 
   const preferenceKey = workspaceKey(adminContext?.targetTenantId || StorageService.getCurrentTenantId() || activeUser?.tenantId, activeUser?.id);
-  useEffect(() => {
-    if (!(import.meta as any).env.DEV) setNewUI(initialPresentation(false, (import.meta as any).env.VITE_SENTINEL_UI_MODE, ''));
-  }, [preferenceKey, activeUser?.role]);
+
   const workspace = useWorkspacePreferences(preferenceKey);
   const preview = usePreviewData(`${preferenceKey}:${activeUser?.role}:${(activeUser?.customPermissions || []).join(',')}`, newUI && isAuthenticated && !pathname.startsWith('/parceiro'));
   useEffect(() => {
@@ -283,21 +265,7 @@ function AppMainContent() {
   // Focus mode state (maximizes table and hide chrome)
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  useEffect(() => {
-    if (!isMobileNavigationOpen) return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsMobileNavigationOpen(false);
-    };
-    const handleDesktopViewport = () => {
-      if (window.matchMedia('(min-width: 768px)').matches) setIsMobileNavigationOpen(false);
-    };
-    window.addEventListener('keydown', handleEscape);
-    window.addEventListener('resize', handleDesktopViewport);
-    return () => {
-      window.removeEventListener('keydown', handleEscape);
-      window.removeEventListener('resize', handleDesktopViewport);
-    };
-  }, [isMobileNavigationOpen]);
+
 
   // Modals state
   const [isNewProductionOpen, setIsNewProductionOpen] = useState(false);
@@ -591,7 +559,6 @@ function AppMainContent() {
     );
   }
 
-  const showRouteContext = !newUI && !!activeRoute && !['torre-controle', 'home-digitador', 'producao', 'simulacoes', 'central-atendimento', 'tv-monitor'].includes(effectiveView);
 
   // RBAC route access verification
   const hasRouteAccess = activeRoute
@@ -599,37 +566,14 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? "s2-root" : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
+    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? "s2-root s3-root" : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
       <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
-      {/* Sidebar (Hidden in Focus Mode) */}
-      {!isFocusMode && (
-        <>
-          {isMobileNavigationOpen && (
-            <button
-              type="button"
-              aria-label="Fechar menu de navegação"
-              className="md:hidden fixed inset-0 z-40 bg-[var(--bg-surface-elevated)] backdrop-blur-[1px]"
-              onClick={() => setIsMobileNavigationOpen(false)}
-            />
-          )}
-          {newUI ? <PreviewSidebar favorites={workspace.favorites} recent={workspace.recent} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-symbol-v6.png'} /> : <Sidebar
-            currentView={effectiveView}
-            currentPath={pathname}
-            preferenceKey={preferenceKey}
-            activeUser={activeUser}
-            onNavigate={handleNavigate}
-            branding={branding}
-            isMobileOpen={isMobileNavigationOpen}
-            onCloseMobile={() => setIsMobileNavigationOpen(false)}
-          />}
-        </>
-      )}
-
       {/* Main Content Area */}
       <div className="sentinel-stage flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Top Header or Sleek Focus Mode Floating Bar */}
         {!isFocusMode ? (
           <Header
+            leadingContent={newUI ? <WorkbenchBrand name={branding?.companyName} logo={branding?.logoUrl} onHome={() => handleNavigate('/')}/> : undefined}
             redesignPreview={newUI}
             onToggleFavorite={newUI && hasRouteAccess && activeRoute && !activeRoute.isDynamic ? () => workspace.toggleFavorite(activeRoute.path) : undefined}
             isFavorite={!!activeRoute && workspace.favorites.includes(activeRoute.path)}
@@ -647,8 +591,6 @@ function AppMainContent() {
             onGlobalSearch={handleGlobalSearch}
             searchTerm={globalSearchTerm}
             onNavigate={handleNavigate}
-            onOpenNavigation={() => setIsMobileNavigationOpen(true)}
-            isNavigationOpen={isMobileNavigationOpen}
           />
         ) : (
           <div className="flex h-12 items-center justify-between border-b border-[var(--field-border)] bg-[var(--action)] bg-[var(--action)] px-4 text-[var(--action-ink)]  z-30 transition-transform backdrop-blur-xs">
@@ -658,7 +600,7 @@ function AppMainContent() {
                 <span>Modo Foco Ativo</span>
               </div>
               <span className="text-xs text-[var(--action-ink)] hidden sm:inline">
-                Barra lateral e cabeçalho ocultados para análise ampliada de dados
+                Cabeçalho e navegação ocultados para análise ampliada de dados
               </span>
             </div>
 
@@ -700,15 +642,10 @@ function AppMainContent() {
           </div>
         )}
 
-        {/* Breadcrumb Navigation Bar */}
-        {!newUI && !isFocusMode && effectiveView !== 'tv-monitor' && (
-          <WorkspaceToolbar route={hasRouteAccess ? activeRoute : null} user={activeUser} preferenceKey={preferenceKey} onNavigate={handleNavigate} />
-        )}
+        {newUI && !isFocusMode && <WorkbenchNavigation path={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate}/>}
 
-        {/* Dynamic Page Views */}
-        {newUI && !isFocusMode && <div className="ui-context-row"><Breadcrumbs currentView={effectiveView} onNavigate={handleNavigate}/><details className="ui-recent-pages"><summary>Páginas recentes</summary><WorkTabs key={preferenceKey} path={pathname} recent={workspace.recent} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate}/></details></div>}
         <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]' : ''}`}>
-          <div className={showRouteContext && hasRouteAccess ? 'sentinel-view-frame' : ''}><div className="sentinel-view-body" data-ui-module={newUI && hasRouteAccess ? effectiveView : undefined} data-ui-family={newUI && hasRouteAccess ? operationalFamily(effectiveView) : undefined}>
+          <div><div className="sentinel-view-body" data-ui-module={newUI && hasRouteAccess ? effectiveView : undefined} data-ui-family={newUI && hasRouteAccess ? operationalFamily(effectiveView) : undefined}>
           {is404 ? (
             <NotFoundView
               pathname={pathname}
@@ -725,14 +662,7 @@ function AppMainContent() {
           ) : (
             <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-[var(--text-secondary)]">Carregando tela...</div>}>
             <>
-              {effectiveView === 'torre-controle' && newUI && <PreviewDashboard onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
-              {effectiveView === 'torre-controle' && !newUI && (
-                <ControlTower
-                  onNavigate={handleNavigate}
-                  onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
-                />
-              )}
-
+              {effectiveView === 'torre-controle' && newUI && <DailyWorkspace onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
               {effectiveView === 'tv-monitor' && <TVOperationsMonitor />}
 
               {effectiveView === 'dashboard-executivo' && <ExecutiveBIDashboard />}
@@ -853,7 +783,7 @@ function AppMainContent() {
             </>
             </React.Suspense>
           )}
-          </div>{showRouteContext && hasRouteAccess && activeRoute && activeUser && <RouteContextPanel route={activeRoute} user={activeUser} onNavigate={handleNavigate} />}</div>
+          </div></div>
         </main>
 
         {activeUser && !isFocusMode && effectiveView !== 'tv-monitor' && (
@@ -930,12 +860,6 @@ function AppMainContent() {
       )}
       {/* Universal Search Command Palette (Ctrl+K) */}
       {isUniversalSearchOpen && newUI && <PreviewSearch tasks={taskSearch} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} rows={preview.rows} clients={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? StorageService.getClients().map(c=>({id:c.id,name:c.fullName||'Cliente não informado',cpf:c.cpf||''})) : []} openClient={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? cpf => {setGlobalSearchTerm(cpf);navigate('/clientes');} : undefined} partners={hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.view') || hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.crm.view') ? StorageService.getPartners().map(p => ({name:p.fullName,code:p.login})) : []} recent={workspace.recent} favorites={workspace.favorites} navigate={handleNavigate} openProposal={id => {setDetailProposalId(id);navigate(`/propostas/${id}`);}} close={() => setIsUniversalSearchOpen(false)} />}
-      {isUniversalSearchOpen && !newUI && <UniversalCommandPalette
-        isOpen={isUniversalSearchOpen}
-        onClose={() => setIsUniversalSearchOpen(false)}
-        onNavigate={handleNavigate}
-      />}
-
       {/* Legacy/Quick Palette */}
       {isCommandPaletteOpen && <CommandPaletteModal
         isOpen={true}

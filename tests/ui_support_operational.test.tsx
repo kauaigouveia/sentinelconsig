@@ -59,7 +59,7 @@ describe('Atendimento preservado no shell V2, sem envio externo',()=>{
     const row=container.querySelector('[role="button"]')!;
     fireEvent.keyDown(row,{key:'Enter'});
     expect(container.querySelector('.support-show-conversation')).toBeTruthy();
-    expect(screen.getByText('Detalhes da conversa').closest('details')?.open).toBe(false);
+    expect((await screen.findByText('Detalhes da conversa')).closest('details')?.open).toBe(false);
     fireEvent.click(screen.getByRole('button',{name:'← Conversas'}));
     expect(container.querySelector('.support-show-queue')).toBeTruthy();
     expect(screen.queryByText('Chamados Abertos')).toBeNull();

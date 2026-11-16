@@ -1,20 +1,16 @@
-import {BrandLogo} from '../common/BrandLogo';
 import React from 'react';
-import { Moon, Sun, ShieldCheck } from 'lucide-react';
+import { Moon, Sun, ShieldCheck, ArrowRight } from 'lucide-react';
+import { BrandLogo } from '../common/BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
-import {paletteStyle} from '../../lib/presentationPalette';
-import { SYSTEM_IDENTITY } from '../../lib/branding';
+import { paletteStyle } from '../../lib/presentationPalette';
 
-function SentinelLoginBrand(){return <BrandLogo width={260} height={96}/>;}
-
-export function AuthFrame({ company, logo, portal = false, brandColor, children }: { company: string; logo?: string | null; portal?: boolean; brandColor?:string|null; children: React.ReactNode }) {
- const {isDark,toggleTheme}=useTheme();const customLogo=logo&&!logo.startsWith('/branding/sentinel-')?logo:null;
- return <div className="sentinel-auth" style={paletteStyle(brandColor)}>
-  <main className="sentinel-auth-form-side"><button type="button" onClick={toggleTheme} className="sentinel-auth-theme" aria-label={isDark?'Usar tema claro':'Usar tema escuro'}>{isDark?<Sun size={18}/>:<Moon size={18}/>}</button>
-   <div className="sentinel-auth-card"><div className="sentinel-auth-tenant">{customLogo?<><img src={customLogo} alt={company} referrerPolicy="no-referrer" onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src='/branding/sentinel-symbol-v6.png';}}/><span>{company}</span></>:<SentinelLoginBrand/>}</div>
-    <div className="sentinel-eyebrow">{portal?'Portal do parceiro':'Área de trabalho'}</div><h1>{portal?'Bem-vindo ao seu portal':'Bom trabalho começa aqui.'}</h1><p>Entre para acompanhar sua operação.</p>{children}<div className="sentinel-auth-footer"><ShieldCheck size={14}/><span>Ambiente de {company}</span></div>
-   </div>
-  </main>
-  <aside className="sentinel-auth-story"><span className="sentinel-eyebrow">SENTINEL / OPERAÇÕES</span><div><h2>Clareza para cada<br/>decisão.</h2><p>Seu trabalho, organizado.<br/>Do primeiro contato ao contrato concluído.</p></div><ol className="sentinel-auth-flow"><li><span>01</span>Simule condições</li><li><span>02</span>Organize propostas</li><li><span>03</span>Acompanhe resultados</li></ol></aside>
+export function AuthFrame({ company, logo, portal = false, brandColor, children }: {company: string; logo?: string | null; portal?: boolean; brandColor?: string | null; children: React.ReactNode}) {
+ const {isDark,toggleTheme}=useTheme();
+ const customLogo=logo && !logo.startsWith('/branding/sentinel-') ? logo : null;
+ return <div className="sentinel-auth wb-auth" style={paletteStyle(brandColor)}>
+   <header className="wb-auth-header"><div>{customLogo ? <img src={customLogo} alt={company}/> : <BrandLogo width={152} height={48}/>}</div><button type="button" onClick={toggleTheme} aria-label={isDark ? 'Usar tema claro' : 'Usar tema escuro'}>{isDark ? <Sun size={18}/> : <Moon size={18}/>}</button></header>
+   <main className="wb-auth-layout"><section className="wb-auth-introduction"><span className="wb-eyebrow">SEU PRÓXIMO DIA DE TRABALHO COMEÇA AQUI</span><h2>Mais espaço<br/>para o que importa.</h2><p>Clientes, propostas e atendimento.<br/>Tudo conectado em uma operação mais simples.</p><ol><li><span>01</span><div><strong>Encontre o que precisa</strong><small>Uma navegação clara para cada área.</small></div><ArrowRight size={17}/></li><li><span>02</span><div><strong>Continue seu trabalho</strong><small>Da simulação ao acompanhamento da proposta.</small></div><ArrowRight size={17}/></li><li><span>03</span><div><strong>Acompanhe a operação</strong><small>Registros e ferramentas no mesmo lugar.</small></div><ArrowRight size={17}/></li></ol></section>
+   <section className="wb-auth-form"><div className="wb-auth-form-heading"><span className="wb-eyebrow">{portal ? 'PORTAL DO PARCEIRO' : 'ACESSO À PLATAFORMA'}</span><h1>Entre no seu espaço.</h1><p>{company}</p></div>{children}<footer><ShieldCheck size={14}/><span>Acesso protegido à sua conta</span></footer></section></main>
+   <footer className="wb-auth-bottom">Sentinel Consig · Sua operação, mais próxima.</footer>
  </div>;
 }

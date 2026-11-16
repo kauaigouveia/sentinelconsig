@@ -1,0 +1,39 @@
+/* Dialogs stay bound to their original data and submit handlers. */
+.s3-root :is(.fixed.inset-0,[role="dialog"]) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {color:var(--text-primary);background:var(--bg-surface);border-color:var(--field-border);font-size:13px;min-height:42px;border-radius:6px}
+.s3-root :is(.fixed.inset-0,[role="dialog"]) :is(input,select,textarea):focus-visible {outline:2px solid var(--focus);outline-offset:2px}
+.s3-root [role="dialog"] {color:var(--text-primary)}
+.s3-root :is(.fixed.inset-0,[role="dialog"]) :is(th,td) {border-color:var(--border-default)}
+.s3-root .fixed.inset-0 > [class*="max-w"] {border-radius:12px;border-color:var(--border-default);box-shadow:0 20px 80px rgb(0 0 0 / .18)}
+.s3-root [role="dialog"] > header {background:var(--bg-surface);border-color:var(--border-default)}
+.s3-root [role="dialog"] > footer {background:var(--bg-canvas);border-color:var(--border-default)}
+.s3-root .internal-proposal-modal > div {max-width:1080px;width:100%;border-radius:12px}
+.s3-root .internal-proposal-modal button[aria-pressed="true"],.s3-root .internal-proposal-modal #btn-save-all-ades {background:var(--action);color:var(--action-ink)}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table {display:block;min-width:0;width:100%;border:0}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table thead {display:none}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tbody {display:grid;gap:22px;padding:20px;background:var(--bg-canvas)}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tr {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:24px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface)}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td {display:block;min-width:0;padding:0;border:0;background:transparent}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td::before {content:attr(data-label);display:block;font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-align:left}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:first-child {grid-column:1/-1;display:flex;align-items:center;gap:8px;text-align:left;font-size:15px;color:var(--link);border-bottom:1px solid var(--border-default);padding-bottom:14px}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:first-child::before {margin:0;font-size:15px;color:inherit}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table :is(input,select,textarea) {min-height:42px;width:100%;min-width:0;padding:10px 12px;border-radius:6px;font-size:13px}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td .relative input {padding-left:36px}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td[data-empty="true"] {display:none}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:last-child {display:flex;align-items:center;gap:10px;grid-column:1/-1;padding-top:10px;border-top:1px solid var(--border-default)}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:last-child::before {content:'Remover esta proposta';margin:0;font-weight:400}
+.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table td:last-child button {min-height:38px;min-width:38px;border:1px solid var(--border-default);border-radius:6px}
+.s3-root .s2-search-backdrop {position:fixed;inset:0;z-index:90;display:flex;justify-content:center;align-items:flex-start;padding:12vh 20px 30px;background:var(--scrim)}
+.s3-root .s2-search-dialog {width:680px;max-width:100%;max-height:80dvh;display:flex;flex-direction:column;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:11px;box-shadow:0 20px 80px rgb(0 0 0 / .25);overflow:hidden}
+.s3-root .s2-search-input {display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border-default);color:var(--text-secondary)}
+.s3-root .s2-search-input input {flex:1;min-width:0;border:0;background:transparent;color:var(--text-primary);font-size:16px;outline:none}
+.s3-root .s2-search-input button {background:transparent;border:0;min-height:34px;min-width:34px;display:grid;place-items:center}
+.s3-root .s2-search-note {font-size:11px;color:var(--text-secondary);padding:14px 20px 6px}
+.s3-root .s2-search-results {overflow-y:auto;min-height:0;padding:7px 10px}
+.s3-root .s2-search-results > button {display:flex;align-items:center;gap:12px;width:100%;padding:14px 12px;background:transparent;border:0;border-radius:6px;color:var(--text-secondary);text-align:left}
+.s3-root .s2-search-results > button[data-selected="true"] {background:var(--info-bg);color:var(--link)}
+.s3-root .s2-search-results > button > span {flex:1;min-width:0}
+.s3-root .s2-search-results strong {display:block;font-size:13px;font-weight:550;color:var(--text-primary)}
+.s3-root .s2-search-results small {display:block;font-size:10px;margin-top:5px}
+.s3-root .s2-search-dialog footer {border-top:1px solid var(--border-default);padding:13px 20px;font-size:10px;color:var(--text-secondary)}
+.s3-root .s2-empty {padding:40px 20px;text-align:center;display:grid;gap:12px;justify-items:center;font-size:12px;color:var(--text-secondary)}
+@media(max-width:767px){.s3-root .s2-search-backdrop{padding:20px 12px}.s3-root .s2-search-dialog{max-height:90dvh}.s3-root :is(.fixed.inset-0,[role="dialog"]) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){font-size:16px}.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tbody{padding:10px}.s3-root .internal-proposal-modal[data-entry-layout="form"] .internal-proposal-entry-table tr{grid-template-columns:minmax(0,1fr);padding:17px}.s3-root .internal-proposal-modal>div{max-height:95dvh}.s3-root .internal-proposal-modal>div>div:last-child{flex-wrap:wrap;gap:14px}}

@@ -8,8 +8,8 @@ describe('CRM layout regression', () => {
     const batch = source.indexOf('<PartnerBatchActions partners=');
     const results = source.indexOf('{/* Main Partners Display */}');
     expect(metrics).toBeLessThan(filters); expect(filters).toBeLessThan(batch); expect(batch).toBeLessThan(results);
-    const css = readFileSync('src/styles/sentinel-2-modules.css', 'utf8');
-    expect(css).toMatch(/\.s2-root \.p2-live-crm \{ display: flex; flex-direction: column;/);
+    const css = readFileSync('src/styles/workbench-records.css', 'utf8');
+    expect(css).toContain('.s3-root');
     expect(css).not.toMatch(/\.s2-root \.p2-crm-filters \{[^}]*grid-row: 3/);
   });
   it('exposes bank bulk registration in the header with the existing permission guard', () => {

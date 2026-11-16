@@ -36,6 +36,7 @@ import { getRoleLabel } from '../../lib/roleLabels';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 
 interface HeaderProps {
+  leadingContent?: React.ReactNode;
   onOpenNotifications: () => void;
   onOpenTestRunner: () => void;
   onOpenBackupModal?: () => void;
@@ -58,6 +59,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  leadingContent,
   onOpenNotifications,
   onOpenTestRunner,
   onOpenBackupModal,
@@ -352,6 +354,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sentinel-header h-13 border-b border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 transition-transform select-none">
+      {leadingContent}
       {onOpenNavigation && (
         <button
           type="button"

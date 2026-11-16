@@ -154,13 +154,14 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             ].map((cat) => (
               <button
                 key={cat.id}
+                aria-pressed={standardCategory === cat.id}
                 onClick={() => {
                   setStandardCategory(cat.id);
                   setWaitingReturnOnly(false);
                 }}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   standardCategory === cat.id
-                    ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-2xs'
+                    ? 'bg-[var(--action)] text-[var(--action-ink)] shadow-2xs'
                     : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                 }`}
               >
@@ -175,7 +176,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             </span>
           )}
 
-          <fieldset className="w-full min-w-0 space-y-2 text-xs">
+          <details className="wb-portal-period"><summary>Filtrar por período</summary><fieldset className="w-full min-w-0 space-y-2 text-xs">
             <legend className="text-[var(--text-secondary)] font-semibold">Período</legend>
             <label className="block space-y-1">De
             <input
@@ -197,7 +198,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
               className="block w-full min-w-0 h-8 px-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs"
             />
             </label>
-          </fieldset>
+          </fieldset></details>
         </div>
       </div>
 

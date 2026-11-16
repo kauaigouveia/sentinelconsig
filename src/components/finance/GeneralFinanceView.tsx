@@ -343,20 +343,11 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
         {id: 'payable', title: 'A pagar', description: 'Saídas previstas, ainda em aberto.', icon: <ArrowUpRight size={22}/>},
         {id: 'overdue', title: 'Vencidos', description: 'Priorize os lançamentos em atraso.', icon: <Clock size={22}/>},
       ]}/>
+      <div className="wb-finance-toolbar"><label><Search size={17}/><input type="search" aria-label="Buscar lançamento financeiro" placeholder="Encontre um lançamento pela descrição" value={searchTerm} onChange={event => setSearchTerm(event.target.value)}/></label><button className="s2-button" onClick={handleExportCsv} disabled={!filteredEntries.length}><Download size={15}/>Exportar</button><button className="s2-button" disabled={isLoading} onClick={() => void loadEntries()}><RefreshCw size={15} className={isLoading ? 'animate-spin' : ''}/>Atualizar</button></div>
+      <details className="wb-filter-disclosure"><summary>Refinar lançamentos · tipo, situação e período</summary>
       {/* Filter Bar */}
       <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-3 text-xs  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] ${premium ? 'p2-finance-filters' : ''}`}>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-secondary)]" />
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={event => setSearchTerm(event.target.value)}
-              placeholder="Buscar descrição ou categoria..."
-              aria-label="Buscar lançamento financeiro"
-              className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] py-1.5 pl-8 pr-3 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
-            />
-          </div>
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
@@ -410,18 +401,8 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
             />
           </label>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
-            {filteredEntries.length} de {entries.length} registros
-          </span>
-          <button type="button" onClick={handleExportCsv} disabled={filteredEntries.length === 0} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] disabled:cursor-not-allowed disabled:opacity-90 dark:border-[var(--field-border)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-surface-elevated)]">
-            <Download className="h-3.5 w-3.5" /> Exportar CSV
-          </button>
-          <button type="button" onClick={() => void loadEntries()} disabled={isLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] disabled:opacity-90 dark:border-[var(--field-border)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-surface-elevated)]">
-            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Atualizar
-          </button>
-        </div>
       </div>
+      </details>
 
       {/* Financial Entries Table */}
       <div className={`rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] overflow-hidden  ${premium ? 'p2-finance-results' : ''}`}>

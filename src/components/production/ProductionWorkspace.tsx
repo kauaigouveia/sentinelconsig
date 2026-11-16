@@ -84,7 +84,7 @@ export function ProductionWorkspace({
   onKanban?: () => void;
   search?: React.ReactNode;
 }) {
-  const [filtersOpen, setFiltersOpen] = useState(true),
+  const [filtersOpen, setFiltersOpen] = useState(false),
     [columnsOpen, setColumnsOpen] = useState(false);
   return (
     <section

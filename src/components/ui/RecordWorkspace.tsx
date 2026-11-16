@@ -3,6 +3,9 @@ import { LayoutGrid, List, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { PremiumRecordWorkspace } from '../redesign/PremiumRecordWorkspace';
 
 export type RecordPresentation = 'cards' | 'list';
+export function initialRecordPresentation(preferList = true): RecordPresentation {
+  return preferList && !(typeof window !== 'undefined' && window.innerWidth < 768) ? 'list' : 'cards';
+}
 export function operationLabel(value?: string | null) {
   const names: Record<string, string> = { NEW: 'Novo', NOVO: 'Novo', PORT: 'Portabilidade', PORTABILIDADE: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + refinanciamento', REFIN_PORTABILIDADE: 'Portabilidade + refinanciamento', PARTNER_AUTO: 'Portal do parceiro', INSS_MULTI: 'INSS', MANUAL: 'Manual' };
   return String(value || 'Crédito').split(':').map(part => names[part] || part.replaceAll('_', ' ')).join(' · ');

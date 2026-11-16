@@ -1,0 +1,134 @@
+/* Full-width working surfaces. Filters expand above records, never beside them. */
+.s3-root .internal-record-workspace {border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);overflow:hidden}
+.s3-root :is(.p2-table-tools,.p2-operational-toolbar) {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:19px 22px;border-bottom:1px solid var(--border-subtle);flex-wrap:wrap;background:var(--bg-surface)}
+.s3-root .internal-results-heading {display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.s3-root .internal-results-heading strong {font-size:15px;font-weight:600}
+.s3-root .internal-results-heading span,.s3-root .p2-operational-toolbar > strong {font-size:11px;color:var(--text-secondary);font-weight:400}
+.s3-root .internal-record-search {padding:15px 22px;border-bottom:1px solid var(--border-subtle)}
+.s3-root .internal-inline-search {display:flex;align-items:center;gap:12px;width:min(100%,600px);color:var(--text-secondary)}
+.s3-root .internal-inline-search input {width:100%;min-width:0;padding:8px 0;border:0;background:transparent;font-size:13px}
+.s3-root .internal-record-layout {display:block;min-width:0}
+.s3-root .internal-filter-rail {padding:22px;background:var(--bg-canvas);border-bottom:1px solid var(--border-default);max-width:100%;min-width:0}
+.s3-root [hidden] {display:none!important}
+.s3-root .internal-rail-heading {display:flex;align-items:baseline;gap:16px;padding-bottom:16px;flex-wrap:wrap}
+.s3-root .internal-rail-heading strong {font-size:13px;font-weight:600}
+.s3-root .internal-rail-heading span {font-size:11px;color:var(--text-secondary)}
+.s3-root .internal-filter-rail > div:not(.internal-rail-heading) {background:transparent;border:0;border-radius:0;padding:0;box-shadow:none}
+.s3-root .internal-filter-rail .grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:14px}
+.s3-root .internal-filter-rail .grid > * {grid-column:auto;min-width:0}
+.s3-root .internal-filter-rail :is(input,select,textarea) {max-width:100%;background:var(--bg-surface)}
+.internal-filter-search-copy {display:none}
+.s3-root :is(.p2-live-results,.p2-operational-results) {min-width:0;max-width:100%;overflow:hidden}
+.s3-root .internal-summary {border-top:1px solid var(--border-subtle);padding:14px 22px;font-size:11px;color:var(--text-secondary)}
+.s3-root .internal-summary summary {cursor:pointer}
+.s3-root .internal-summary > div {padding-top:14px;display:flex;gap:16px;flex-wrap:wrap}
+.s3-root .p2-pagination {display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 22px;border-top:1px solid var(--border-default);font-size:11px;color:var(--text-secondary)}
+.s3-root .p2-pagination label {display:flex;align-items:center;gap:8px}
+.s3-root .p2-pagination select {min-height:32px;padding:4px 8px;border:1px solid var(--field-border);background:var(--bg-surface)}
+.s3-root .p2-pagination .p2-actions {margin-left:auto}
+.s3-root .p2-customize {padding:20px 22px;background:var(--bg-canvas);display:flex;gap:15px;flex-wrap:wrap;font-size:12px}
+.s3-root .p2-customize label {display:flex;align-items:center;gap:7px}
+.s3-root .internal-section-navigation {display:flex;align-items:stretch;gap:26px;overflow-x:auto;border-bottom:1px solid var(--border-default);padding:0;margin:0 0 24px;max-width:100%;scrollbar-width:thin}
+.s3-root .internal-section-navigation button {display:flex;gap:9px;align-items:center;min-width:max-content;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:13px 0;color:var(--text-secondary);text-align:left}
+.s3-root .internal-section-navigation button[aria-current="page"] {border-bottom-color:var(--link);color:var(--link)}
+.s3-root .internal-section-navigation button > span > span,.s3-root .internal-section-navigation button > svg:last-child {display:none}
+.s3-root .internal-section-navigation strong {display:flex;align-items:center;gap:8px;font-size:12px;font-weight:550;color:inherit}
+.s3-root .internal-section-navigation strong small {font-size:10px;border-radius:4px;background:var(--bg-surface-elevated);padding:2px 6px;color:var(--text-secondary)}
+.s3-root .internal-section-icon {display:flex;color:inherit}
+.s3-root .internal-section-icon svg {width:15px;height:15px}
+.s3-root .internal-page-instruction {font-size:12px;color:var(--text-secondary);margin:0 0 13px}
+.s3-root :is(.p2-live-module,.p2-live-simulations,.p2-bi-workspace,.p2-report-workspace,.p2-automation-page,.p2-intelligence-workspace) {min-width:0;background:transparent}
+.s3-root .p2-live-simulations {display:flex;flex-direction:column;gap:0}
+.s3-root .p2-live-simulations > * {min-width:0;max-width:100%}
+.s3-root .p2-live-simulations .module-command-header > div {min-width:0;max-width:100%}
+.s3-root .p2-live-simulations .module-command-header > div:last-child {flex-shrink:1;flex-wrap:wrap}
+.s3-root .p2-live-simulations td select {min-width:175px;font-size:11px!important;min-height:34px!important}
+.s3-root .operation-card-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:15px;padding:20px}
+.s3-root .operation-card {box-shadow:none;border-radius:7px;padding:20px;border-color:var(--border-default)}
+.s3-root .record-empty {padding:35px 22px;text-align:center;font-size:13px;color:var(--text-secondary)}
+.s3-root .p2-simulation-analytics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.s3-root .p2-simulation-analytics > * {min-width:0;background:var(--bg-surface);border-color:var(--border-default);border-radius:8px}
+.s3-root .p2-simulation-analytics > :first-child {grid-column:1/-1}
+.s3-root .internal-client-layout {display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
+.s3-root .internal-client-directory {min-width:0;padding:20px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);height:min(74vh,900px);position:sticky;top:0}
+.s3-root .internal-client-directory .internal-rail-heading {display:grid;gap:6px;padding-bottom:18px}
+.s3-root .internal-client-directory button[aria-pressed] {margin-top:7px;padding:13px 11px;border:0;border-left:2px solid transparent;border-radius:3px;background:transparent;box-shadow:none;--tw-ring-shadow:0 0 transparent}
+.s3-root .internal-client-directory button[aria-pressed="true"] {border-left-color:var(--link);background:var(--info-bg)}
+.s3-root .p2-client-detail {grid-column:auto;min-width:0}
+.s3-root .p2-client-profile {background:var(--bg-surface);border:1px solid var(--border-default);border-radius:8px;padding:25px}
+.s3-root .p2-client-tabs {display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border-default);padding-top:12px}
+.s3-root .p2-client-tabs button {border:0;border-bottom:2px solid transparent;border-radius:0;padding:13px 5px;font-size:11px;background:transparent;color:var(--text-secondary);min-height:42px}
+.s3-root .p2-client-tabs button[aria-current="page"] {border-bottom-color:var(--link);color:var(--link)}
+.s3-root .p2-client-tabs button[aria-current="page"] :is(span,svg) {color:inherit}
+.s3-root .p2-client-content {padding:24px;border-color:var(--border-default);border-radius:8px;min-width:0}
+.internal-directory-back {display:none}
+.s3-root .p2-live-finance {display:flex;flex-direction:column;gap:20px}
+.s3-root .p2-finance-metrics {gap:0;border:1px solid var(--border-default);background:var(--bg-surface);border-radius:8px;overflow:hidden}
+.s3-root .p2-finance-metrics > * {border:0;border-radius:0;border-right:1px solid var(--border-default);box-shadow:none;padding:22px}
+.s3-root .p2-finance-metrics > :last-child {border-right:0}
+.s3-root .p2-finance-results {border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface)}
+.wb-finance-toolbar {display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.wb-finance-toolbar > label {display:flex;gap:10px;align-items:center;background:var(--bg-surface);border:1px solid var(--field-border);border-radius:6px;padding:0 13px;flex:1;min-width:min(100%,230px)}
+.s3-root .wb-finance-toolbar input {border:0;background:transparent;padding:10px 0;width:100%;min-width:0}
+.wb-filter-disclosure {border:1px solid var(--border-default);background:var(--bg-surface);border-radius:7px}
+.wb-filter-disclosure > summary {padding:14px 18px;font-size:12px;cursor:pointer;color:var(--text-secondary)}
+.s3-root .p2-finance-filters {border:0;border-top:1px solid var(--border-default);border-radius:0;padding:20px;background:var(--bg-canvas);display:block}
+.s3-root .p2-finance-filters > div:first-child {display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.s3-root .p2-finance-filters select {max-width:240px;width:100%;background:var(--bg-surface)}
+.s3-root .p2-live-administration {min-height:0;gap:0;display:flex;flex-direction:column;background:transparent}
+.s3-root .p2-live-administration > div:first-child {background:transparent;border:0;padding:0 0 25px}
+.s3-root .p2-live-administration > div:first-child h1 {font-weight:550;font-size:28px;letter-spacing:-.04em}
+.s3-root .p2-live-administration > div:last-child {display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start}
+.s3-root .p2-live-administration > div:last-child > aside {width:auto;position:sticky;top:0;padding:0 20px 0 0;border:0;border-right:1px solid var(--border-default);background:transparent;max-height:75vh;overflow:auto}
+.s3-root .p2-live-administration > div:last-child > aside > button {display:flex;width:100%;padding:12px;font-size:12px;white-space:normal;border-radius:4px;margin-top:3px;min-height:44px}
+.s3-root .p2-live-administration > div:last-child > aside > button[aria-current="page"] {background:var(--info-bg);color:var(--link);box-shadow:none}
+.s3-root .p2-live-administration > div:last-child > aside > button[aria-current="page"] svg {color:inherit}
+.s3-root .p2-live-administration > div:last-child > main {min-width:0;padding:0;overflow:visible}
+.internal-admin-search {display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--bg-surface);border:1px solid var(--field-border);border-radius:6px;margin-bottom:16px}
+.s3-root .internal-admin-search input {background:transparent;border:0;min-width:0;width:100%;font-size:11px;padding:9px 0}
+.internal-admin-directory {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:8px;padding:0 24px}
+.internal-directory-heading {grid-column:1/-1;padding:24px 0 16px}
+.internal-directory-heading h2 {font-size:20px;font-weight:550;letter-spacing:-.025em}
+.internal-directory-heading p {font-size:12px;color:var(--text-secondary);margin-top:6px}
+.internal-admin-directory > button {display:flex;gap:15px;align-items:center;text-align:left;padding:22px 0;border:0;border-top:1px solid var(--border-subtle);background:transparent;min-width:0;cursor:pointer}
+.internal-admin-directory > button:hover strong {color:var(--link)}
+.internal-admin-directory > button > svg {color:var(--link);flex-shrink:0}
+.internal-admin-directory > button > span {flex:1;min-width:0}
+.internal-admin-directory strong {display:block;font-size:13px;font-weight:550}
+.internal-admin-directory small {display:block;color:var(--text-secondary);font-size:10px;line-height:1.6;margin-top:5px}
+.internal-bank-quick-select {display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 0;font-size:12px}
+.internal-bank-quick-select select {width:300px;max-width:100%;padding:8px 12px;border:1px solid var(--field-border);background:var(--bg-surface);border-radius:6px}
+.internal-bank-directory {padding:16px 20px;border:1px solid var(--border-default);background:var(--bg-surface);border-radius:7px}
+.internal-bank-directory summary {font-size:13px;cursor:pointer}
+.internal-bank-directory summary span {font-size:11px;color:var(--text-secondary);margin-left:16px}
+.internal-bank-directory nav {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;padding-top:20px}
+.internal-bank-directory button {display:flex;gap:9px;align-items:center;padding:12px 14px;border:1px solid var(--border-default);border-radius:5px;background:transparent;font-size:12px}
+.internal-bank-directory button[aria-current="page"] {background:var(--info-bg);color:var(--link);border-color:var(--field-border)}
+.s3-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs,.p2-automation-tabs,.module-mode-tabs) {display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--border-default);background:transparent;padding:0 0 12px;border-radius:0}
+.s3-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs,.p2-automation-tabs) button {border-radius:5px;font-size:12px;padding:10px 13px;min-height:40px}
+.s3-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs,.p2-automation-tabs) button[aria-current="page"] {background:var(--info-bg);color:var(--link)}
+.s3-root .p2-task-columns {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:20px}
+.s3-root .p2-task-columns > p {grid-column:1/-1}
+.s3-root .p2-task-columns > section {margin:0;border-radius:8px}
+.s3-root .p2-stage-navigator {display:flex;gap:12px;overflow-x:auto;padding:0 0 20px}
+.s3-root .p2-stage-label {display:none}
+.s3-root .p2-stage-navigator button {display:flex;align-items:center;gap:10px;min-width:180px;padding:16px;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-surface);font-size:12px;text-align:left}
+.s3-root .p2-stage-navigator i {display:block;width:6px;height:6px;border-radius:50%}
+.s3-root .p2-stage-navigator strong {margin-left:auto;font-size:21px;font-weight:500}
+.s3-root .p2-kanban-board {gap:18px;padding:0 0 16px;min-width:0}
+.s3-root .p2-kanban-board > div {width:305px;border-radius:7px;background:var(--bg-surface-elevated);border-color:var(--border-default)}
+.s3-root .p2-kanban-board > div > div:first-child {padding:18px;background:transparent;border-bottom:1px solid var(--border-default)}
+.s3-root .p2-live-cip .p2-cip-results,.s3-root .p2-pendency-list {background:var(--bg-surface);border-color:var(--border-default);border-radius:8px}
+.s3-root .p2-pendency-filters {padding:20px;background:var(--bg-surface);border-color:var(--border-default);border-radius:8px}
+.s3-root .support-workspace {padding:0;border:0;background:transparent;gap:0}
+.s3-root .support-toolbar {padding:0 0 22px;background:transparent;border:0}
+.s3-root .support-toolbar h1 {font-size:29px;font-weight:550;letter-spacing:-.04em}
+.s3-root .support-inbox {border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);overflow:hidden;min-height:480px}
+.s3-root .support-queue {width:330px}
+.s3-root .support-queue > div:first-child {background:var(--bg-surface);padding:18px}
+.s3-root .support-queue button {min-height:42px}
+.s3-root .support-bubble {box-shadow:none;border-radius:10px;font-size:13px}
+/* User-selected table columns apply only to the proposals results table. */
+.s3-root .p2-live-results[data-hidden-columns~="2"] tr>:nth-child(2),.s3-root .p2-live-results[data-hidden-columns~="3"] tr>:nth-child(3),.s3-root .p2-live-results[data-hidden-columns~="4"] tr>:nth-child(4),.s3-root .p2-live-results[data-hidden-columns~="5"] tr>:nth-child(5),.s3-root .p2-live-results[data-hidden-columns~="6"] tr>:nth-child(6),.s3-root .p2-live-results[data-hidden-columns~="7"] tr>:nth-child(7),.s3-root .p2-live-results[data-hidden-columns~="8"] tr>:nth-child(8),.s3-root .p2-live-results[data-hidden-columns~="9"] tr>:nth-child(9),.s3-root .p2-live-results[data-hidden-columns~="10"] tr>:nth-child(10),.s3-root .p2-live-results[data-hidden-columns~="11"] tr>:nth-child(11),.s3-root .p2-live-results[data-hidden-columns~="12"] tr>:nth-child(12) {display:none}
+@media(max-width:1000px){.s3-root .internal-client-layout{grid-template-columns:240px minmax(0,1fr);gap:18px}.s3-root .p2-live-administration>div:last-child{grid-template-columns:200px minmax(0,1fr);gap:18px}.s3-root .p2-simulation-analytics{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:767px){.s3-root .internal-client-layout,.s3-root .p2-live-administration>div:last-child{grid-template-columns:minmax(0,1fr)}.s3-root .internal-client-directory{position:static;height:65vh;padding:16px}.s3-root .internal-client-layout[data-directory-open="true"]>.p2-client-detail{display:none}.s3-root .internal-client-layout[data-directory-open="false"]>.internal-client-directory{display:none}.internal-directory-back{display:block;text-align:left;width:100%;padding:11px 14px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:5px;margin-bottom:14px;font-size:12px}.s3-root .p2-client-profile,.s3-root .p2-client-content{padding:18px}.s3-root .p2-live-administration>div:last-child>aside{position:static;border-right:0;border-bottom:1px solid var(--border-default);padding:0 0 14px;max-height:210px;overflow:auto}.internal-admin-directory{grid-template-columns:minmax(0,1fr);padding:0 18px}.internal-bank-quick-select{align-items:flex-start;flex-direction:column;gap:10px}.internal-bank-quick-select select{width:100%}.internal-bank-directory summary span{display:block;margin:8px 0 0}.s3-root .support-queue{width:100%}.s3-root .p2-task-columns{grid-template-columns:minmax(0,1fr)}.s3-root .p2-finance-metrics{gap:0}.s3-root .p2-finance-metrics>*{padding:17px;border-bottom:1px solid var(--border-default)}.s3-root .internal-section-navigation{gap:20px}.s3-root .internal-section-navigation button{padding:12px 0}.s3-root .internal-section-navigation strong{font-size:11px}.s3-root :is(.p2-table-tools,.p2-operational-toolbar){padding:16px;gap:12px}.s3-root :is(.p2-table-tools,.p2-operational-toolbar)>.p2-actions{width:100%}.s3-root .internal-record-search{padding:12px 16px}.s3-root .internal-filter-rail{padding:16px}.s3-root .p2-pagination{padding:14px 16px}.s3-root .p2-pagination>span{display:none}.s3-root .internal-inline-search input{font-size:16px}.s3-root .p2-client-tabs{gap:6px}.s3-root .p2-client-tabs button{padding:12px 7px}.s3-root .p2-finance-filters select{max-width:none}}

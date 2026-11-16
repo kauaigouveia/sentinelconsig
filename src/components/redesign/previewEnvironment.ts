@@ -33,11 +33,18 @@ export function installPreviewEnvironment() {
     if (method !== 'GET' && method !== 'HEAD') return json({error: 'Prévia de layout: alterações e consultas bancárias estão desativadas.'}, 405);
     const data: Record<string, unknown> = {
       '/api/clients': clients, '/api/proposals': proposals, '/api/statuses': statuses, '/api/partners': partners, '/api/users': [user], '/api/banks': banks, '/api/products': products, '/api/convenios': [], '/api/simulations': simulations, '/api/financial': financial,
+      '/api/partner-portal/auth/session': {authenticated:true, access:{id:'preview-access',name:'Parceiro Exemplo'},partner:{id:'preview-partner',name:'Parceiro Exemplo',code:'DEMO'},tenant:{id:tenant.id,name:tenant.name}},
+      '/api/partner-portal/proposals': {items:proposals.slice(0,6).map(item=>({...item,clientCpfMasked:'***.***.***-**',releasedValue:item.disbursedValue,statusName:item.status.name,statusColor:item.status.color,statusCode:item.status.code,standardCategory:'ESTEIRA'})),pagination:{page:1,limit:20,total:6,totalPages:1}},
+      '/api/partner-portal/support/conversations': [],
+      '/api/partner-portal/support/unread-count': {count:0},
+      '/api/partner-portal/dashboard': {partner:{name:'Parceiro Exemplo'}, metrics:{totalDisbursed:135630,totalContract:186000,totalProposals:36,inProgressCount:27,pendingCount:9,completedCount:9,waitingReturnCount:9},recentProposals:proposals.slice(0,6).map(item=>({...item,releasedValue:item.disbursedValue,statusName:item.status.name}))},
+      '/api/notifications/unread-count': {count:0}, '/api/announcements/unread-count': {count:0},
       '/api/settings/simulation-access': {enabled: true, simulationAccessEnabled: true},
       '/api/public/tenant-branding': {status: 'PLATFORM_DEFAULT', domainType: 'PLATFORM_DEFAULT', companyName: 'Sentinel Consig', primaryColor: '#225de5'},
       '/api/admin/overview': {activeUsersCount: 1, usersCount: 1, productsCount: 1, conveniosCount: 0, openPendenciesCount: 0, pendenciesCount: 0, banksCount: banks.length, activeAutomationsCount: 0},
     };
     if (url.pathname in data) return json(data[url.pathname]);
+    if (/^\/api\/clients\/[^/]+\/(notes|communications)$/.test(url.pathname)) return json([]);
     if (url.pathname.includes('/support/conversations')) return json({conversations: [], metrics: {openCount: 0, inProgressCount: 0, resolvedCount: 0, totalActive: 0, totalMessagesToday: 0}});
     return json({error: 'Esta fonte não está disponível na prévia de layout.'}, 503);
   };

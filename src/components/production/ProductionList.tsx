@@ -42,7 +42,7 @@ import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { StatusBadge } from '../ui/StatusBadge';
 import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { ActionBar } from '../ui/ActionBar';
-import { RecordWorkspace, OperationCard, operationLabel, type RecordPresentation } from '../ui/RecordWorkspace';
+import { RecordWorkspace, OperationCard, operationLabel, initialRecordPresentation, type RecordPresentation } from '../ui/RecordWorkspace';
 import { SavedFilterViews } from '../ui/SavedFilterViews';
 import { useWorkspacePreferences, workspaceKey } from '../../hooks/useWorkspacePreferences';
 import { EmptyState } from '../ui/EmptyState';
@@ -80,7 +80,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   onKanban,
   initialFilter,
 }) => {
-  const [presentation, setPresentation] = useState<RecordPresentation>(premium ? 'list' : 'cards');
+  const [presentation, setPresentation] = useState<RecordPresentation>(() => initialRecordPresentation(premium));
   const [proposals, setProposals] = useState<Proposal[]>(() => StorageService.getProposals());
   const clients = StorageService.getClients();
   const products = StorageService.getProducts();
