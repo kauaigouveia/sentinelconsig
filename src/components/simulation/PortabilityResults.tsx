@@ -15,7 +15,7 @@ export type PortabilityResult = {
   troco?: number | null;
   term?: number;
   table?: any;
-  data?: {contractAmount?:number; balance?:number};
+  data?: {contractAmount?:number; balance?:number; rate?:number; installment?:number};
   error?: string;
   skipped?: boolean;
 };
