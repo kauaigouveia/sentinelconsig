@@ -25,13 +25,15 @@ function makeHandler(deps:Record<string,any>){
 }
 function scenario(authorized=true){
  const records=new Map<string,any>();
+ const keyOf=(where:any)=>where.id??(
+    where.tenantId_configKey?.tenantId+':'+where.tenantId_configKey?.configKey);
  const sends:any[]=[];
  const config={token:'123456:sample-token',registered:true,secret:'mock'};
  const candidate={tenantId:'tenant-evolve',configKey:'TELEGRAM_BINDING_V1_partner-a',
   configValue:{chatId:'1001',linkedAt:'2026-11-10T12:00:00Z'}};
  const tx={
   systemConfig:{
-   findUnique:vi.fn(async({where:{id}}:any)=>records.get(id)||null),
+   findUnique:vi.fn(async({where}:any)=>records.get(keyOf(where))||null),
    updateMany:vi.fn(async({where,data}:any)=>{
     const current=records.get(where.id);
     if(!current||current.configValue!==where.configValue)return {count:0};
@@ -40,8 +42,8 @@ function scenario(authorized=true){
    }),
    findMany:vi.fn(async()=>[candidate]),
    upsert:vi.fn(async({where,create,update}:any)=>{
-    const old=records.get(where.id);
-    records.set(where.id,old?{...old,...update}:{...create});return records.get(where.id);
+    const id=keyOf(where),old=records.get(id);
+    records.set(id,old?{...old,...update}:{...create});return records.get(id);
    }),
    create:vi.fn(async({data}:any)=>{records.set(data.id,data);return data;}),
   },
@@ -173,6 +175,52 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   await s.send('💼 CLT');
   await s.send('💰 Simular todos os bancos');
   expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
+ });
+ it('completa INSS Novo, com confirmação explícita e saída dentro do Telegram',async()=>{
+  const s=scenario();
+  await s.send('/start');await s.send('🏛️ INSS');
+  const start=await s.send('💰 Novo INSS');
+  expect(start.text).toContain('CPF do cliente');
+  const steps=['52998224725','15/06/1966','1234567890','32','AL',
+    'PULAR','PULAR','PULAR','450,00','108','NÃO','2.800,00'];
+  for(const value of steps)await s.send(value);
+  const review=s.sends.at(-1);
+  expect(review.text).toContain('INSS');
+  expect(review.text).toContain('Confirmar simulação');
+  expect(review.text).not.toContain('52998224725');
+  const result=await s.send('✅ Confirmar simulação');
+  expect(result.text).toContain('Banco Teste');
+  const call=(s.deps.executeTelegramNativeSimulation as any).mock.calls.at(-1);
+  expect(call[1]).toBe('tenant-evolve');
+  expect(call[3].operation).toBe('NEW');
+  expect(call[3].values).toMatchObject({cpf:'52998224725',term:'108',illiterate:'NO'});
+ });
+ it('inicia portabilidade manual sem obrigar envio do extrato ou abrir portal',async()=>{
+  const s=scenario();
+  await s.send('/start');await s.send('🔄 Portabilidade INSS');
+  const start=await s.send('🔁 Portabilidade + refinanciamento');
+  expect(start.text).toContain('CPF do cliente');
+  const fields=['52998224725','15/06/1966','1234567890','32','AL',
+    'PULAR','PULAR','PULAR','237','23456789','10.500,25','84','39','320,20','350,00','108','NÃO'];
+  for(const value of fields)await s.send(value);
+  expect(s.sends.at(-1).text).toContain('Confirmar simulação');
+  await s.send('✅ Confirmar simulação');
+  const call=(s.deps.executeTelegramNativeSimulation as any).mock.calls.at(-1);
+  expect(call[3].operation).toBe('PORT_REFIN');
+  expect(call[3].values.originalInstallment).toBe('320.2');
+  expect(call[3].values.debt).toBe('10500.25');
+ });
+ it('limita a dez consultas bancárias por parceiro em quinze minutos',async()=>{
+  const s=scenario();
+  await s.send('/start');await s.send('💰 FGTS');
+  for(let i=0;i<11;i++){
+    await s.send('💰 Simular FGTS');
+    await s.send('52998224725');
+    await s.send('4');
+    const result=await s.send('✅ Confirmar simulação');
+    if(i===10)expect(result.text).toContain('Limite de consultas');
+  }
+  expect(s.deps.executeTelegramNativeSimulation).toHaveBeenCalledTimes(10);
  });
  it('não acessa ofertas sem vínculo confirmado e parceiro ativo',async()=>{
   const s=scenario(false);
