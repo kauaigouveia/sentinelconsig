@@ -1,4 +1,5 @@
 import type { SimulationRequest } from '../types';
+import { nossaFintechTableRate } from './inssEligibility';
 
 /** Spreadsheet previews are not bank approvals; their source stays explicit for review. */
 export const SPREADSHEET_PORT_REFIN_PROVIDERS = {
@@ -28,7 +29,9 @@ export function portabilityQuoteCondition(row: QuoteRow, fallbackInstallment?: n
     ? SPREADSHEET_PORT_REFIN_PROVIDERS[row.provider as keyof typeof SPREADSHEET_PORT_REFIN_PROVIDERS]
     : row.provider;
   const installment = row.data?.installment ?? row.data?.refinancing?.installmentValue ?? fallbackInstallment;
-  const rate = row.provider === 'FINANTO' ? row.table?.amount : row.data?.rate ?? row.table?.amount;
+  const rate = row.provider === 'FINANTO' ? row.table?.amount
+    : ['FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) ? row.data?.rate ?? null
+    : nossaFintechTableRate(row.table || {});
   const parsedRate = typeof rate === 'number' ? rate : Number(String(rate ?? '').replace(',', '.'));
   return {
     provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''),
