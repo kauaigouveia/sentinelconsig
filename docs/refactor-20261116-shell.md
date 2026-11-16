@@ -43,3 +43,9 @@ Nenhuma alteração em APIs, integrações, dados, `server.ts`, banco, Prisma, m
 - Os cartões de BI e de pendências são agrupados pela largura disponível do conteúdo (`@container sentinel-workspace`), em vez de depender apenas do tamanho da janela.
 - Abas analíticas podem rolar horizontalmente sem comprimir o texto; cabeçalhos e guias quebram linha.
 - Nenhuma regra financeira, API, migração, tabela de banco, segredo ou tenant foi modificado.
+
+### Validação desta correção
+- `npm ci`, `npm run lint` e `npm run build`: aprovados na revisão `e99b4144f7856a9962db14659762f6b5f5bde115`.
+- **129 testes aprovados em 16 suítes selecionadas** (23 em navegação/busca/workspace, 106 em módulos operacionais, apresentação e segurança).
+- Não foram feitas chamadas bancárias, atualizações de dados nem migrações.
+- A inspeção automática por Chromium/Playwright não pôde ser completada: a instalação do Chromium headless não é suportada pelo ambiente Linux do sandbox. Isso limita a validação visual pixel a pixel em produção; as capturas do usuário fundamentaram o diagnóstico e os testes checaram estrutura, foco e integração.
