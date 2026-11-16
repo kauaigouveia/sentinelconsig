@@ -7,7 +7,7 @@ const SHEETS = [MAIN, 'Base tabelas', 'CALENDARIO', 'Batalha Naval (2)'];
 type Cell = string | number | boolean | { formula: string };
 type Sheet = { cells: Record<string, Cell>; rows: number; cols: number };
 type Table = { sheet: string; startRow: number; startCol: number; endRow: number; columns: string[] };
-export type DaycovalWorkbook = { sheets: Record<string, Sheet>; tables: Record<string, Table>; fileName: string; hash: string; uploadedAt: string; terms: number[]; formulaHash: string; enabled?: boolean };
+export type DaycovalWorkbook = { sheets: Record<string, Sheet>; tables: Record<string, Table>; fileName: string; hash: string; uploadedAt: string; terms: number[]; formulaHash: string; enabled?: boolean; automaticValidation?: { version: string; fileHash: string; formulaHash: string; validatedAt: string; scenarios: string[] } };
 type Node = { kind: string; value?: any; args?: Node[] };
 type Range = { sheet: string; r1: number; r2: number; c1: number; c2: number };
 class CalculationError extends Error {}

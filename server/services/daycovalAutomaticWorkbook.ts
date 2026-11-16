@@ -10,7 +10,7 @@ export function prepareDaycovalWorkbook(book: AutomaticDaycovalWorkbook | null, 
   const pending = (code: string, reason: string) => ({ ready: false as const, code, reason, result: null });
   if (!book || book.enabled === false) return pending('WORKBOOK_UNAVAILABLE', 'Planilha Daycoval ausente ou desativada para a empresa.');
   if (input.product !== 'INSS' || input.operation !== 'PORT_REFIN') return pending('WORKBOOK_OPERATION_UNSUPPORTED', 'O calculador disponível atende INSS Portabilidade + Refinanciamento.');
-  if (!isPortRefinModelCompatible('DAYCOVAL',book.formulaHash)) return pending('WORKBOOK_INCOMPATIBLE', 'A estrutura de fórmulas não corresponde ao modelo Daycoval homologado no código.');
+  if (!isPortRefinModelCompatible('DAYCOVAL',book.formulaHash,book)) return pending('WORKBOOK_INCOMPATIBLE', 'A estrutura de fórmulas não corresponde ao modelo Daycoval homologado no código.');
   const validity = book;
   try {
     parseDate(today);

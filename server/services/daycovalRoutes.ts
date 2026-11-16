@@ -16,6 +16,7 @@ import { eventBus } from './pusherService.js';
 import { decodeDaycoval, encodeDaycoval, importDaycoval } from './daycovalWorkbook.js';
 import {DAYCOVAL_FORMULA_HASHES} from './daycovalModelVersions.js';
 import {compareDaycovalWorkbook} from './daycovalWorkbookCompare.js';
+import {validateDaycovalWeeklyWorkbook} from './daycovalWeeklyValidator.js';
 import {previewPortRefin} from './portRefinPreview.js';
 
 import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRatePolicies, isPortRefinModelCompatible, type SpreadsheetBank } from './portRefinWorkbooks.js';
@@ -143,7 +144,15 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
           // Parser accepts a new signature ONLY for inspection, never to activate it.
           const proposed=await importDaycoval(req.file.buffer,req.file.originalname);
           const installed=await read(ctx.tenantId,'DAYCOVAL');
-          return res.json(compareDaycovalWorkbook(proposed,installed,DAYCOVAL_FORMULA_HASHES));
+          const comparison=compareDaycovalWorkbook(proposed,installed,DAYCOVAL_FORMULA_HASHES);
+          let automaticValidation:{ok:boolean;message:string};
+          try{
+            validateDaycovalWeeklyWorkbook(proposed);
+            automaticValidation={ok:true,message:'Planilha aprovada na validação automática. Pode importar e ativar.'};
+          }catch(err:any){
+            automaticValidation={ok:false,message:String(err?.message||'Falha na validação automática').slice(0,400)};
+          }
+          return res.json({...comparison,automaticValidation});
         }catch(err:any){return res.status(422).json({error:err.message||'Planilha inválida para análise.'});}
       });
     }catch{return res.status(500).json({error:'Não foi possível analisar a planilha.'});}
@@ -182,7 +191,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
       if (!/^\d{4}-\d{2}-\d{2}$/.test(versionDate) || !Number.isFinite(Date.parse(versionDate)) ||
           new Date(versionDate).toISOString().slice(0,10) !== versionDate) return res.status(400).json({ error: 'Informe uma data válida.' });
       const book = await read(ctx.tenantId, bank);
-      if (!book || book.enabled === false || !isPortRefinModelCompatible(bank,book.formulaHash)) {
+      if (!book || book.enabled === false || !isPortRefinModelCompatible(bank,book.formulaHash,book)) {
         return res.status(409).json({error:'Não existe uma planilha Daycoval ativa e homologada para corrigir apenas a data.'});
       }
       const previousDate = (book as any).versionDate || null;
