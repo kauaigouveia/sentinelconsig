@@ -36,7 +36,7 @@ O usuário pode cancelar pelo Menu principal a qualquer momento.
 ## Considerações de segurança e LGPD
 
 - **O Telegram não é um canal com criptografia ponta a ponta para chats com bots.** A operação requer informação ao titular, base legal adequada para a consulta, minimização de dados e política de retenção. O próprio histórico de mensagens do Telegram e o provedor do serviço podem reter mensagens, mesmo quando o estado da aplicação é excluído.
-- O parceiro precisa estar previamente vinculado ao chatbot pelo Portal, e a aplicação comprova o vínculo e status ativo em cada consulta.
+- O parceiro precisa estar previamente vinculado ao chatbot pelo Portal, e a aplicação comprova o vínculo e status ativo em cada consulta. **Simulações bancárias exigem também pelo menos um acesso ao Portal do Parceiro ainda ativo e vinculado ao mesmo tenant e parceiro**; desativá-lo interrompe novas consultas do chatbot.
 - A confirmação do bot declara que o parceiro tem autorização do cliente para consultar as instituições; isso não substitui a autorização/bioidentificação exigida pelos bancos.
 - Algumas integrações precisam de consentimento **do próprio banco**, e podem retornar `PENDING` em vez de oferta. O bot **não força** consentimento, SMS nem contratação.
 - A conta Telegram vinculada ao parceiro não identifica automaticamente qual usuário individual do portal seria o responsável pelo banco BMG. O fluxo não finge possuir uma credencial de usuário nem cria acesso bancário não autorizado; bancos que exigem esse vínculo podem precisar de validação pela mesa ou pelo portal.
@@ -48,7 +48,7 @@ O usuário pode cancelar pelo Menu principal a qualquer momento.
 
 - `npm run lint`: TypeScript aprovado.
 - `npm run build`: aprovado.
-- **32 testes** em 4 suítes específicas: formulários por produto, CPF e dados inválidos, valor/parcela, contexto/empresa, menu, autorização, limite de consultas e PDF.
+- **33 testes** em 4 suítes específicas: formulários por produto, CPF e dados inválidos, valor/parcela, contexto/empresa, menu, autorização, limite de consultas e PDF.
 - **166 testes de regressão** em 15 suítes adicionais: CLT, FGTS, INSS, portabilidade, segurança multiempresa, frontend e Portal do Parceiro.
 - Os bancos e respostas nos testes foram simulados; **não** houve consulta a cliente ou conta bancária real, nem contratação real.
 
