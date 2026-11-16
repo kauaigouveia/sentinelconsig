@@ -14,7 +14,7 @@ describe('persistência auditável de parcelas portadas',()=>{
   const saved=inssSimulationDraft({operationType:'PORT_REFIN',customerData,selectedCondition});
   expect(saved.selectedCondition.portabilityBreakdown).toMatchObject({originalPortabilityTotal:902.18,adjustedPortabilityTotal:890.96,refinanceInstallment:902.18});
   expect(saved.selectedCondition.portabilityBreakdown.contracts).toHaveLength(3);
-  expect(saved.selectedCondition.reviewState).toBe('PENDING');
+  expect(saved.selectedCondition).toMatchObject({reviewState:'PENDING'});
  });
  it('recalcula totais no servidor e ignora valores adulterados no envio',()=>{
   const saved=inssSimulationDraft({operationType:'PORT_REFIN',customerData,selectedCondition:{
@@ -30,6 +30,6 @@ describe('persistência auditável de parcelas portadas',()=>{
  it('não transforma cotação Daycoval em condição bancária aprovada',()=>{
   const saved=inssSimulationDraft({operationType:'PORT_REFIN',customerData,selectedCondition});
   expect(saved.customerData.quoteReview).toMatchObject({status:'PENDING',required:true});
-  expect(saved.selectedCondition.quoteKind).toBe('SPREADSHEET_ESTIMATE');
+  expect(saved.selectedCondition).toMatchObject({quoteKind:'SPREADSHEET_ESTIMATE'});
  });
 });
