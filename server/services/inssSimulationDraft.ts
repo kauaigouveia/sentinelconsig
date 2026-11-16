@@ -1,4 +1,5 @@
 import { ageAt } from '../../src/lib/inssEligibility';
+import { buildPortRefinBreakdown } from '../../src/lib/portRefinBreakdown';
 export function inssSimulationDraft(body: any) {
   const client = body.customerData;
   const condition = body.selectedCondition;
@@ -13,6 +14,23 @@ export function inssSimulationDraft(body: any) {
   if (condition.provider === 'Paraná Banco' && (body.operationType !== 'NEW' || !condition.promoterId || !['homologation', 'production'].includes(condition.environment) || !Number.isFinite(Date.parse(condition.expiresAt)) || Date.parse(condition.expiresAt) <= Date.now())) throw new Error('Oferta Paraná vencida ou sem conexão de origem. Consulte novamente.');
   const text = (value: unknown, limit = 200) => typeof value === 'string' ? value.trim().slice(0, limit) : '';
   const fields = (value: any, keys: string[]) => Object.fromEntries(keys.map(key => [key, text(value?.[key])]));
+  // Save the documentary calculation breakdown, never a bank-approved offer.
+  // Recompute totals server-side rather than trusting client-sent aggregates.
+  const rawPortabilityBreakdown=condition.provider==='DAYCOVAL'&&spreadsheet ? condition.portabilityBreakdown : undefined;
+  const rawContracts=Array.isArray(rawPortabilityBreakdown?.contracts)&&rawPortabilityBreakdown.contracts.length<=3
+    ? rawPortabilityBreakdown.contracts : [];
+  const breakDown=rawContracts.length ? buildPortRefinBreakdown(
+    rawContracts.map((item:any,index:number)=>({
+      label:text(item.label,80)||'Contrato '+(index+1),
+      bankCode:text(item.bankCode,12),
+      contractSuffix:text(item.contractSuffix,4),
+      originalInstallment:Number(item.originalInstallment),
+      newInstallment:item.newInstallment==null?null:Number(item.newInstallment),
+      returnRate:item.returnRate==null?null:Number(item.returnRate),
+    })),
+    condition.installment
+  ):undefined;
+
   return {
     customerData: { birthDate: client.birthDate, benefitNumber: client.benefitNumber, benefitType: client.benefitType, name: text(client.name), hasInsurance: condition.provider === 'Paraná Banco' ? condition.hasInsurance === true : client.hasInsurance === true, legalRepresentative: client.legalRepresentative === true,
       ...(client.refinancing ? { refinancing: fields(client.refinancing, ['term', 'rate', 'additionalInstallment']) } : {}),
@@ -22,6 +40,6 @@ export function inssSimulationDraft(body: any) {
       ...(spreadsheet || condition.reviewRequired === true ? { quoteReview: { required: true, status: 'PENDING', message: 'Cotação estimada por planilha, aguardando conferência comercial e documental. Não constitui aprovação bancária.' } } : {}),
       ...(client.address ? { phone: text(client.phone), email: text(client.email), income: text(client.income), benefitState: text(client.benefitState, 2), benefitStartDate: text(client.benefitStartDate), address: fields(client.address, ['street', 'number', 'complement', 'district', 'city', 'state', 'zipCode']), document: fields(client.document, ['type', 'number', 'issuingDate', 'issuingEntity', 'issuingState']), creditBankAccount: fields(client.creditBankAccount, ['bank', 'branch', 'number', 'digit']) } : {}),
     },
-    selectedCondition: { provider: condition.provider, tableId: String(condition.tableId).slice(0, 100), tableName: String(condition.tableName).slice(0, 300), amount: condition.amount, installment: condition.installment ?? null, term: condition.term, rate: condition.rate ?? null, ...(spreadsheet ? { quoteKind: 'SPREADSHEET_ESTIMATE' as const, reviewRequired: true, reviewState: 'PENDING' as const, ...(typeof condition.sourceVersionDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(condition.sourceVersionDate) ? { sourceVersionDate: condition.sourceVersionDate } : {}) } : condition.reviewRequired === true ? {reviewRequired: true, reviewState: 'PENDING' as const} : {}), ...(condition.provider === 'Paraná Banco' ? { promoterId: String(condition.promoterId).slice(0, 100), environment: condition.environment, expiresAt: condition.expiresAt, hasInsurance: condition.hasInsurance === true } : {}), ...(condition.portabilityCode ? { portabilityCode: String(condition.portabilityCode).slice(0, 100) } : {}) },
+    selectedCondition: { ...(breakDown ? {portabilityBreakdown:breakDown}:{}), provider: condition.provider, tableId: String(condition.tableId).slice(0, 100), tableName: String(condition.tableName).slice(0, 300), amount: condition.amount, installment: condition.installment ?? null, term: condition.term, rate: condition.rate ?? null, ...(spreadsheet ? { quoteKind: 'SPREADSHEET_ESTIMATE' as const, reviewRequired: true, reviewState: 'PENDING' as const, ...(typeof condition.sourceVersionDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(condition.sourceVersionDate) ? { sourceVersionDate: condition.sourceVersionDate } : {}) } : condition.reviewRequired === true ? {reviewRequired: true, reviewState: 'PENDING' as const} : {}), ...(condition.provider === 'Paraná Banco' ? { promoterId: String(condition.promoterId).slice(0, 100), environment: condition.environment, expiresAt: condition.expiresAt, hasInsurance: condition.hasInsurance === true } : {}), ...(condition.portabilityCode ? { portabilityCode: String(condition.portabilityCode).slice(0, 100) } : {}) },
   };
 }

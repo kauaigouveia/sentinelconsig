@@ -41,6 +41,7 @@ import { RecordWorkspace, OperationCard, operationLabel, initialRecordPresentati
 import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
+import {PortRefinInstallmentsTable} from './PortRefinInstallmentsTable';
 const SimulationImportModal=React.lazy(()=>import('./SimulationImportModal').then(module=>({default:module.SimulationImportModal})));
 const PartnerSimulationMonthlyReport=React.lazy(()=>import('./PartnerSimulationMonthlyReport').then(module=>({default:module.PartnerSimulationMonthlyReport})));
 const InssStatementWorkspace = React.lazy(() => import('./InssStatementWorkspace'));
@@ -2385,6 +2386,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <div><dt className="text-[var(--text-secondary)]">Cliente</dt><dd>{detailTarget.customerData?.name || 'Não informado'}</dd></div>
                   {detailTarget.customerData?.birthDate && <div><dt className="text-[var(--text-secondary)]">Nascimento</dt><dd>{detailTarget.customerData.birthDate.split('-').reverse().join('/')}</dd></div>}
                 </dl>
+                {detailTarget.selectedCondition.portabilityBreakdown && <PortRefinInstallmentsTable detail={detailTarget.selectedCondition.portabilityBreakdown}/>}
                 {detailTarget.customerData && ['originContract', 'refinancing', 'address', 'document', 'creditBankAccount'].map(key => {
                   const value = detailTarget.customerData?.[key as 'address'];
                   const labels: Record<string, string> = { originContract: 'Contrato de origem', refinancing: 'Refinanciamento adicional', rate: 'Taxa mensal', additionalInstallment: 'Parcela adicional', key: 'Referência do contrato', address: 'Endereço', document: 'Documento', creditBankAccount: 'Conta para crédito', lenderCode: 'Banco de origem', contractNumber: 'Contrato', term: 'Prazo original', installmentsRemaining: 'Parcelas restantes', installmentValue: 'Parcela atual', dueBalanceValue: 'Saldo devedor', street: 'Logradouro', number: 'Número', complement: 'Complemento', district: 'Bairro', city: 'Cidade', state: 'UF', zipCode: 'CEP', type: 'Tipo', issuingDate: 'Emissão', issuingEntity: 'Órgão emissor', issuingState: 'UF emissora', bank: 'Banco', branch: 'Agência', digit: 'Dígito' };

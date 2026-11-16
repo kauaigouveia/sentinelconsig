@@ -911,7 +911,7 @@ export interface SimulationRequest {
   offerExpiresAt?: string;
   offerLostAt?: string;
   matchedAfterDeadline?: boolean;
-  selectedCondition?: { provider: string; tableId: string; tableName: string; amount: number; installment: number | null; term: number; rate: number | null; quoteKind?: 'SPREADSHEET_ESTIMATE'; reviewRequired?: boolean; reviewState?: 'PENDING'; sourceVersionDate?: string; portabilityCode?: string; promoterId?: string; environment?: string; expiresAt?: string; hasInsurance?: boolean };
+  selectedCondition?: { provider: string; tableId: string; tableName: string; amount: number; installment: number | null; term: number; rate: number | null; quoteKind?: 'SPREADSHEET_ESTIMATE'; reviewRequired?: boolean; reviewState?: 'PENDING'; sourceVersionDate?: string; portabilityBreakdown?: import('../lib/portRefinBreakdown').PortRefinPaymentBreakdown; portabilityCode?: string; promoterId?: string; environment?: string; expiresAt?: string; hasInsurance?: boolean };
   customerData?: { birthDate: string; benefitNumber: string; benefitType: number; name?: string; quoteReview?: {required: boolean; status: 'PENDING'; message: string}; hasInsurance?: boolean; legalRepresentative?: boolean; refinancing?: Record<string, string>; originContract?: Record<string, string>; originContracts?: Record<string,string>[]; phone?: string; email?: string; income?: string; benefitState?: string; benefitStartDate?: string; address?: Record<string, string>; document?: Record<string, string>; creditBankAccount?: Record<string, string> };
   id: string;
   cpf: string; // 11 raw digits normalized

@@ -1,7 +1,7 @@
 import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {PortabilityResults} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
-import {originContractSuffix} from '../../lib/portRefinBreakdown';
+import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -24,7 +24,7 @@ import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
 
-type SimulationRow = { installmentChanges?: {label?:string;originalInstallment:number;newInstallment:number|null}[]; originalInstallment?: number; contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string; sourceVersionDate?:string | null; sourceContracts?:PortabilityContractDraft[] };
+type SimulationRow = { installmentChanges?: PortedInstallmentChange[]; originalInstallment?: number; contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string; sourceVersionDate?:string | null; sourceContracts?:PortabilityContractDraft[] };
 type Props = { statement?: ReviewedInssStatement; onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
 const currency = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
