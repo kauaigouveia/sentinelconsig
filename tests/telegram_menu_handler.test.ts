@@ -97,6 +97,16 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(text).not.toContain('/parceiro?tab=simulacoes');
   expect(s.tx.partner.findFirst).not.toHaveReturnedWith(expect.objectContaining({id:'partner-a'}));
  });
+ it('envia a consulta de dados CLT ao fluxo de vínculos do cliente, sem confundir com o perfil do parceiro',async()=>{
+  const s=scenario();
+  await s.send('/start');
+  await s.send('💼 CLT');
+  const client=await s.send('🪪 Dados do cliente');
+  expect(client.text).toContain('product=CLT');
+  expect(client.text).toContain('Consultar vínculos e margem');
+  expect(client.text).not.toContain('tab=perfil');
+  expect(client.text).toContain('Não envie CPF');
+ });
  it('não recebe PDFs, não baixa extratos e mantém a navegação para empresas',async()=>{
   const s=scenario();
   await s.send('/start');
