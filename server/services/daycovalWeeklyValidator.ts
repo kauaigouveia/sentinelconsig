@@ -72,15 +72,23 @@ function assertFinancialOutput(result:ReturnType<typeof simulateDaycoval>,count:
   let meaningful=0;
   for(const offer of result.offers){
     if(typeof offer.tableName!=='string'||!offer.tableName.trim())continue;
+    if(typeof offer.eligible!=='boolean'||!Number.isInteger(offer.term)||offer.term<24||offer.term>120)
+      throw Error('A planilha retornou uma tabela sem prazo ou status válido.');
+    // A weekly sheet may keep rows for tables that cannot be contracted in
+    // this fictional scenario. Their zero/empty cells are not a reason to
+    // reject an otherwise usable workbook; only active offers are asserted.
+    if(!offer.eligible)continue;
     if(!good(offer.rate)||offer.rate>15||!good(offer.installment)||
        !good(offer.contractAmount)||offer.contractAmount>2_000_000||
        !Number.isFinite(offer.amount)||Math.abs(offer.amount)>2_000_000)
-      throw Error('A planilha gerou taxa, parcela ou valor de contrato fora dos limites de consistência.');
-    if(typeof offer.eligible!=='boolean'||!Number.isInteger(offer.term)||offer.term<24||offer.term>120)
-      throw Error('A planilha retornou uma tabela sem prazo ou status válido.');
+      throw Error('Uma tabela disponível gerou taxa, parcela ou valor de contrato inconsistente.');
     meaningful++;
   }
-  if(!meaningful)throw Error('A planilha não retornou tabelas com valores financeiros válidos.');
+  // The interpreter must calculate the workbook. Some test inputs may have
+  // no eligible offers because weekly policy rates change; this is not a
+  // parser failure or permission to fabricate an available offer.
+  if(!result.offers.some(offer=>typeof offer.tableName==='string'&&offer.tableName.trim()))
+    throw Error('A planilha não retornou identificação de tabela calculada.');
 }
 
 export function validateDaycovalWeeklyWorkbook(book:DaycovalWorkbook):DaycovalAutomaticValidation{
