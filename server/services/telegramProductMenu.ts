@@ -19,19 +19,19 @@ export function telegramMainMenu(label:string){
 export function telegramSectionMenu(section:Exclude<TelegramProductSection,'ROOT'>){
   switch(section){
     case 'CLT': return {
-      response:'💼 CLT · Menu Principal\n\n1️⃣ Simular todos os bancos\n2️⃣ Consultar proposta\n3️⃣ Consultar dados do cliente\n\nSimulações e dados pessoais exigem acesso autenticado ao Portal do Parceiro.',
+      response:'💼 CLT · Menu Principal\n\n1️⃣ Simular todos os bancos\n2️⃣ Consultar proposta\n3️⃣ Consultar dados do cliente\n\nAs simulações são feitas nesta conversa com os bancos habilitados. A autorização do titular é obrigatória; alguns bancos podem exigir confirmação adicional.',
       keyboard:[['💰 Simular todos os bancos'],['🔍 Consultar proposta','🪪 Dados do cliente'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
     case 'FGTS':return {
-      response:'💰 FGTS (Saque-Aniversário)\n\n1️⃣ Simular antecipação\n2️⃣ Consultar proposta\n\nAs condições são consultadas no Portal do Parceiro.',
+      response:'💰 FGTS (Saque-Aniversário)\n\n1️⃣ Simular antecipação\n2️⃣ Consultar proposta\n\nO bot consulta as condições disponíveis e apresenta os valores aqui, sem contratação.',
       keyboard:[['💰 Simular FGTS'],['🔍 Consultar proposta'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
     case 'INSS':return {
-      response:'🏛️ INSS · Novo e Refinanciamento\n\n1️⃣ Simular empréstimo novo\n2️⃣ Simular refinanciamento\n3️⃣ Consultar proposta\n\nOs bancos disponíveis dependem das integrações e regras ativas da empresa.',
+      response:'🏛️ INSS · Novo e Refinanciamento\n\n1️⃣ Simular empréstimo novo\n2️⃣ Simular refinanciamento\n3️⃣ Consultar proposta\n\nO bot solicitará os dados do benefício e mostrará as ofertas retornadas pelas instituições habilitadas. O resultado não é aprovação bancária.',
       keyboard:[['💰 Novo INSS','🔁 Refinanciamento INSS'],['🔍 Consultar proposta'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
     case 'PORT':return {
-      response:'🔄 INSS · Portabilidade\n\n1️⃣ Portabilidade pura\n2️⃣ Portabilidade + Refinanciamento\n3️⃣ Enviar extrato INSS em PDF para simular\n4️⃣ Consultar proposta\n\nO bot lê o extrato textual em PDF, pede confirmação dos contratos e compara as planilhas habilitadas de Daycoval, C6 e Paraná. As demais modalidades seguem no Portal.',
+      response:'🔄 INSS · Portabilidade\n\n1️⃣ Portabilidade pura\n2️⃣ Portabilidade + Refinanciamento\n3️⃣ Enviar extrato INSS em PDF para simular\n4️⃣ Consultar proposta\n\nVocê também pode informar os dados de um contrato manualmente e simular aqui no bot. Pelo extrato PDF, o bot identifica os contratos e consulta as planilhas habilitadas.',
       keyboard:[['🔄 Portabilidade pura'],['🔁 Portabilidade + refinanciamento'],['📄 Enviar extrato INSS'],['🔍 Consultar proposta'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
   }
