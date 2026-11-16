@@ -6,6 +6,7 @@ import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
 import { WorkbenchBrand, WorkbenchNavigation } from './components/workbench/WorkbenchNavigation';
+import { WorkspaceGuide } from './components/workbench/WorkspaceGuide';
 import { WorkspaceHome as DailyWorkspace } from './components/redesign/WorkspaceHome';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
 import { usePreviewData } from './components/redesign/PreviewData';
@@ -567,7 +568,7 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? "s2-root s3-root" : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
+    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? "s2-root s3-root s4-root" : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
       <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
       {/* Main Content Area */}
       <div className="sentinel-stage flex flex-1 flex-col overflow-hidden min-w-0">
@@ -646,6 +647,7 @@ function AppMainContent() {
         {newUI && !isFocusMode && <WorkbenchNavigation path={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate}/>}
 
         <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]' : ''}`}>
+          {newUI && !isFocusMode && !is404 && hasRouteAccess && activeRoute && <WorkspaceGuide pathname={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} />}
           <div><div className="sentinel-view-body" data-ui-module={newUI && hasRouteAccess ? effectiveView : undefined} data-ui-family={newUI && hasRouteAccess ? operationalFamily(effectiveView) : undefined}>
           {is404 ? (
             <NotFoundView

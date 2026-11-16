@@ -35,11 +35,14 @@ export function readPreviewRows(): PreviewRow[] {
     partners = StorageService.getPartners(),
     statuses = StorageService.getStatuses(),
     products = StorageService.getProducts();
+  const clientIndex = new Map(clients.map(client => [client.id, client]));
+  const statusIndex = new Map(statuses.map(status => [status.id, status]));
+  const bankIndex = new Map(banks.map(bank => [bank.id, bank]));
+  const partnerIndex = new Map(partners.map(partner => [partner.id, partner]));
+  const productIndex = new Map(products.map(product => [product.id, product]));
   return StorageService.getProposals().map((proposal: Proposal) => {
-    const client =
-        proposal.client || clients.find((v) => v.id === proposal.clientId),
-      status =
-        proposal.status || statuses.find((v) => v.id === proposal.statusId);
+    const client = proposal.client || clientIndex.get(proposal.clientId);
+    const status = proposal.status || statusIndex.get(proposal.statusId);
     return {
       id: proposal.id,
       notes: proposal.notes,
@@ -49,17 +52,17 @@ export function readPreviewRows(): PreviewRow[] {
       cpf: client?.cpf || proposal.clientCpf || "",
       bankId: proposal.bankId,
       bank:
-        banks.find((v) => v.id === proposal.bankId)?.name ||
+        bankIndex.get(proposal.bankId)?.name ||
         proposal.bankName ||
         "Não informado",
       partner:
         proposal.partnerName ||
-        partners.find((v) => v.id === proposal.partnerId)?.fullName ||
+        partnerIndex.get(proposal.partnerId)?.fullName ||
         proposal.partnerCode ||
         "Não informado",
       product:
         proposal.productName ||
-        products.find((v) => v.id === proposal.productId)?.name ||
+        productIndex.get(proposal.productId)?.name ||
         proposal.type ||
         "Não informado",
       status: status?.name || proposal.statusName || "Não informado",
