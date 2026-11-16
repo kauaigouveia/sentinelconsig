@@ -23,7 +23,7 @@ function makeHandler(deps:Record<string,any>){
  const code=ts.transpileModule('('+body+')',{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
  return new Function(...Object.keys(deps),'return '+code)(...Object.values(deps)) as (db:any,config:any,msg:any)=>Promise<void>;
 }
-function scenario(authorized=true){
+function scenario(authorized=true,portalEnabled=true){
  const records=new Map<string,any>();
  const keyOf=(where:any)=>where.id??(
     where.tenantId_configKey?.tenantId+':'+where.tenantId_configKey?.configKey);
@@ -47,6 +47,7 @@ function scenario(authorized=true){
    }),
    create:vi.fn(async({data}:any)=>{records.set(data.id,data);return data;}),
   },
+  partnerPortalAccess:{findFirst:vi.fn(async({where}:any)=>authorized&&portalEnabled&&where.tenantId==='tenant-evolve'&&where.partnerId==='partner-a'&&where.active?{id:'portal-access-1'}:null)},
   partner:{findFirst:vi.fn(async({where}:any)=>authorized&&where.id==='partner-a'&&where.tenantId==='tenant-evolve'
    ?{id:'partner-a',name:'Parceiro de teste',code:'010',
       tenant:{whiteLabel:{companyName:'Evolve'},tradeName:'Evolve',name:'Evolve'}}:null)},
@@ -68,7 +69,7 @@ function scenario(authorized=true){
     messages:['📊 Simulação realizada no Telegram · Banco Teste · R$ 1.500,00'],
     saved:true,offerCount:1,
   })),
-  telegramAccountStillValid:async()=>authorized,
+  telegramAccountStillValid:async()=>authorized&&portalEnabled,
   validateTelegramPdfDocument:(document:any)=>{
     if(document.mime_type!=='application/pdf'||!document.file_name?.endsWith('.pdf')||document.file_size>5e6)throw Error('PDF inválido');
   },
@@ -222,6 +223,15 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
     if(i===10)expect(result.text).toContain('Limite de consultas');
   }
   expect(s.deps.executeTelegramNativeSimulation).toHaveBeenCalledTimes(10);
+ });
+ it('bloqueia o envio de consultas bancárias com o acesso ao Portal do Parceiro revogado',async()=>{
+  const s=scenario(true,false);
+  await s.send('/start');
+  await s.send('💼 CLT');
+  const response=await s.send('💰 Simular todos os bancos');
+  expect(response.text).toContain('acesso de simulação deste parceiro está inativo');
+  expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
+  expect(s.tx.partnerPortalAccess.findFirst).toHaveBeenCalled();
  });
  it('não acessa ofertas sem vínculo confirmado e parceiro ativo',async()=>{
   const s=scenario(false);
