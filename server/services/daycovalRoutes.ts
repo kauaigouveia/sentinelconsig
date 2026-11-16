@@ -16,7 +16,7 @@ import { eventBus } from './pusherService.js';
 import { decodeDaycoval, encodeDaycoval } from './daycovalWorkbook.js';
 import {previewPortRefin} from './portRefinPreview.js';
 
-import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRatePolicies, type SpreadsheetBank } from './portRefinWorkbooks.js';
+import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRatePolicies, isPortRefinModelCompatible, type SpreadsheetBank } from './portRefinWorkbooks.js';
 export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSession: (req: Request) => Promise<any>) {
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3500000, files: 1, fields: 2 } }).single('workbook');
   const limiter = rateLimit({ windowMs: 60000, limit: 12, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Aguarde um momento antes de simular novamente.' } });
@@ -151,6 +151,35 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
       } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível importar a planilha.' }); }
     });
     } catch { return res.status(500).json({ error: 'Não foi possível acessar a configuração Daycoval da empresa.' }); }
+  });
+  // Metadata-only correction: NEVER replaces the XLSX, rates or formulas.
+  // The operator must explicitly confirm that ONLY the reference date is corrected.
+  if (bank === 'DAYCOVAL') app.patch('/api/daycoval/version-date', async (req, res) => {
+    try {
+      const ctx = await context(req, false, 'simulations.view');
+      if (!ctx?.canImport) return res.status(403).json({ error: 'Somente responsáveis por integrações podem corrigir a data da versão.' });
+      const versionDate = String(req.body?.versionDate || '');
+      if (req.body?.confirmMetadataOnly !== true) return res.status(400).json({ error: 'Confirme expressamente que apenas a data cadastrada será corrigida; nenhum novo XLSX, taxa ou tabela será aplicado.' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(versionDate) || !Number.isFinite(Date.parse(versionDate)) ||
+          new Date(versionDate).toISOString().slice(0,10) !== versionDate) return res.status(400).json({ error: 'Informe uma data válida.' });
+      const book = await read(ctx.tenantId, bank);
+      if (!book || book.enabled === false || !isPortRefinModelCompatible(bank,book.formulaHash)) {
+        return res.status(409).json({error:'Não existe uma planilha Daycoval ativa e homologada para corrigir apenas a data.'});
+      }
+      const previousDate = (book as any).versionDate || null;
+      const nextBook = {...book,versionDate};
+      await prisma.systemConfig.update({
+        where:{ tenantId_configKey:{tenantId:ctx.tenantId,configKey:KEY} },
+        data:{ configValue:encodeDaycoval(nextBook) },
+      });
+      await AuditLogService.record(prisma,{
+        tenantId:ctx.tenantId,userId:ctx.userId,userName:ctx.userName,
+        action:'DAYCOVAL_DATA_VERSAO_CORRIGIDA',entity:'SystemConfig',entityId:KEY,
+        newData:{previousDate,versionDate,hash:book.hash,formulaHash:book.formulaHash,metadataOnly:true},req,
+      });
+      return res.json({ configured:true,enabled:true,canImport:true,fileName:book.fileName,hash:book.hash,
+        uploadedAt:book.uploadedAt,terms:book.terms,versionDate,metadataOnly:true });
+    } catch { return res.status(500).json({ error:'Não foi possível corrigir a data da versão ativa.' }); }
   });
   app.patch(`/api/${routeName}/activation`, async (req, res) => {
     try {
