@@ -57,6 +57,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(()=>validateTelegramPdfDocument({...file,file_size:TELEGRAM_PDF_MAX_BYTES+1})).toThrow();
   expect(()=>validateTelegramPdfDocument({...file,file_id:'../../bad'})).toThrow();
   expect(()=>validateTelegramPdfDocument(file)).not.toThrow();
+  expect(()=>validateTelegramPdfDocument({file_id:file.file_id,file_name:file.file_name})).not.toThrow();
  });
  it('faz getFile e download somente de endereços fixos do Telegram, com conteúdo assinado',async()=>{
   const urls:string[]=[];
