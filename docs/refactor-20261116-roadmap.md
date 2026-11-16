@@ -41,3 +41,14 @@ O usuário solicitou recriar a experiência, mantendo capacidades existentes, re
 6. **Infraestrutura:** extrair o monólito por fronteiras de serviço somente com testes de contrato e observabilidade.
 
 **Escopo comprovado:** esta primeira entrega é a reorganização da navegação, não a refatoração completa do sistema. Inspeção de arquivos não substitui testes operacionais ou homologação.
+
+## Verificação executada em 16/11/2026 (entrega 1)
+
+- Checkout isolado do commit `d43677a992ce944f3cac3465fa1642425713618d`, usando sandbox temporário sem credenciais de produção.
+- `npm ci`: concluído.
+- `npm run lint` (`tsc --noEmit`): aprovado.
+- Três suítes de navegação e busca: **12/12 testes aprovados**.
+- Doze suítes de regressão UI: **181 aprovados, 26 falhas**.
+- Os **mesmos 26 testes falham na base original** `f9509d9a7e28fee54b974ceb6c17b4e995debb1c`: 25 testes de paridade estática (`ui_remaining_modules`) e 1 teste de propostas (`ui_proposals_functional`). Comparação com base realizada no mesmo sandbox e dependências. Nenhuma falha adicional demonstrada na refatoração.
+- Build Vite/Prisma/Express na Vercel: **READY**, preview do commit `d43677a`.
+- Não foram executados testes com sessões reais, instituições bancárias, produção, migrações ou dados de clientes. Falhas legadas devem ser investigadas e corrigidas, não apagadas do gate para lotes futuros.
