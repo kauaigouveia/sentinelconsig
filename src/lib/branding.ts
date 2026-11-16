@@ -84,3 +84,9 @@ export function resolveEffectiveTenantBranding(
     accentColor: whiteLabel?.accentColor || currentTenant?.whiteLabel?.accentColor || null,
   };
 }
+
+// The partner portal always identifies the product in the browser tab.
+export function browserBrandTitle(pathname: string, companyName?: string): string {
+  if (pathname === '/parceiro' || pathname.startsWith('/parceiro/')) return 'Sentinel Consig | Portal do parceiro';
+  return `${companyName || SYSTEM_IDENTITY.name} | Sentinel Consig`;
+}

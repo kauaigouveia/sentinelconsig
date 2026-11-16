@@ -1,3 +1,4 @@
+import { browserBrandTitle } from './lib/branding';
 import {ChartPatternDefinitions} from './components/ui/ChartPatterns';
 import {paletteStyle} from './lib/presentationPalette';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -227,7 +228,7 @@ function AppMainContent() {
     };
   }, [verifyServerSession]);
 
-  // Synchronize document.title by effective tenant (Fixed across all routes: ${tenantName} | Sentinel Consig)
+  // Keep the portal product title; use the effective company elsewhere.
   useEffect(() => {
     const effectiveTenantName =
       (activeUser?.role === 'PLATFORM_MASTER' && adminContext?.targetTenantName)
@@ -235,9 +236,9 @@ function AppMainContent() {
         : branding?.companyName || StorageService.getCurrentTenant()?.name || 'Sentinel Consig';
 
     if (typeof document !== 'undefined') {
-      document.title = `${effectiveTenantName} | Sentinel Consig`;
+      document.title = browserBrandTitle(pathname, effectiveTenantName);
     }
-  }, [activeUser, adminContext, branding]);
+  }, [activeUser, adminContext, branding, pathname]);
 
   // Compute effective view:
   // If at root or dashboard, respect role default (e.g. DIGITADOR -> home-digitador)

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SYSTEM_IDENTITY } from '../lib/branding';
+import { browserBrandTitle, SYSTEM_IDENTITY } from '../lib/branding';
 
 export interface TenantBranding {
   status: 'ACTIVE' | 'SUSPENDED' | 'DOMAIN_NOT_CONFIGURED' | 'PLATFORM_DEFAULT';
@@ -37,9 +37,9 @@ export function useTenantBranding() {
   const [error, setError] = useState<string | null>(null);
 
   const applyBrandingToDOM = useCallback((b: TenantBranding) => {
-    // 1. Update Title (Fixed format: ${tenantName} | Sentinel Consig)
+    // Keep the product title in the partner portal after branding resolves.
     const tenantName = b.companyName || SYSTEM_IDENTITY.name;
-    document.title = `${tenantName} | Sentinel Consig`;
+    document.title = browserBrandTitle(window.location.pathname, tenantName);
 
     // Use the company's logo when no separate favicon was registered.
     const tenantDomain = b.domainType === 'PLATFORM_SUBDOMAIN' || b.domainType === 'CUSTOM_DOMAIN';
