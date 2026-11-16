@@ -5,6 +5,7 @@ import type { Express, Request } from 'express';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { PartnerPortalService } from './partnerPortalService.js';
 import { AuditLogService } from './auditLogService.js';
+import {telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,type TelegramProductSection} from './telegramProductMenu.js';
 const BOT = 'SentinelConectaBot';
 const GLOBAL_ID = 'sentinel-telegram-global-v1';
 const COMPANY = 'TELEGRAM_COMPANY_V1';
@@ -283,7 +284,9 @@ export function registerTelegramRoutes(app:Express,db:PrismaClient,getSession:(r
 }
 type TelegramAccount={tenantId:string;partnerId:string;label:string;linkedAt:string};
 type ProposalQueryState = {
-    phase: 'MENU' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS';
+    phase: 'MENU' | 'PRODUCT' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS';
+    section?: TelegramProductSection;
+    postSelection?: 'MENU'|'QUERY';
     selected?: TelegramAccount;
     choices?: TelegramAccount[];
     page?: number;
@@ -303,8 +306,8 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         if (state.expires < Date.now()) state = { phase: 'MENU', expires: 0 };
         const text = String(msg.text || '').trim();
         const command = text.toLocaleLowerCase('pt-BR').replace(/^\/(start|menu|consultar)(?:@\w+)?$/, '/$1');
-        let response = 'Selecione Consultar proposta para pesquisar por número ou CPF. O atendimento está disponível no portal da empresa.';
-        let keyboard = [['Consultar proposta']];
+        let response = 'Conecte seu Telegram ao Portal do Parceiro para iniciar.';
+        let keyboard: string[][] = [['👤 Trocar parceiro']];
         let htmlMode = false;
         const valid = async (account: TelegramAccount) => {
             if (config.ownerTenant && account.tenantId !== config.ownerTenant) return false;
@@ -328,6 +331,48 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             if ((page + 1) * 8 < state.choices!.length) keyboard.push(['Mais empresas']);
             keyboard.push(['Menu']);
         };
+        const showMain = () => {
+            const menu=telegramMainMenu(state.selected?.label||'');
+            state.phase='MENU';state.section='ROOT';state.postSelection=undefined;
+            response=menu.response;keyboard=menu.keyboard;
+        };
+        const showProduct = (section:Exclude<TelegramProductSection,'ROOT'>) => {
+            const menu=telegramSectionMenu(section);
+            state.phase='PRODUCT';state.section=section;
+            response=menu.response;keyboard=menu.keyboard;
+        };
+        const openPortal = (target: ReturnType<typeof telegramSimulationTarget>|'PROFILE') => {
+            const link=telegramPortalLink(target!,process.env.APP_URL||'https://sentinelconsig.com.br');
+            response='✅ Seu cadastro está vinculado. Para consultar condições e salvar cotações no Sentinel, entre no Portal do Parceiro com sua própria senha:\n\n'+link+
+                '\n\nOs bancos aparecem conforme as regras e integrações habilitadas na empresa. As simulações não são aprovações bancárias.';
+            const section=state.section||'CLT';
+            const menu=telegramSectionMenu(section==='ROOT'?'CLT':section);
+            keyboard=menu.keyboard;state.phase='PRODUCT';
+        };
+        const chooseAccounts=async (after:'MENU'|'QUERY')=>{
+            const bindings=await tx.systemConfig.findMany({ where: { configKey: { startsWith: BINDING }, ...(config.ownerTenant ? { tenantId: config.ownerTenant } : {}), tenant: { status: 'ACTIVE', deletedAt: null } } });
+            const accounts:TelegramAccount[]=[];
+            for(const candidate of bindings){
+                if(!candidate.tenantId)continue;
+                const recipient=decrypt<Binding>(candidate.configValue);
+                if(recipient.chatId!==chatId)continue;
+                const account:TelegramAccount={tenantId:candidate.tenantId,partnerId:candidate.configKey.slice(BINDING.length),label:'',linkedAt:recipient.linkedAt};
+                if(!await valid(account))continue;
+                const partner=await tx.partner.findFirst({where:{id:account.partnerId,tenantId:account.tenantId},include:{tenant:{include:{whiteLabel:true}}}});
+                if(!partner)continue;
+                account.label=`${partner.tenant.whiteLabel?.companyName||partner.tenant.tradeName||partner.tenant.name} · ${partner.name} (${partner.code})`.replace(/[\\r\\n]/g,' ').slice(0,160);
+                accounts.push(account);
+            }
+            accounts.sort((a,b)=>a.label.localeCompare(b.label));
+            state={phase:'COMPANY',choices:accounts,page:0,expires:0,postSelection:after};
+            if(!accounts.length){
+                response='Para usar o Sentinel Conecta, vincule seu Telegram em Meu cadastro no Portal do Parceiro. A empresa também precisa habilitar a integração.';
+                keyboard=[['👤 Trocar parceiro']];
+            }else if(accounts.length===1){
+                state.selected=accounts[0];
+                if(after==='QUERY')method();else showMain();
+            }else showCompanies();
+        };
         const scope = (account: TelegramAccount): Prisma.ProposalWhereInput => ({ tenantId: account.tenantId, partnerId: account.partnerId, deletedAt: null });
         const detail = async (id: string) => {
             const proposal = await tx.proposal.findFirst({ where: { ...scope(state.selected!), id }, include });
@@ -347,38 +392,40 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             state.results = undefined;
             keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
         };
-        if (['menu', '/menu', '/start'].includes(command)) {
-            state = { phase: 'MENU', expires: 0 };
-        } else if (['consultar proposta', '/consultar', 'trocar empresa'].includes(command)) {
-            const bindings = await tx.systemConfig.findMany({ where: { configKey: { startsWith: BINDING }, ...(config.ownerTenant ? { tenantId: config.ownerTenant } : {}), tenant: { status: 'ACTIVE', deletedAt: null } } });
-            const accounts: TelegramAccount[] = [];
-            for (const candidate of bindings) {
-                if (!candidate.tenantId) continue;
-                const recipient = decrypt<Binding>(candidate.configValue);
-                if (recipient.chatId !== chatId) continue;
-                const account: TelegramAccount = { tenantId: candidate.tenantId, partnerId: candidate.configKey.slice(BINDING.length), label: '', linkedAt: recipient.linkedAt };
-                if (!await valid(account)) continue;
-                const partner = await tx.partner.findFirst({ where: { id: account.partnerId, tenantId: account.tenantId }, include: { tenant: { include: { whiteLabel: true } } } });
-                if (!partner) continue;
-                account.label = `${partner.tenant.whiteLabel?.companyName || partner.tenant.tradeName || partner.tenant.name} · ${partner.name} (${partner.code})`.replace(/[\r\n]/g, ' ').slice(0, 160);
-                accounts.push(account);
-            }
-            accounts.sort((a, b) => a.label.localeCompare(b.label));
-            state = { phase: 'COMPANY', choices: accounts, page: 0, expires: 0 };
-            if (!accounts.length) response = 'Para consultar propostas, vincule seu Telegram em Meu cadastro no portal da empresa. A empresa precisa habilitar os avisos Telegram.';
-            else if (accounts.length === 1) { state.selected = accounts[0]; method(); }
-            else showCompanies();
+        const menuChoice=telegramMenuAction(text,state.phase==='PRODUCT'?(state.section||'ROOT'):'ROOT',state.phase==='PRODUCT'||state.phase==='MENU');
+        if (['menu','/menu','/start'].includes(command) || menuChoice==='HOME') {
+            if(state.selected && await valid(state.selected))showMain();
+            else await chooseAccounts('MENU');
+        } else if (['/consultar'].includes(command) || menuChoice==='QUERY') {
+            if(state.selected && await valid(state.selected))method();
+            else await chooseAccounts('QUERY');
+        } else if(menuChoice==='SWITCH'){
+            await chooseAccounts('MENU');
         } else if (state.phase === 'COMPANY' && state.choices?.length) {
             if (command === 'mais empresas') state.page = Math.min(Math.floor((state.choices.length - 1) / 8), (state.page || 0) + 1);
             else if (command === 'empresas anteriores') state.page = Math.max(0, (state.page || 0) - 1);
             else if (/^[1-8]$/.test(text)) {
                 const chosen = state.choices[(state.page || 0) * 8 + Number(text) - 1];
-                if (chosen && await valid(chosen)) { state.selected = chosen; method(); }
+                if (chosen && await valid(chosen)) { state.selected = chosen; if(state.postSelection==='QUERY')method();else showMain(); }
             }
             if (state.phase === 'COMPANY') showCompanies();
         } else if (state.selected && await valid(state.selected)) {
             keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
-            if (command === 'número da proposta') { state.phase = 'NUMBER'; response = 'Digite o número completo da proposta.'; }
+            if(msg.document){
+                response='Este bot ainda não processa extratos ou arquivos PDF. Não envie documentos de clientes neste chat. Use o Portal do Parceiro e, para análise de extrato, solicite o fluxo autorizado à mesa da empresa.';
+                if(state.phase==='PRODUCT' && state.section && state.section!=='ROOT') keyboard=telegramSectionMenu(state.section).keyboard;
+                else keyboard=telegramMainMenu(state.selected.label).keyboard;
+            } else if(menuChoice==='CLT'||menuChoice==='FGTS'||menuChoice==='INSS'||menuChoice==='PORT'){
+                showProduct(menuChoice);
+            }else if(menuChoice==='EXTRACT'){
+                state.phase='PRODUCT';state.section='PORT';
+                keyboard=telegramSectionMenu('PORT').keyboard;
+                response='📄 Simulação por extrato INSS pelo Telegram está em implantação. O bot NÃO baixa ou armazena o PDF enviado. Para simular agora, use o Portal do Parceiro com login ou encaminhe a solicitação pela mesa da empresa. Não envie documentos pessoais aqui.';
+            }else if(menuChoice==='CLIENT'){
+                openPortal('PROFILE');
+            }else if(telegramSimulationTarget(state.section||'ROOT',menuChoice)){
+                openPortal(telegramSimulationTarget(state.section||'ROOT',menuChoice));
+            }else if (command === 'número da proposta') { state.phase = 'NUMBER'; response = 'Digite o número completo da proposta.'; }
             else if (command === 'cpf do cliente') { state.phase = 'CPF'; response = 'Digite o CPF completo do cliente, com ou sem pontuação.'; }
             else if (state.phase === 'RESULTS' && state.results && /^\d{1,2}$/.test(text)) {
                 const id = state.results[Number(text) - 1];
@@ -402,7 +449,8 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             } else method();
         } else {
             state = { phase: 'MENU', expires: 0 };
-            response = 'Selecione Consultar proposta para começar. Se o vínculo mudou, conecte novamente pelo portal da empresa.';
+            response = 'Para acessar os produtos, conecte seu Telegram em Meu cadastro no Portal do Parceiro. Depois, envie /start.';
+            keyboard=[['👤 Trocar parceiro']];
         }
         state.expires = Date.now() + 10 * 60_000;
         await tx.systemConfig.upsert({ where: { id: stateId }, create: { id: stateId, configKey: 'TELEGRAM_PROPOSAL_QUERY_V1', configValue: encrypt(state), isSecret: true }, update: { configValue: encrypt(state) } });
