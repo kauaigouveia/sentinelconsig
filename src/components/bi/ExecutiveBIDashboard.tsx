@@ -53,26 +53,16 @@ import {
   BIIntegrationsResponse,
   BIOperationalHealthResponse,
   BIComparisonResponse,
-  BIRankingsResponse,
   BIMetricDelta,
 } from '../../types/bi';
 import { BIApiService } from '../../services/biApiService';
+import {biRequestsForTab,type BIDataSet,type BITabId} from '../../lib/biRequestPlan';
 import { RealtimeService } from '../../services/realtimeService';
 import { formatCurrency } from '../../lib/utils';
 import { BIFilterBar } from './BIFilterBar';
 import { toastService } from '../ui/toastService';
 
-type BITab =
-  | 'visao-geral'
-  | 'producao'
-  | 'conversao'
-  | 'bancos'
-  | 'produtos'
-  | 'parceiros'
-  | 'operadores'
-  | 'sla-pendencias'
-  | 'gargalos'
-  | 'integracoes';
+type BITab=BITabId;
 
 const getInitialFilters = (): BIFilterState => {
   const params = new URLSearchParams(window.location.search);
@@ -132,7 +122,6 @@ export const ExecutiveBIDashboard: React.FC = () => {
   const [integrations, setIntegrations] = useState<BIIntegrationsResponse | null>(null);
   const [operationalHealth, setOperationalHealth] = useState<BIOperationalHealthResponse | null>(null);
   const [comparison, setComparison] = useState<BIComparisonResponse | null>(null);
-  const [_rankings, setRankings] = useState<BIRankingsResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -167,72 +156,58 @@ export const ExecutiveBIDashboard: React.FC = () => {
 
   const loadData = useCallback(async () => {
     const requestId = ++dataLoadRequestRef.current;
+    const datasets = biRequestsForTab(activeTab);
     setIsLoading(true);
     setError(null);
+
+    // Keep the original tenant-aware API calls; never cache data across users or companies.
+    const fetchers:Record<BIDataSet,()=>Promise<unknown>>={
+      overview:()=>BIApiService.fetchOverview(filters),
+      production:()=>BIApiService.fetchProduction(filters),
+      conversion:()=>BIApiService.fetchConversion(filters),
+      banks:()=>BIApiService.fetchBanks(filters),
+      products:()=>BIApiService.fetchProducts(filters),
+      convenios:()=>BIApiService.fetchConvenios(filters),
+      partners:()=>BIApiService.fetchPartners(filters),
+      operators:()=>BIApiService.fetchOperators(filters),
+      pendencies:()=>BIApiService.fetchPendencies(filters),
+      bottlenecks:()=>BIApiService.fetchBottlenecks(filters),
+      cancellations:()=>BIApiService.fetchCancellations(filters),
+      refusals:()=>BIApiService.fetchRefusals(filters),
+      integrations:()=>BIApiService.fetchIntegrations(filters),
+      operationalHealth:()=>BIApiService.fetchOperationalHealth(filters),
+      comparison:()=>BIApiService.fetchComparison(filters),
+    };
+    const assign:Record<BIDataSet,(value:any)=>void>={
+      overview:setOverview,production:setProduction,conversion:setConversion,banks:setBanks,
+      products:setProducts,convenios:setConvenios,partners:setPartners,operators:setOperators,
+      pendencies:setPendencies,bottlenecks:setBottlenecks,cancellations:setCancellations,
+      refusals:setRefusals,integrations:setIntegrations,
+      operationalHealth:setOperationalHealth,comparison:setComparison,
+    };
+    // Drop stale metrics while new filter values are loading.
+    for(const dataset of datasets)assign[dataset](null);
     try {
-      const [
-        overviewData,
-        productionData,
-        conversionData,
-        banksData,
-        productsData,
-        conveniosData,
-        partnersData,
-        operatorsData,
-        pendenciesData,
-        bottlenecksData,
-        cancellationsData,
-        refusalsData,
-        integrationsData,
-        operationalHealthData,
-        comparisonData,
-        rankingsData,
-      ] = await Promise.all([
-        BIApiService.fetchOverview(filters),
-        BIApiService.fetchProduction(filters),
-        BIApiService.fetchConversion(filters).catch(() => null),
-        BIApiService.fetchBanks(filters).catch(() => null),
-        BIApiService.fetchProducts(filters).catch(() => null),
-        BIApiService.fetchConvenios(filters).catch(() => null),
-        BIApiService.fetchPartners(filters).catch(() => null),
-        BIApiService.fetchOperators(filters).catch(() => null),
-        BIApiService.fetchPendencies(filters).catch(() => null),
-        BIApiService.fetchBottlenecks(filters).catch(() => null),
-        BIApiService.fetchCancellations(filters).catch(() => null),
-        BIApiService.fetchRefusals(filters).catch(() => null),
-        BIApiService.fetchIntegrations(filters).catch(() => null),
-        BIApiService.fetchOperationalHealth(filters).catch(() => null),
-        BIApiService.fetchComparison(filters).catch(() => null),
-        BIApiService.fetchRankings(filters).catch(() => null),
-      ]);
-
+      const result=await Promise.all(datasets.map(async dataset=>{
+        try{return await fetchers[dataset]();}
+        catch(error){
+          // The supplementary executive metrics were already non-blocking.
+          if (dataset==='comparison'||dataset==='operationalHealth'||dataset==='convenios'||
+              dataset==='cancellations'||dataset==='refusals') return null;
+          throw error;
+        }
+      }));
       if (requestId !== dataLoadRequestRef.current) return;
-
-      setOverview(overviewData);
-      setProduction(productionData);
-      setConversion(conversionData);
-      setBanks(banksData);
-      setProducts(productsData);
-      setConvenios(conveniosData);
-      setPartners(partnersData);
-      setOperators(operatorsData);
-      setPendencies(pendenciesData);
-      setBottlenecks(bottlenecksData);
-      setCancellations(cancellationsData);
-      setRefusals(refusalsData);
-      setIntegrations(integrationsData);
-      setOperationalHealth(operationalHealthData);
-      setComparison(comparisonData);
-      setRankings(rankingsData);
+      datasets.forEach((dataset,index)=>assign[dataset](result[index]));
       setLastUpdated(new Date());
-    } catch (err: any) {
+    } catch (err:any) {
       if (requestId !== dataLoadRequestRef.current) return;
-      console.error('[ExecutiveBIDashboard] Erro ao carregar dados do BI:', err);
-      setError(err?.message || 'Falha ao carregar indicadores de BI do PostgreSQL.');
+      console.error('[ExecutiveBIDashboard] Erro ao carregar dados da aba do BI:',err);
+      setError(err?.message||'Falha ao carregar indicadores de BI do PostgreSQL.');
     } finally {
       if (requestId === dataLoadRequestRef.current) setIsLoading(false);
     }
-  }, [filters]);
+  }, [filters,activeTab]);
 
   useEffect(() => {
     if (filterRefreshTimerRef.current !== null) {
