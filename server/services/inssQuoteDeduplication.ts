@@ -12,10 +12,11 @@ export function quoteOriginKeys(data:any):string[]{
     ? data.originContracts.slice(0,3) : data?.originContract ? [data.originContract] : [];
   const benefit=norm(data?.benefitNumber);
   if(!benefit)return [];
-  return [...new Set(sources.map((contract:any)=>{
+  const keys:string[] = sources.map((contract:any):string=>{
     const bank=lender(contract?.lenderCode),number=norm(contract?.contractNumber);
     return bank && number ? [benefit,bank,number].join('|') : '';
-  }).filter(Boolean))];
+  }).filter((key:string)=>key.length>0);
+  return [...new Set<string>(keys)];
 }
 export function hasPendingOriginOverlap(keys:string[], rows:{customerData:unknown}[]):boolean{
   if(!keys.length)return false;
