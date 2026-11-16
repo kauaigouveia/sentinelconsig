@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { RouterProvider } from './router';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { WorkbenchBrand, WorkbenchNavigation } from './components/workbench/WorkbenchNavigation';
+import { WorkspaceGuide } from './components/workbench/WorkspaceGuide';
 import { Header } from './components/layout/Header';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
 import { WorkspaceHome } from './components/redesign/WorkspaceHome';
@@ -110,11 +111,11 @@ function WorkspacePreview() {
   const mode = new URLSearchParams(window.location.search).get('mode');
   if (mode === 'partner') return <React.Suspense fallback={<div>Carregando portal…</div>}><PartnerPortalLayout initialTab={['dashboard','propostas','atendimento','perfil'].includes(new URLSearchParams(window.location.search).get('partnerTab') || '') ? new URLSearchParams(window.location.search).get('partnerTab') : 'dashboard'}/></React.Suspense>;
   if (mode === 'login') return <React.Suspense fallback={<div>Carregando acesso…</div>}><LoginView onLoginSuccess={() => {}}/></React.Suspense>;
-  return <div className="sentinel-app s2-root s3-root">
+  return <div className="sentinel-app s2-root s3-root s4-root">
     <div className="sentinel-stage">
       <Header leadingContent={<WorkbenchBrand onHome={() => navigate('/')}/>} redesignPreview onOpenSearch={() => setSearchOpen(true)} onOpenNotifications={() => setNotice('Prévia com dados fictícios. Notificações reais indisponíveis.')} onOpenTestRunner={() => setNotice('Os testes de produção não são executados pela prévia.')} onGlobalSearch={() => setSearchOpen(true)} searchTerm="" onNavigate={navigate}/>
       <WorkbenchNavigation role="MASTER" path={path} navigate={navigate}/>
-      <main className="sentinel-main min-h-0 flex-1 overflow-y-auto"><div className="sentinel-view-body" data-ui-module={route?.viewId} data-ui-family={route ? operationalFamily(route.viewId) : undefined}>
+      <main className="sentinel-main min-h-0 flex-1 overflow-y-auto">{path !== '/' && <WorkspaceGuide pathname={path} role="MASTER" navigate={navigate} />}<div className="sentinel-view-body" data-ui-module={route?.viewId} data-ui-family={route ? operationalFamily(route.viewId) : undefined}>
         {notice && <div className="wb-error" role="status">{notice}<button onClick={() => setNotice('')}>Fechar</button></div>}
         <ErrorBoundary key={path}><React.Suspense fallback={<div className="wb-empty">Carregando tela…</div>}>
           {path === '/' ? <WorkspaceHome rows={galleryRows} bottlenecks={null} role="MASTER" name="Ana Demonstração" navigate={navigate} openProposal={setProposal} newProposal={() => setModal('new')}/> : Screen ? <Screen premium onNavigate={navigate} onNavigateToView={navigate} onKanban={() => navigate('/esteira')} onOpenNewProduction={() => setModal('new')} onOpenImportExcel={() => setModal('import')} onOpenProposalDetail={setProposal}/> : <div className="workspace-empty">Selecione uma área no menu.</div>}

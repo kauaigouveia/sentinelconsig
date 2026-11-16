@@ -2,11 +2,21 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { WorkbenchNavigation } from '../src/components/workbench/WorkbenchNavigation';
 import { WorkspaceGuide } from '../src/components/workbench/WorkspaceGuide';
 
 afterEach(cleanup);
 describe('Sentinel v4: navegação por tarefa e orientação operacional',()=>{
+ it('garante que a prévia e a aplicação compartilham a grade lateral',()=>{
+  const app=readFileSync('src/App.tsx','utf8');
+  const preview=readFileSync('src/workspace-preview.tsx','utf8');
+  const css=readFileSync('src/components/workbench/workspace-shell.css','utf8');
+  expect(app).toContain('s2-root s3-root s4-root');
+  expect(preview).toContain('s2-root s3-root s4-root');
+  expect(css).toContain('grid-template-columns:248px minmax(0,1fr)');
+  expect(css).toContain('wb-mobile-open');
+ });
  it('mantém a navegação do módulo com contexto e o mapa completo',()=>{
   const navigate=vi.fn();
   render(<WorkbenchNavigation role="MASTER" path="/propostas/123" navigate={navigate}/>);
