@@ -282,7 +282,8 @@ export function registerTelegramRoutes(app:Express,db:PrismaClient,getSession:(r
  app.post('/api/webhooks/telegram/sentinel',webhook(false));
  app.post('/api/webhooks/telegram/company/:tenantId',webhook(true));
  app.post('/api/internal/cron/portability',wrap(async req=>{const {tenantId}=await internal(req,'proposals.update');return runPortabilityAutomation(db,{tenantId,deadline:Date.now()+45000});}));
- app.get('/api/cron/telegram-notifications',async(req,res)=>{res.setHeader('Cache-Control','no-store');const secret=process.env.CRON_SECRET;if(!secret||!equal(String(req.headers.authorization||''),`Bearer ${secret}`))return res.status(403).end();try{const deadline=Date.now()+55000;const portability=await runPortabilityAutomation(db,{deadline:Date.now()+15000}).catch(()=>({success:false,failedCount:1,details:['Falha ao processar a automação CIP. Os avisos existentes continuam sendo processados.']}));return res.json({...await TelegramNotificationService.dispatch(db,deadline),portability});}catch{return res.status(503).json({error:'Não foi possível processar os avisos Telegram.'});}});
+ app.get('/api/cron/telegram-notifications',async(req,res)=>{res.setHeader('Cache-Control','no-store');const secret=process.env.CRON_SECRET;if(!secret||!equal(String(req.headers.authorization||''),`Bearer ${secret}`))return res.status(403).end();try{// Retenção mínima: elimina estados de consulta (inclusive PDFs pendentes) após 15 min sem atividade. O cron externo deve estar configurado para garantir a limpeza de chats abandonados.
+        await db.systemConfig.deleteMany({where:{configKey:'TELEGRAM_PROPOSAL_QUERY_V1',updatedAt:{lt:new Date(Date.now()-15*60_000)}}}).catch(()=>{});const deadline=Date.now()+55000;const portability=await runPortabilityAutomation(db,{deadline:Date.now()+15000}).catch(()=>({success:false,failedCount:1,details:['Falha ao processar a automação CIP. Os avisos existentes continuam sendo processados.']}));return res.json({...await TelegramNotificationService.dispatch(db,deadline),portability});}catch{return res.status(503).json({error:'Não foi possível processar os avisos Telegram.'});}});
 }
 type TelegramAccount={tenantId:string;partnerId:string;label:string;linkedAt:string};
 type ProposalQueryState = {
@@ -318,6 +319,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         const row = await tx.systemConfig.findUnique({ where: { id: stateId } });
         let state: ProposalQueryState = row ? decrypt<ProposalQueryState>(row.configValue) : { phase: 'MENU', expires: 0 };
         if (state.expires < Date.now()) state = { phase: 'MENU', expires: 0 };
+        if (state.pendingPdf?.expires && state.pendingPdf.expires<Date.now()) { state.pendingPdf=undefined;state.phase='PDF_WAIT'; }
         const text = String(msg.text || '').trim();
         const command = text.toLocaleLowerCase('pt-BR').replace(/^\/(start|menu|consultar)(?:@\w+)?$/, '/$1');
         let response = 'Conecte seu Telegram ao Portal do Parceiro para iniciar.';
@@ -477,6 +479,12 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 response='📄 Envie agora o extrato de empréstimos INSS em PDF textual (até 5 MB, máximo 20 páginas).'+
                   '\n\nO titular deve ter autorizado a consulta. O bot apenas lê o documento em memória, extrai os contratos para conferência e calcula estimativas das planilhas ativas. O PDF original não é guardado no Sentinel.'+
                   '\n\nDepois de conferir os contratos você escolherá até 3 por comparação, e informará se o titular é analfabeto. Para cancelar, toque em Menu principal.';
+            }else if(state.phase==='PDF_WAIT'){
+                response='Envie um extrato INSS em formato PDF textual de até 5 MB como documento. Se a seleção anterior expirou, envie o arquivo novamente.';
+                keyboard=[['🏠 Menu principal']];
+            }else if(state.phase==='PDF_PROCESSING'){
+                response='Seu extrato está sendo analisado. Aguarde a lista de contratos ou volte ao Menu principal para cancelar.';
+                keyboard=[['🏠 Menu principal']];
             }else if(menuChoice==='CLIENT'){
                 // The partner's profile is NOT a client-data lookup. Require a
                 // logged-in portal session and use the CLT vínculos/margem flow.
@@ -512,7 +520,6 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             keyboard=[['👤 Trocar parceiro']];
         }
         state.expires = Date.now() + 10 * 60_000;
-        if(state.pendingPdf?.expires && state.pendingPdf.expires<Date.now())state.pendingPdf=undefined;
         await tx.systemConfig.upsert({ where: { id: stateId }, create: { id: stateId, configKey: 'TELEGRAM_PROPOSAL_QUERY_V1', configValue: encrypt(state), isSecret: true }, update: { configValue: encrypt(state) } });
         await tx.systemConfig.create({ data: { id: receiptId, configKey: 'TELEGRAM_QUERY_RECEIPT_V1', configValue: 'done', isSecret: true } });
         return { response, keyboard, htmlMode, pdfWork };

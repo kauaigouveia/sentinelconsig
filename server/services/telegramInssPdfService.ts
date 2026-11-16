@@ -40,7 +40,7 @@ const boundMessage=(text:string)=>text.slice(0,3850);
 export function validateTelegramPdfDocument(document:TelegramFile):void{
   if(!document||document.mime_type!=='application/pdf'||!String(document.file_name||'').toLowerCase().endsWith('.pdf'))
     throw Error('Envie um arquivo PDF textual válido, pelo botão de documento.');
-  if(!Number.isSafeInteger(document.file_size)||document.file_size!<200||document.file_size!>TELEGRAM_PDF_MAX_BYTES)
+  if(!Number.isSafeInteger(document.file_size)||(document.file_size as number)<200||(document.file_size as number)>TELEGRAM_PDF_MAX_BYTES)
     throw Error('O PDF deve ter entre 200 bytes e 5 MB.');
   if(!/^[A-Za-z0-9_-]{12,256}$/.test(document.file_id))
     throw Error('Identificador de documento inválido.');
@@ -237,7 +237,7 @@ export async function calculateTelegramInssQuotes(
           originalLine+'\n'+
           'Parcela do refin: '+money(Number(offer.installment))+'\n'+
           'Troco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
-          Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.');
+          (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
       }catch{ /* Missing policy data or a calculation error is not an approved quote. */ }
     }
     if(bank==='DAYCOVAL'&&chosen.length>=2){
@@ -262,7 +262,7 @@ export async function calculateTelegramInssQuotes(
           texts.push('🔄 DAYCOVAL · Unificação '+group.map(i=>selectedIndices[i]+1).join('+')+'\n'+
             breakdown.join('\n')+'\nParcela do refin: '+money(Number(offer.installment))+
             '\nTroco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
-            Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.');
+            (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
         }catch{ /* Do not claim an unavailable group as approved. */ }
       }
     }
