@@ -1,23 +1,242 @@
+import React, { useMemo, useState } from 'react';
+import { ArrowRight, Check, ClipboardCopy, Info } from 'lucide-react';
 import { higherMonthlyRateFirst } from '../../lib/monthlyRateOrder';
-import React, {useMemo, useState} from 'react';
-export type PortabilityResult = {installmentChanges?:{label?:string;originalInstallment:number;newInstallment:number|null}[];originalInstallment?:number;contractLabel?:string;provider:string;unified?:boolean;success:boolean;requiresReview?:boolean;troco?:number|null;term?:number;table?:any;error?:string;skipped?:boolean};
-const money=(n:unknown)=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-/** View-only grouping: every original condition and its object identity are retained. */
-export function PortabilityResults<T extends PortabilityResult>({rows,selected,onSelect,conditionFor}:{rows:T[];selected:T|null;onSelect:(row:T)=>void;conditionFor:(row:T)=>{installment?:number;rate?:number|string|null}}){
- const [mode,setMode]=useState(false),[bank,setBank]=useState(''),[page,setPage]=useState(0);
- const visible=rows.filter(r=>!r.skipped),banks=[...new Set(visible.map(r=>r.provider))].sort();
- const groups=useMemo(()=>{const map=new Map<string,Map<string,T[]>>();for(const row of rows){if(row.skipped||Boolean(row.unified)!==mode||(bank&&row.provider!==bank))continue;const label=row.contractLabel||'Contrato informado';if(!map.has(label))map.set(label,new Map());const providers=map.get(label)!;if(!providers.has(row.provider))providers.set(row.provider,[]);providers.get(row.provider)!.push(row);}return [...map.entries()];},[rows,mode,bank]);
- const last=Math.max(0,Math.ceil(groups.length/3)-1),current=Math.min(page,last);
- const renderCondition=(row:T,index:number)=>{const condition=conditionFor(row);const original=Number(row.originalInstallment),next=Number(condition.installment);const knownOriginal=Number.isFinite(original)&&original>0,knownNext=Number.isFinite(next)&&next>0;const changed=knownOriginal&&knownNext&&Math.round(original*100)!==Math.round(next*100);return <div key={index} className="grid gap-3 border-t border-[var(--border-default)] py-3 sm:grid-cols-[minmax(0,1fr)_auto]">
- <div><p className="text-sm font-medium">{row.table?.name||row.table?.cod_tabela||'Condição retornada'}</p>{row.success?<div className="mt-2 grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-5"><span>Troco<strong className="block text-base">{money(row.troco)}</strong></span><span>{row.unified?'Soma das parcelas originais':knownOriginal&&knownNext&&!changed&&!row.installmentChanges?.length?'Parcela mantida':'Parcela original'}<strong className="block">{knownOriginal?money(original):'Não informada'}</strong></span>{(!knownOriginal||!knownNext||changed||row.unified||!!row.installmentChanges?.length)&&<span>{row.installmentChanges?.length?'Parcela do refinanciamento':row.unified?'Nova parcela unificada':'Nova parcela'}<strong className="block">{knownNext?money(next):'Não informada'}</strong></span>}<span>Prazo<strong className="block">{row.term} meses</strong></span><span>Taxa mensal<strong className="block">{condition.rate!=null?`${condition.rate}%`:'Não informada'}</strong></span></div>:<p className="mt-2 text-sm text-[var(--text-secondary)]">{row.error||'Consulta indisponível; nenhuma oferta calculada.'}</p>}
- {!!row.installmentChanges?.length&&<div className="mt-3 rounded-lg border border-[var(--border-default)] p-3"><p className="mb-2 text-xs font-semibold">Ajuste das parcelas na portabilidade</p><div className="grid grid-cols-3 gap-2 text-xs text-[var(--text-secondary)]"><span>Contrato</span><span>Original</span><span>Ajustada pela planilha</span>{row.installmentChanges.map((change,i)=><React.Fragment key={i}><span>{change.label||`Contrato ${i+1}`}</span><strong>{Number.isFinite(change.originalInstallment)&&change.originalInstallment>0?money(change.originalInstallment):'Não informada'}</strong><strong>{change.newInstallment!==null&&Number.isFinite(change.newInstallment)&&change.newInstallment>0?money(change.newInstallment):'Não informada'}</strong></React.Fragment>)}{row.installmentChanges.length>1&&<><strong>Total</strong><strong>{row.installmentChanges.every(c=>Number.isFinite(c.originalInstallment)&&c.originalInstallment>0)?money(row.installmentChanges.reduce((sum,c)=>sum+c.originalInstallment,0)):'Não informado'}</strong><strong>{row.installmentChanges.every(c=>c.newInstallment!==null&&Number.isFinite(c.newInstallment)&&c.newInstallment>0)?money(row.installmentChanges.reduce((sum,c)=>sum+(c.newInstallment??0),0)):'Não informado'}</strong></>}</div></div>}
- {row.requiresReview&&<p className="mt-2 text-xs text-[var(--warning-text)]">Estimativa · análise para contratação pendente</p>}</div>
- {row.success&&<button type="button" disabled={row.requiresReview||!(Number(row.troco)>0)} onClick={()=>onSelect(row)} className="self-center rounded-lg border border-[var(--field-border)] px-3 py-2 text-sm disabled:opacity-60">{selected===row?'Selecionada':'Selecionar'}</button>}</div>};
- return <section className="mt-5 space-y-4" aria-label="Resultados da portabilidade"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">Resultados por contrato</h3><p className="text-xs text-[var(--text-secondary)]">Compare o troco, a parcela e o prazo. Cálculos não representam aprovação bancária.</p></div><label className="text-xs">Instituição<select value={bank} onChange={e=>{setBank(e.target.value);setPage(0);}} className="ml-2 rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2"><option value="">Todos os bancos</option>{banks.map(b=><option key={b}>{b}</option>)}</select></label></div>
- <div className="flex flex-wrap gap-2" aria-label="Tipo de resultado">{[false,true].map(value=><button type="button" key={String(value)} aria-pressed={mode===value} onClick={()=>{setMode(value);setPage(0);}} className="rounded-lg border border-[var(--field-border)] px-3 py-2 text-sm aria-pressed:bg-[var(--action)] aria-pressed:text-[var(--action-ink)]">{value?'Unificações Daycoval':'Contratos individuais'} ({new Set(visible.filter(r=>Boolean(r.unified)===value).map(r=>r.contractLabel||'Contrato informado')).size})</button>)}</div>
- {mode&&<p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-sm text-[var(--warning-text)]">Unificações são alternativas: podem incluir os mesmos contratos. Não some seus valores. Confira os contratos de cada combinação.</p>}
- {groups.length===0&&<p role="status" className="py-6 text-sm">Nenhum resultado neste filtro.</p>}
- {groups.slice(current*3,current*3+3).map(([label,providers])=><article key={label} className="rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-4"><h4 className="border-b border-[var(--border-default)] pb-3 font-semibold">{label}</h4>{[...providers].map(([provider,conditions])=>{const ordered=[...conditions].sort((a,b)=>Number(b.success)-Number(a.success)||higherMonthlyRateFirst(conditionFor(a).rate,conditionFor(b).rate)||(Number(b.troco)||0)-(Number(a.troco)||0));return <section key={provider} className="mt-3"><h5 className="text-sm font-semibold">{provider} <span className="font-normal text-[var(--text-secondary)]">· {conditions.length} condições</span></h5>{renderCondition(ordered[0],0)}{ordered.length>1&&<details><summary className="cursor-pointer py-2 text-sm text-[var(--text-secondary)]">Ver outras {ordered.length-1} condições de {provider}</summary>{ordered.slice(1).map((r,i)=>renderCondition(r,i+1))}</details>}</section>})}</article>)}
- {last>0&&<nav className="flex items-center justify-between gap-3 text-sm" aria-label="Páginas de contratos"><button type="button" disabled={current===0} onClick={()=>setPage(current-1)}>Anterior</button><span>Página {current+1} de {last+1} · {groups.length} grupos</span><button type="button" disabled={current===last} onClick={()=>setPage(current+1)}>Próxima</button></nav>}
- </section>
+import { formatMonthlyRate } from '../../lib/portRefinQuote';
+
+export type PortabilityResult = {
+  installmentChanges?: {label?: string; originalInstallment: number; newInstallment: number | null}[];
+  originalInstallment?: number;
+  contractLabel?: string;
+  provider: string;
+  unified?: boolean;
+  success: boolean;
+  requiresReview?: boolean;
+  reviewReason?: string;
+  troco?: number | null;
+  term?: number;
+  table?: any;
+  data?: {contractAmount?:number; balance?:number};
+  error?: string;
+  skipped?: boolean;
+};
+
+type Condition = { installment?: number | null; rate?: number | string | null };
+const amount = (value:unknown) => {
+  const number = Number(value);
+  return value == null || !Number.isFinite(number) || number < 0
+    ? 'Não informado'
+    : number.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+};
+const positive = (value: unknown) => value != null && Number.isFinite(Number(value)) && Number(value) > 0;
+const bankName = (provider:string) => ({
+  PARANA:'Paraná Banco',
+  C6:'C6 Bank',
+  DAYCOVAL:'Daycoval',
+  FINANTO:'Finanto',
+  FACTA:'Facta',
+} as Record<string,string>)[provider] || provider;
+
+/** Financial values are estimates from the configured calculation. Selection saves a reviewable quote, not a bank approval. */
+export function PortabilityResults<T extends PortabilityResult>({rows, selected, onSelect, conditionFor}:{
+  rows:T[];
+  selected:T|null;
+  onSelect:(row:T)=>void;
+  conditionFor:(row:T)=>Condition;
+}) {
+  const [unified, setUnified] = useState(false);
+  const [providerFilter, setProviderFilter] = useState('');
+  const [page, setPage] = useState(0);
+  const [copyStatus, setCopyStatus] = useState('');
+  const available = rows.filter(row => !row.skipped);
+  const providers = [...new Set(available.map(row => row.provider))].sort();
+  const grouped = useMemo(() => {
+    const byContract = new Map<string,Map<string,T[]>>();
+    for (const row of rows) {
+      if (row.skipped || Boolean(row.unified) !== unified || (providerFilter && row.provider !== providerFilter)) continue;
+      const label = row.contractLabel || 'Contrato informado';
+      if (!byContract.has(label)) byContract.set(label, new Map());
+      const byProvider = byContract.get(label)!;
+      if (!byProvider.has(row.provider)) byProvider.set(row.provider, []);
+      byProvider.get(row.provider)!.push(row);
+    }
+    return [...byContract.entries()];
+  }, [rows, unified, providerFilter]);
+
+  const lastPage = Math.max(0, Math.ceil(grouped.length / 3) - 1);
+  const currentPage = Math.min(page, lastPage);
+
+  const shareText = selected ? [
+    'SIMULAÇÃO INSS · PORTABILIDADE + REFINANCIAMENTO',
+    'Instituição: ' + bankName(selected.provider),
+    'Contrato: ' + (selected.contractLabel || 'Contrato informado'),
+    'Tabela: ' + (selected.table?.name || selected.table?.cod_tabela || 'Condição calculada'),
+    'Troco estimado: ' + amount(selected.troco),
+    'Parcela atual: ' + amount(selected.originalInstallment),
+    'Parcela projetada: ' + amount(conditionFor(selected).installment),
+    'Prazo: ' + (selected.term ? String(selected.term) + ' meses' : 'Não informado'),
+    'Taxa: ' + formatMonthlyRate(conditionFor(selected).rate),
+    'Estimativa sujeita à conferência documental, política de crédito e vigência da tabela. Não representa aprovação ou contratação.',
+  ].join('\n') : '';
+
+  const copy = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard indisponível');
+      await navigator.clipboard.writeText(shareText);
+      setCopyStatus('Resumo copiado. Confira as condições antes de encaminhar.');
+    } catch {
+      setCopyStatus('Selecione e copie o resumo no campo abaixo.');
+    }
+  };
+
+  const renderCondition = (row:T, key:string) => {
+    const condition = conditionFor(row);
+    const selectable = row.success && positive(row.troco);
+    const isSelected = selected === row;
+    const original = row.originalInstallment;
+    const installment = condition.installment;
+    const changed = positive(original) && positive(installment) &&
+      Math.round(Number(original) * 100) !== Math.round(Number(installment) * 100);
+    const showProjected = !positive(original) || !positive(installment) || changed || Boolean(row.unified) ||
+      Boolean(row.installmentChanges?.length);
+    return <div key={key} className={'rounded-xl border p-4 sm:p-5 ' + (isSelected
+      ? 'border-[var(--action)] bg-[var(--bg-surface-elevated)]'
+      : 'border-[var(--border-default)] bg-[var(--bg-surface)]')}>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-snug text-[var(--text-primary)]">
+            {row.table?.name || row.table?.cod_tabela || 'Condição calculada'}
+          </p>
+          {row.success ? <p className="mt-1 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <Info size={13} aria-hidden="true" />
+            {row.requiresReview ? 'Estimativa · documentação e vigência para conferir' : 'Cotação calculada · sujeita à aprovação'}
+          </p> : <p className="mt-2 text-sm text-[var(--warning-text)]">{row.error || 'Condição indisponível para este contrato.'}</p>}
+        </div>
+        {row.success && <button type="button" aria-pressed={isSelected} disabled={!selectable}
+          onClick={() => {setCopyStatus(''); onSelect(row);}}
+          className={'inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold ' +
+            (isSelected
+              ? 'bg-[var(--success-bg)] text-[var(--success-text)] ring-1 ring-[var(--success-border)]'
+              : 'bg-[var(--action)] text-[var(--action-ink)]') +
+            ' disabled:cursor-not-allowed disabled:opacity-50'}>
+          {isSelected ? <Check size={15} aria-hidden="true"/> : <ArrowRight size={15} aria-hidden="true"/>}
+          {isSelected ? 'Cotação selecionada' : 'Selecionar cotação'}
+        </button>}
+      </div>
+      {row.success && <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[var(--bg-canvas)] p-3">
+          <span className="text-[11px] font-medium text-[var(--text-secondary)]">Troco estimado para o cliente</span>
+          <strong className="mt-1 block break-words text-xl font-bold tabular-nums text-[var(--success-text)]">{amount(row.troco)}</strong>
+        </div>
+        <div className="min-w-0 p-2">
+          <span className="block text-[11px] text-[var(--text-secondary)]">Parcela atual</span>
+          <strong className="mt-1 block text-base tabular-nums">{amount(original)}</strong>
+        </div>
+        <div className="min-w-0 p-2">
+          <span className="block text-[11px] text-[var(--text-secondary)]">{showProjected ? (row.unified ? 'Parcela unificada projetada' : 'Nova parcela do refinanciamento') : 'Parcela mantida'}</span>
+          <strong className="mt-1 block text-base tabular-nums">{amount(installment)}</strong>
+        </div>
+        <div className="min-w-0 p-2">
+          <span className="block text-[11px] text-[var(--text-secondary)]">Prazo e taxa mensal</span>
+          <strong className="mt-1 block text-sm tabular-nums">{positive(row.term) ? String(row.term) + ' meses' : 'Prazo não informado'}</strong>
+          <span className="mt-1 block text-xs">{formatMonthlyRate(condition.rate)}</span>
+        </div>
+      </div>}
+      {row.success && positive(row.data?.contractAmount) && <p className="mt-2 text-xs text-[var(--text-secondary)]">Valor do contrato calculado: <strong>{amount(row.data?.contractAmount)}</strong></p>}
+      {Boolean(row.installmentChanges?.length) && <details className="mt-3 rounded-lg border border-[var(--border-default)] p-3 text-xs">
+        <summary className="cursor-pointer font-semibold">Ver composição das parcelas da portabilidade</summary>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-[var(--text-secondary)]">
+          <span>Contrato</span><span>Original</span><span>Recalculada</span>
+          {row.installmentChanges!.map((change,index) => <React.Fragment key={index}>
+            <span>{change.label || 'Contrato ' + String(index + 1)}</span>
+            <strong>{amount(change.originalInstallment)}</strong>
+            <strong>{amount(change.newInstallment)}</strong>
+          </React.Fragment>)}
+          {row.installmentChanges!.length > 1 && <>
+            <strong>Total</strong>
+            <strong>{row.installmentChanges!.every(item => positive(item.originalInstallment))
+              ? amount(row.installmentChanges!.reduce((sum,item) => sum + item.originalInstallment,0)) : 'Não informado'}</strong>
+            <strong>{row.installmentChanges!.every(item => positive(item.newInstallment))
+              ? amount(row.installmentChanges!.reduce((sum,item) => sum + Number(item.newInstallment),0)) : 'Não informado'}</strong>
+          </>}
+        </div>
+      </details>}
+      {row.requiresReview && <p className="mt-3 text-xs text-[var(--warning-text)]">
+        Esta cotação pode ser salva para conferência, mas não deve seguir para contratação antes da validação.
+      </p>}
+    </div>;
+  };
+
+  return <section className="mt-6 space-y-4" aria-label="Resultados da portabilidade">
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-bold text-[var(--text-primary)]">Comparação de simulações</h3>
+        <p className="mt-1 max-w-xl text-xs leading-relaxed text-[var(--text-secondary)]">
+          Compare o troco, a parcela e o prazo por contrato e por banco. Os valores são estimativas, não aprovação de crédito.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-xs font-semibold">
+        Filtrar banco
+        <select aria-label="Filtrar banco" value={providerFilter} onChange={event => {setProviderFilter(event.target.value);setPage(0);}}
+          className="max-w-48 rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2">
+          <option value="">Todos os bancos</option>
+          {providers.map(provider => <option key={provider} value={provider}>{bankName(provider)}</option>)}
+        </select>
+      </label>
+    </header>
+    <div className="flex flex-wrap gap-2" aria-label="Tipo de resultado">
+      {[false,true].map(value => <button type="button" key={String(value)} aria-pressed={unified === value}
+        onClick={() => {setUnified(value);setPage(0);}}
+        className={'rounded-lg border px-3 py-2 text-xs font-semibold ' +
+          (unified === value ? 'border-[var(--action)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]' : 'border-[var(--border-default)] text-[var(--text-secondary)]')}>
+        {value ? 'Unificações Daycoval' : 'Contratos individuais'} ({new Set(available.filter(row => Boolean(row.unified) === value).map(row => row.contractLabel || 'Contrato informado')).size})
+      </button>)}
+    </div>
+    {unified && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">
+      Unificações representam alternativas para os mesmos contratos; os valores não devem ser somados entre propostas.
+    </p>}
+    {grouped.length === 0 && <p role="status" className="rounded-xl border border-[var(--border-default)] p-6 text-sm">Nenhuma simulação encontrada para estes filtros.</p>}
+    {grouped.slice(currentPage * 3,currentPage * 3 + 3).map(([label,banks]) => <article key={label}
+      className="space-y-4 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] p-3 sm:p-5">
+      <h4 className="border-b border-[var(--border-default)] pb-3 text-sm font-bold">{label}</h4>
+      {[...banks].map(([provider,conditions]) => {
+        const sorted = [...conditions].sort((a,b) =>
+          Number(b.success) - Number(a.success) ||
+          higherMonthlyRateFirst(conditionFor(a).rate,conditionFor(b).rate) ||
+          (Number(b.troco) || 0) - (Number(a.troco) || 0));
+        return <section key={provider} className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h5 className="text-sm font-bold">{bankName(provider)}</h5>
+            <span className="rounded-full border border-[var(--border-default)] px-2 py-0.5 text-[11px] text-[var(--text-secondary)]">
+              {conditions.length} {conditions.length === 1 ? 'condição' : 'condições'}
+            </span>
+          </div>
+          {renderCondition(sorted[0],provider + ':first')}
+          {sorted.length > 1 && <details className="rounded-lg border border-[var(--border-default)] p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-[var(--link)]">
+              Comparar outras {sorted.length - 1} condições de {bankName(provider)}
+            </summary>
+            <div className="mt-3 space-y-3">{sorted.slice(1).map((row,index) => renderCondition(row,provider + ':' + index))}</div>
+          </details>}
+        </section>;
+      })}
+    </article>)}
+    {lastPage > 0 && <nav className="flex flex-wrap items-center justify-between gap-3 text-xs" aria-label="Páginas de contratos">
+      <button type="button" disabled={currentPage===0} onClick={() => setPage(currentPage-1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Anterior</button>
+      <span>Página {currentPage+1} de {lastPage+1} · {grouped.length} grupos</span>
+      <button type="button" disabled={currentPage===lastPage} onClick={() => setPage(currentPage+1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Próxima</button>
+    </nav>}
+    {selected && <aside className="rounded-xl border border-[var(--success-border)] bg-[var(--bg-surface)] p-4" aria-label="Resumo selecionado para o parceiro">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-semibold">Resumo da cotação selecionada</h4>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Dados prontos para copiar e encaminhar ao parceiro com aviso de conferência.</p>
+        </div>
+        <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--field-border)] px-3 py-2 text-xs font-semibold">
+          <ClipboardCopy size={15} aria-hidden="true"/> Copiar resumo para parceiro
+        </button>
+      </div>
+      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-canvas)] p-3 text-xs leading-relaxed text-[var(--text-primary)]">{shareText}</pre>
+      {copyStatus && <p role="status" className="mt-2 text-xs text-[var(--text-secondary)]">{copyStatus}</p>}
+    </aside>}
+  </section>;
 }
