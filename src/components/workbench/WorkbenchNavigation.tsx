@@ -38,6 +38,7 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
   const root = useRef<HTMLElement>(null);
   const mapTrigger = useRef<HTMLButtonElement>(null);
   const mobileTrigger = useRef<HTMLButtonElement>(null);
+  const mapPanel = useRef<HTMLElement>(null);
   const items = visibleNavigation(role, permissions);
   const matched = matchRoute(path);
   const canonical = matched?.route.isDynamic
@@ -54,11 +55,28 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
   const remaining = local.length - primaryLocal.length;
 
   useEffect(() => { setMapOpen(false); setMobileOpen(false); }, [path, role, permissions.join('|')]);
+  const closeMap = () => {
+    setMapOpen(false);
+    const compact = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1030px)').matches;
+    (compact ? mobileTrigger : mapTrigger).current?.focus();
+  };
+  useEffect(() => {
+    if (mapOpen) mapPanel.current?.querySelector<HTMLButtonElement>('button[aria-label="Fechar mapa de telas"]')?.focus();
+  }, [mapOpen]);
   useEffect(() => {
     if (!mapOpen && !mobileOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' && mapOpen && mapPanel.current) {
+        const controls = [...mapPanel.current.querySelectorAll<HTMLElement>('a[href],button:not(:disabled)')];
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !mapPanel.current.contains(document.activeElement))) {
+          event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first?.focus();
+        }
+      }
       if (event.key !== 'Escape') return;
-      if (mapOpen) { setMapOpen(false); mapTrigger.current?.focus(); }
+      if (mapOpen) { closeMap(); }
       else { setMobileOpen(false); mobileTrigger.current?.focus(); }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -87,7 +105,7 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
         <Menu size={19} aria-hidden="true" /> Menu
       </button>
       <span aria-label="Tela atual">{current?.title || 'Sentinel Consig'}</span>
-      <button type="button" aria-label="Ver todas as telas" onClick={() => { setMobileOpen(true); setMapOpen(true); }}>
+      <button type="button" aria-label="Ver todas as telas" onClick={() => { setMobileOpen(false); setMapOpen(true); }}>
         <Compass size={18} aria-hidden="true" />
       </button>
     </div>
@@ -114,7 +132,7 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
         {primaryLocal.map(item => <a key={item.path} href={item.path}
           aria-current={current?.path === item.path ? 'page' : undefined}
           onClick={event => link(event, item.path)}>{item.title}</a>)}
-        {remaining > 0 && <button type="button" className="wb-local-more" onClick={() => setMapOpen(true)}>
+        {remaining > 0 && <button type="button" className="wb-local-more" onClick={() => { setMobileOpen(false); setMapOpen(true); }}>
           Mais ferramentas ({remaining})
         </button>}
         {local.length === 1 && <p className="wb-local-description">{AREA_SUMMARY[activeGroup]}</p>}
@@ -126,10 +144,12 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
         </button>
         <p><Search size={13} aria-hidden="true" /> Use Ctrl+K para buscar clientes, ADEs e páginas.</p>
       </div>
-      {mapOpen && <section id="wb-system-map" className="wb-system-map" role="region" aria-label="Mapa de telas autorizadas">
+    </section>
+    {mapOpen && <button type="button" className="wb-map-scrim" aria-label="Fechar mapa pelo fundo" onClick={closeMap}/>}
+      {mapOpen && <section id="wb-system-map" className="wb-system-map" role="dialog" aria-modal="true" ref={mapPanel} tabIndex={-1} aria-label="Mapa de telas autorizadas">
         <header className="wb-system-map-header">
           <div><strong>Encontre sua próxima ação</strong><span>Ferramentas disponíveis para o seu perfil.</span></div>
-          <button type="button" aria-label="Fechar mapa de telas" onClick={() => { setMapOpen(false); mapTrigger.current?.focus(); }}><X size={17} /></button>
+          <button type="button" aria-label="Fechar mapa de telas" onClick={closeMap}><X size={17} /></button>
         </header>
         <div className="wb-system-map-grid">
           {groups.map(group => <section key={group} className="wb-system-map-group">
@@ -146,6 +166,5 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
           </section>)}
         </div>
       </section>}
-    </section>
   </>;
 }
