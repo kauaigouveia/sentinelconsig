@@ -31,8 +31,8 @@ export function telegramSectionMenu(section:Exclude<TelegramProductSection,'ROOT
       keyboard:[['💰 Novo INSS','🔁 Refinanciamento INSS'],['🔍 Consultar proposta'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
     case 'PORT':return {
-      response:'🔄 INSS · Portabilidade\n\n1️⃣ Portabilidade pura\n2️⃣ Portabilidade + Refinanciamento\n3️⃣ Simular pelo extrato (recebimento no bot em desenvolvimento)\n4️⃣ Consultar proposta\n\nO Portal permite simular os bancos habilitados e conferir parcelas por contrato.',
-      keyboard:[['🔄 Portabilidade pura'],['🔁 Portabilidade + refinanciamento'],['📄 Simular pelo extrato'],['🔍 Consultar proposta'],['🏠 Menu principal','👤 Trocar parceiro']],
+      response:'🔄 INSS · Portabilidade\n\n1️⃣ Portabilidade pura\n2️⃣ Portabilidade + Refinanciamento\n3️⃣ Enviar extrato INSS em PDF para simular\n4️⃣ Consultar proposta\n\nO bot lê o extrato textual em PDF, pede confirmação dos contratos e compara as planilhas habilitadas de Daycoval, C6 e Paraná. As demais modalidades seguem no Portal.',
+      keyboard:[['🔄 Portabilidade pura'],['🔁 Portabilidade + refinanciamento'],['📄 Enviar extrato INSS'],['🔍 Consultar proposta'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
   }
 }
@@ -56,7 +56,7 @@ export function telegramMenuAction(input:string,section:TelegramProductSection,a
   if(key==='portabilidade refinanciamento'||key==='portabilidade e refinanciamento')return 'PORT_REFIN';
   if(key==='simular todos os bancos'||key==='simular fgts'||key==='simular antecipacao')return 'SIMULATE';
   if(key==='dados do cliente'||key==='consultar dados do cliente')return 'CLIENT';
-  if(key==='simular pelo extrato'||key==='enviar extrato'||key==='extrato inss')return 'EXTRACT';
+  if(key==='simular pelo extrato'||key==='enviar extrato'||key==='extrato inss'||key==='enviar extrato inss')return 'EXTRACT';
   if(!allowNumbers)return null;
   const shortcuts:Record<TelegramProductSection,Record<string,TelegramMenuAction>>={
     ROOT:{'1':'CLT','2':'FGTS','3':'INSS','4':'PORT','5':'QUERY','6':'SWITCH'},
