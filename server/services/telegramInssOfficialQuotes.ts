@@ -6,11 +6,15 @@ import type { TelegramPdfReview } from './telegramInssPdfService.js';
 import {selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
 type Runner=typeof PartnerSimulationService.run;
 type RecordQuote=typeof PartnerSimulationTracking.record;
+async function withinDeadline<T>(task:Promise<T>,ms=42_000):Promise<T>{
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ return Promise.race([task,new Promise<T>((_,reject)=>{timer=setTimeout(()=>reject(Error('BANK_TIMEOUT')),ms);})]).finally(()=>{if(timer)clearTimeout(timer);});
+}
 const money=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenantId:string,
   partner:{id:string;name:string;code:string},review:TelegramPdfReview,
   indices:readonly number[],illiterate:'YES'|'NO',attemptKey:string,
-  deps?:{run?:Runner;record?:RecordQuote}){
+  deps?:{run?:Runner;record?:RecordQuote;onProgress?:(done:number,total:number)=>Promise<void>}){
   const privateData=review.bankConsultation;
   if(!tenantId||!partner.id||!partner.code||!/^[a-zA-Z0-9-]{16,80}$/.test(attemptKey)||
     !['YES','NO'].includes(illiterate)||indices.length<1||indices.length>13||
@@ -23,7 +27,7 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
   const run=deps?.run||PartnerSimulationService.run;
   const record=deps?.record||PartnerSimulationTracking.record;
   const results:{index:number;rows:any[];saved:boolean;failed:boolean;completedWithoutOffer:boolean}[]=[];
-  let next=0;
+  let next=0,completed=0;
   const worker=async()=>{
     while(next<indices.length){
       const index=indices[next++],contract=review.contracts[index];
@@ -38,7 +42,7 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
         debt:contract.balance,originalInstallment:contract.installment,
       };
       try{
-        const result=await run(db,tenantId,input,'SIMULATE');
+        const result=await withinDeadline(run(db,tenantId,input,'SIMULATE'));
         const rows=(Array.isArray(result?.rows)?result.rows:[]).filter((r:any)=>
           !['DAYCOVAL','PARANA','C6'].includes(String(r.provider||r.institution||'').toUpperCase()));
         const groups=new Map<string,any[]>();
@@ -60,9 +64,14 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
         results.push({index,rows:compact,saved,failed:false,
           completedWithoutOffer:result.operationalStatus==='NO_OFFERS'&&offers.length===0});
       }catch{results.push({index,rows:[],saved:false,failed:true,completedWithoutOffer:false});}
+      finally{
+       completed++;
+       if(deps?.onProgress&&completed<indices.length&&completed%3===0)
+        try{await deps.onProgress(completed,indices.length);}catch{ /* Progress must not fail simulation. */ }
+      }
     }
   };
-  await Promise.all(Array.from({length:Math.min(2,indices.length)},()=>worker()));
+  await Promise.all(Array.from({length:Math.min(4,indices.length)},()=>worker()));
   results.sort((a,b)=>a.index-b.index);
   const texts=['🏦 Integrações bancárias — '+results.length+' de '+indices.length+' contratos consultados.'];
   let positive=0;

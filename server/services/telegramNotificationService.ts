@@ -1,4 +1,5 @@
 import { runPortabilityAutomation } from './portabilityAutomationService.js';
+import {waitUntil} from '@vercel/functions';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Express, Request } from 'express';
@@ -797,6 +798,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 reply_markup:{keyboard:[[{text:'✅ Simular todos os contratos'}],[{text:'🏠 Menu principal'}]],resize_keyboard:true},protect_content:true});
         return;
     }
+    const calculate=async()=>{
     let sheets:Awaited<ReturnType<typeof calculateTelegramInssQuotes>>|null=null;
     let integration:Awaited<ReturnType<typeof calculateTelegramInssOfficialQuotes>>|null=null;
     const partner=await db.partner.findFirst({
@@ -804,11 +806,23 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         select:{id:true,name:true,code:true},
     });
     if(!partner)return;
+    // Independent margin consultation runs concurrently with the portability batch.
+    const marginTask=calculateTelegramInssMarginQuotes(
+        db,job.account.tenantId,partner,job.review,job.illiterate,job.attemptKey)
+        .catch(()=>undefined);
     // First consult other banks; their *completed* status determines whether
     // installments >= R$ 50 may be routed to Daycoval as a fallback.
     try{
         integration=await calculateTelegramInssOfficialQuotes(
-            db,job.account.tenantId,partner,job.review,job.indices,job.illiterate,job.attemptKey);
+            db,job.account.tenantId,partner,job.review,job.indices,job.illiterate,job.attemptKey,{
+                onProgress:async(done,total)=>{
+                    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+                    await telegram(config,'sendMessage',{
+                        chat_id:chatId,
+                        text:'⏳ INSS: '+done+' de '+total+' contratos analisados. Ainda consultando os demais bancos.',
+                        protect_content:true});
+                },
+            });
     }catch{
         // No invented rejections or approvals when a provider fails.
     }
@@ -821,8 +835,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         // An unavailable documentary workbook must not hide official quotes.
     }
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
-    const margin=await calculateTelegramInssMarginQuotes(
-        db,job.account.tenantId,partner,job.review,job.illiterate,job.attemptKey);
+    const margin=await marginTask;
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
     const report=formatTelegramInssPortfolio(
         job.review,job.indices,sheets?.quotes||[],integration?.contracts||[],margin);
@@ -838,4 +851,19 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             text:'✅ Consulta concluída para os contratos selecionados, sem contratação nem aprovação bancária. O histórico apresenta as cotações positivas das APIs. Para conferir detalhes adicionais:\n'+
               telegramPortalLink({product:'INSS',operation:'PORT_REFIN'},process.env.APP_URL||'https://sentinelconsig.com.br'),
             protect_content:true});
+    };
+    const safeCalculate=async()=>{
+      try{await calculate();}
+      catch{
+        console.warn('[telegram-inss] calculation stage failed');
+        try{
+          if(await telegramAccountStillValid(db,config,chatId,job.account))
+            await telegram(config,'sendMessage',{chat_id:chatId,
+              text:'⚠️ A simulação INSS não foi concluída integralmente. Nenhuma contratação foi realizada. Tente novamente ou consulte a mesa.',protect_content:true});
+        }catch{ /* Never expose confidential bank details in errors. */ }
+      }
+    };
+    // Acknowledge Telegram immediately; keep work alive for Vercel's Fluid Compute.
+    if(process.env.VERCEL){waitUntil(safeCalculate());return;}
+    await safeCalculate();
 }

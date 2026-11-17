@@ -89,6 +89,42 @@ describe('Telegram PDF integrações bancárias por contrato',()=>{
     expect((await make('TECHNICAL_FAILURE')).contracts[0].completedWithoutOffer).toBe(false);
     expect((await make('PARTIAL')).contracts[0].completedWithoutOffer).toBe(false);
   });
+  it('consulta todos os oito contratos em paralelo controlado sem omitir resultados',async()=>{
+    const contracts=Array.from({length:8},(_,i)=>({
+      ...review.contracts[i%4],numberSuffix:String(3000+i),
+    }));
+    const extended={...review,benefitContractCount:8,contracts,
+      bankConsultation:{...review.bankConsultation!,
+        contracts:contracts.map(c=>({number:'SYN-'+c.numberSuffix}))}};
+    let running=0,maximum=0;
+    const progress:number[]=[];
+    const run=vi.fn(async(_db:any,_tenant:string,input:any)=>{
+      running++;maximum=Math.max(maximum,running);
+      await new Promise(resolve=>setTimeout(resolve,5));
+      running--;
+      return {operationalStatus:'OFFERS',rows:[{state:'OFFER',
+        provider:'FINANTO',institution:'FINANTO',amount:500,
+        name:'Tabela INSS normal',rate:1.85,term:108,installment:input.value}]};
+    });
+    const record=vi.fn(async()=>({id:'stored'}));
+    const result=await calculateTelegramInssOfficialQuotes({} as any,'tenant-evolve',
+      {id:'partner-1',name:'Parceiro',code:'010'},extended,
+      [0,1,2,3,4,5,6,7],'NO','0123456789ABCDEF',{
+        run:run as any,record:record as any,onProgress:async(done,total)=>{
+          expect(total).toBe(8);progress.push(done);
+        },
+      });
+    expect(result.consulted).toBe(8);
+    expect(result.contracts).toHaveLength(8);
+    expect(result.positive).toBe(8);
+    expect(result.contracts.every(c=>!c.failed)).toBe(true);
+    expect(run).toHaveBeenCalledTimes(8);
+    expect(record).toHaveBeenCalledTimes(8);
+    expect(maximum).toBeGreaterThan(2);
+    expect(maximum).toBeLessThanOrEqual(4);
+    expect(progress).toEqual([3,6]);
+    expect(result.texts.join('\\n')).not.toContain('12345678909');
+  });
   it('rejeita índice repetido ou fora dos contratos',async()=>{
     await expect(calculateTelegramInssOfficialQuotes({} as any,'tenant-evolve',
       {id:'p',name:'P',code:'01'},review,[0,0],'NO','0123456789ABCDEF'))
