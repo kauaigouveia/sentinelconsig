@@ -96,6 +96,14 @@ function scenario(authorized=true,portalEnabled=true){
     texts:['🏦 FINANTO · Contrato 4 · R$ 1.200,00','🏦 Nossa Fintech · Contratos 1,2,3,4'],
     consulted:4,positive:4,unavailableBanks:[],
   })),
+  calculateTelegramInssMarginQuotes:vi.fn(async()=>({
+    status:'NO_MARGIN',installment:0,offers:[],saved:false,
+  })),
+  formatTelegramInssPortfolio:vi.fn(()=>[
+    '📊 Daycoval · parcela original → recalculada · troco estimado R$ 500,00',
+    '🏦 FINANTO · Contrato 4 · R$ 1.200,00',
+  ]),
+  waitUntil:vi.fn((_task:Promise<unknown>)=>{}),
   process:{env:{APP_URL:'https://sentinelconsig.com.br'}},
  };
  const handle=makeHandler(deps);
@@ -329,6 +337,24 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(JSON.stringify(saved)).not.toContain('0000000001');
   expect(JSON.stringify(saved)).not.toContain('document12345678');
   expect(JSON.stringify(saved)).not.toContain('numberSuffix');
+ });
+ it('aceita a confirmação de oito contratos sem aguardar as chamadas bancárias no webhook',async()=>{
+  const s=scenario();
+  s.deps.process.env.VERCEL='1';
+  await s.send('/start');
+  await s.send('🔄 Portabilidade INSS');
+  await s.send('📄 Enviar extrato INSS');
+  await s.send('',{document:{
+    file_id:'document12345678',file_name:'extrato.pdf',
+    mime_type:'application/pdf',file_size:1200,
+  }});
+  await s.send('✅ Simular todos os contratos');
+  await s.send('✅ Autorizado · NÃO analfabeto');
+  expect(s.deps.waitUntil).toHaveBeenCalledTimes(1);
+  expect(s.sends.some(value=>value.text.includes('Conferência registrada'))).toBe(true);
+  await s.deps.waitUntil.mock.calls[0][0];
+  expect(s.deps.calculateTelegramInssOfficialQuotes).toHaveBeenCalledTimes(1);
+  expect(s.sends.some(value=>value.text.includes('Consulta concluída'))).toBe(true);
  });
  it('bloqueia a simulação sem autorização e cancela o extrato ao trocar de parceiro',async()=>{
   const s=scenario();
