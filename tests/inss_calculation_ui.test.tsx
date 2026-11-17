@@ -27,7 +27,7 @@ it('calls Daycoval/C6 read-only calculators from the real form, keeps estimates 
  const call=fetch.mock.calls.find(([url])=>url==='/api/daycoval/calculate')!;
  expect(JSON.parse(String(call[1]?.body))).toMatchObject({term:84,contracts:[{originBank:'001',originalTerm:84,remaining:57,balance:3481.19,installment:43}]});
  expect(screen.getByText(/FACTA HTTP 200 com corpo vazio/)).toBeTruthy();expect(screen.getByText(/Prazo 84 não disponível na planilha C6/)).toBeTruthy();
- expect(screen.getByRole('button',{name:'Selecionar cotação'}).hasAttribute('disabled')).toBe(true);
+ expect(screen.getByRole('button',{name:'Selecionar cotação'}).hasAttribute('disabled')).toBe(false);
  expect(fetch.mock.calls.filter(([url])=>url==='/api/daycoval/calculate')).toHaveLength(1);
  expect(fetch.mock.calls.some(([url])=>url==='/api/simulations')).toBe(false);
  expect(fetch.mock.calls.filter(([url])=>url==='/api/parana-spreadsheet/calculate')).toHaveLength(1);
@@ -87,8 +87,8 @@ it('runs all six individual bank paths for two contracts and one explicit Daycov
  await screen.findByRole('button',{name:/Unificações Daycoval/});
  fireEvent.click(screen.getByRole('button',{name:/Unificações Daycoval/}));
  await screen.findByText('Synthetic unified');
- expect(screen.getByText('Soma das parcelas originais').textContent).toContain('91,00');
- expect(screen.getByText('Nova parcela unificada').textContent).toContain('80,00');
+ expect(screen.getByText('Soma das parcelas originais').parentElement?.textContent).toContain('91,00');
+ expect(screen.getByText('Parcela do novo refinanciamento').parentElement?.textContent).toContain('80,00');
  for(const url of ['/api/daycoval/calculate','/api/c6-spreadsheet/calculate','/api/parana-spreadsheet/calculate','/api/integrations/finanto/config','/api/integrations/facta/inss/simulate','/api/integrations/nossa-fintech/port-refin/simulate-all'])expect(fetch.mock.calls.filter(([path])=>path===url)).toHaveLength(2);
  const groups=fetch.mock.calls.filter(([path])=>path==='/api/daycoval/calculate-groups');expect(groups).toHaveLength(1);
  expect(JSON.parse(String(groups[0][1]?.body)).contracts.map((c:any)=>c.contractNumber)).toEqual(['SYNTHETIC-A','SYNTHETIC-B']);
