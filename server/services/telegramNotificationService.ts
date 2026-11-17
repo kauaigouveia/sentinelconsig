@@ -488,7 +488,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                     keyboard=[['✅ Autorizado · NÃO analfabeto'],['✅ Autorizado · Analfabeto'],['🏠 Menu principal']];
                 }else {
                     response='Digite TODOS para incluir todos os contratos ou informe números distintos de 1 a '+review.review.contracts.length+' separados por vírgula.\n\n'+telegramPdfReviewText(review.review);
-                    keyboard=[['🏠 Menu principal']];
+                    keyboard=[['✅ Simular todos os contratos'],['🏠 Menu principal']];
                 }
             } else if(state.phase==='PDF_CONFIRM' && state.pendingPdf?.selectedIndices?.length){
                 const answer=normalizeTelegramMenuInput(text);
@@ -792,7 +792,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         if(claim.count===1 && await telegramAccountStillValid(db,config,chatId,job.account))
             await telegram(config,'sendMessage',{chat_id:chatId,
                 text:telegramPdfReviewText(review),
-                reply_markup:{keyboard:[[{text:'🏠 Menu principal'}]],resize_keyboard:true},protect_content:true});
+                reply_markup:{keyboard:[[{text:'✅ Simular todos os contratos'}],[{text:'🏠 Menu principal'}]],resize_keyboard:true},protect_content:true});
         return;
     }
     try{
