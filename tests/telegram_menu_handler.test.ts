@@ -7,7 +7,7 @@ import {
  telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,
  telegramPortalLink,normalizeTelegramMenuInput,
 } from '../server/services/telegramProductMenu';
-import {parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS} from '../server/services/telegramInssPdfService';
+import {parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,telegramPdfErrorCode,telegramPdfErrorMessage,TelegramPdfProcessingError} from '../server/services/telegramInssPdfService';
 import {beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,telegramNativeSteps} from '../server/services/telegramNativeSimulation';
 
 /** Exercise the real Telegram message handler with in-memory transactional doubles; no bot token, DB or HTTP. */
@@ -63,7 +63,7 @@ function scenario(authorized=true,portalEnabled=true){
   activeBot:async()=>config,company:async()=>({enabled:true}),binding,
   telegram:vi.fn(async(_config:any,_method:string,payload:any)=>{sends.push(payload);return{};}),
   telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,
-  normalizeTelegramMenuInput,parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,
+  normalizeTelegramMenuInput,parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,telegramPdfErrorCode,telegramPdfErrorMessage,
   beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,
   executeTelegramNativeSimulation:vi.fn(async()=>({
     messages:['📊 Simulação realizada no Telegram · Banco Teste · R$ 1.500,00'],
@@ -249,6 +249,18 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(client.text).toContain('Consultar vínculos e margem');
   expect(client.text).not.toContain('tab=perfil');
   expect(client.text).toContain('Não envie CPF');
+ });
+ it('informa uma falha no download separadamente do formato do PDF',async()=>{
+  const s=scenario();
+  await s.send('/start');
+  await s.send('🔄 Portabilidade INSS');
+  await s.send('📄 Enviar extrato INSS');
+  s.deps.downloadTelegramPdf.mockRejectedValueOnce(new TelegramPdfProcessingError('TELEGRAM_DOWNLOAD','token confidencial'));
+  const reply=await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
+  expect(reply.text).toContain('não consegui baixar o arquivo');
+  expect(reply.text).not.toContain('token confidencial');
+  const state=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(state.configValue.phase).toBe('PDF_WAIT');
  });
  it('recebe o extrato somente após selecionar a opção, confirma três contratos e calcula no bot',async()=>{
   const s=scenario();
