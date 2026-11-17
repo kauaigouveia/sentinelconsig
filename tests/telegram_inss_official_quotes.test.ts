@@ -79,6 +79,16 @@ describe('Telegram PDF integrações bancárias por contrato',()=>{
     expect(all).toContain('Não significa recusa');
     expect(all).not.toContain('segredo que não deve aparecer');
   });
+  it('somente NO_OFFERS concluído autoriza fallback, e falhas técnicas não são recusas',async()=>{
+    const make=async(status:string)=>calculateTelegramInssOfficialQuotes(
+      {} as any,'tenant-evolve',{id:'partner-1',name:'Parceiro',code:'010'},
+      review,[0],'NO','0123456789ABCDEF',{
+        run:vi.fn(async()=>({rows:[],operationalStatus:status})) as any,
+      });
+    expect((await make('NO_OFFERS')).contracts[0].completedWithoutOffer).toBe(true);
+    expect((await make('TECHNICAL_FAILURE')).contracts[0].completedWithoutOffer).toBe(false);
+    expect((await make('PARTIAL')).contracts[0].completedWithoutOffer).toBe(false);
+  });
   it('rejeita índice repetido ou fora dos contratos',async()=>{
     await expect(calculateTelegramInssOfficialQuotes({} as any,'tenant-evolve',
       {id:'p',name:'P',code:'01'},review,[0,0],'NO','0123456789ABCDEF'))

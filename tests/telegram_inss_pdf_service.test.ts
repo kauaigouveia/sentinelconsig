@@ -177,6 +177,45 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(result.quotes.filter(x=>x.bank==='DAYCOVAL'&&x.indices.length>1)).toHaveLength(0);
   expect(result.texts.join('\\n')).toContain('C6');
  });
+ it('Daycoval unifica R$ 49,99 com R$ 50 somente após ausência confirmada de ofertas externas',async()=>{
+  const book=encodeDaycoval({enabled:true,terms:[108],hash:'teste'} as any);
+  const db={systemConfig:{findUnique:vi.fn(async()=>({configValue:book}))}} as any;
+  const review={
+    birthDate:'1960-02-29',benefitType:32,benefitStartDate:'2010-01-01',
+    uf:'AL',benefitContractCount:3,loanMargin:30,
+    contracts:[
+      {bank:'237',numberSuffix:'0001',originalTerm:84,remaining:54,balance:500,installment:49.99},
+      {bank:'237',numberSuffix:'0002',originalTerm:84,remaining:54,balance:500,installment:50},
+      {bank:'237',numberSuffix:'0003',originalTerm:84,remaining:54,balance:500,installment:60},
+    ],
+  };
+  const fake=vi.fn((bank:string,_book:any,input:any)=>({
+    offers:bank==='DAYCOVAL'?[{
+      name:'800581 - RFN - INSS 1',amount:900,term:108,rate:1.85,
+      installment:input.contracts.reduce((sum:number,c:any)=>sum+c.installment,0),
+      installmentChanges:input.contracts.map((c:any)=>({newInstallment:c.installment})),
+    }]:[],
+  }));
+  const official=[
+    {index:1,failed:false,completedWithoutOffer:true,rows:[]},
+    {index:2,failed:false,completedWithoutOffer:false,
+      rows:[{provider:'FACTA',state:'OFFER',amount:1000}]},
+  ];
+  const result=await calculateTelegramInssQuotes(
+    db,'tenant-evolve',review,[0,1,2],'NO',fake as any,official);
+  const day=result.quotes.filter(q=>q.bank==='DAYCOVAL');
+  expect(day.filter(q=>q.indices.length===1).map(q=>q.indices[0])).toEqual([0,1]);
+  expect(day.filter(q=>q.indices.length>1).map(q=>q.indices)).toEqual([[0,1]]);
+  expect(day.find(q=>q.indices.length>1)?.changes.map(c=>c.original)).toEqual([49.99,50]);
+  expect(day.some(q=>q.indices.includes(2))).toBe(false);
+  // On a technical error or without completed evidence, a larger installment
+  // cannot be silently treated as refused by another bank.
+  const pending=await calculateTelegramInssQuotes(
+    db,'tenant-evolve',review,[0,1,2],'NO',fake as any,
+    [{index:1,failed:true,completedWithoutOffer:true,rows:[]}]);
+  expect(pending.quotes.filter(q=>q.bank==='DAYCOVAL').map(q=>q.indices))
+    .toEqual([[0]]);
+ });
  it('usa apenas planilhas do tenant, informa bancos indisponíveis e exibe diferenças por contrato',async()=>{
   const lookups:any[]=[];
   const book=encodeDaycoval({enabled:true,terms:[108],hash:'test'} as any);
@@ -199,7 +238,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   const result=await calculateTelegramInssQuotes(db,'tenant-evolve',review,[0,1],'NO',fake as any);
   expect(lookups).toHaveLength(3);
   expect(lookups.every(v=>v.tenantId==='tenant-evolve')).toBe(true);
-  expect(result.calculatedBanks).toEqual(['DAYCOVAL','PARANA']);
+  expect(result.calculatedBanks).toEqual(['PARANA']);
   expect(result.unavailableBanks.join('')).toContain('C6');
   expect(result.quotes.some(x=>x.bank==='DAYCOVAL'&&x.indices.join('+')==='0+1')).toBe(false);
   expect(result.texts.join('')).toContain('R$');
