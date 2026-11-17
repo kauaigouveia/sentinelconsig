@@ -4,7 +4,7 @@ import { encodeDaycoval } from '../server/services/daycovalWorkbook';
 import {
  validateTelegramPdfDocument,downloadTelegramPdf,readTelegramInssPdf,
  parseTelegramSelectedContracts,telegramPdfReviewText,calculateTelegramInssQuotes,
- TELEGRAM_PDF_MAX_BYTES,
+ TELEGRAM_PDF_MAX_BYTES,telegramPdfErrorCode,telegramPdfErrorMessage,TelegramPdfProcessingError,
 } from '../server/services/telegramInssPdfService';
 import {SPREADSHEET_MODELS} from '../server/services/portRefinWorkbooks';
 
@@ -88,6 +88,43 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(raw).not.toContain('Pessoa Teste');
   expect(raw).not.toContain('001A-1');
   expect(telegramPdfReviewText(parsed)).toContain('contratos: 2');
+ });
+ it('reconhece os quatro empréstimos de um extrato de tabela extensa com cartão separado',async()=>{
+  const sample=makePdf([
+    'Nome: Pessoa Teste','CPF: 12345678909','Data Nascimento: 29/02/1960',
+    'Beneficio: 0000000001','Espécie: 32 - Exemplo',
+    'DIB: 15/12/2011','UF: AL','Margem Empréstimo: 87,66',
+    'Empréstimos Bancários',
+    'N° Contrato Banco Inicio Desconto. Vl. Emprestado Vl. Parcela Prazo Pagas Saldo Taxa',
+    '001A-1 41 - BANCO DO ESTADO DO RIO GRANDE DO SUL SA 2024-06 10.295,88 216,30 84 30 7.966,45 1.50',
+    '002B-2 237 - BANCO BRADESCO SA 2024-06 3.800,00 621,22 84 30 22.879,87 1.50',
+    '003C-3 237 - BANCO BRADESCO SA 2024-06 1.274,04 30,00 84 30 1.018,99 1.85',
+    '004D-4 623 - BANCO PAN SA 2023-06 2.529,56 64,66 84 42 1.835,70 1.97',
+    'Reserva de Margem para Cartão de Crédito','Contrato Banco Data Autorização VL. Contrato Parcela',
+    '99999999999999 237 26/05/2020 2.499,60 145,69',
+    'Cartão Benefício','N° Contrato Banco Data Autorização VL. Contrato Parcela',
+    '88888888888888 623 28/10/2022 3.041,00 145,69',
+  ]);
+  const parsed=await readTelegramInssPdf(new Uint8Array(sample));
+  expect(parsed.contracts).toHaveLength(4);
+  expect(parsed.contracts.map(contract=>contract.bank)).toEqual(['041','237','237','623']);
+  expect(parsed.contracts[0]).toMatchObject({originalTerm:84,remaining:54,installment:216.3,balance:7966.45});
+  expect(parsed.contracts[2]).toMatchObject({installment:30,balance:1018.99});
+  expect(JSON.stringify(parsed)).not.toContain('99999999999999');
+  expect(JSON.stringify(parsed)).not.toContain('88888888888888');
+ });
+ it('expõe apenas etapas genéricas, sem vazar erros brutos de PDF ou Telegram',async()=>{
+  const secret='CPF fictício e token confidencial';
+  for(const code of ['TELEGRAM_DOWNLOAD','PDF_READER','PDF_CONTENT','PDF_TIMEOUT'] as const){
+    const error=new TelegramPdfProcessingError(code,secret);
+    expect(telegramPdfErrorCode(error)).toBe(code);
+    const message=telegramPdfErrorMessage(error);
+    expect(message).not.toContain(secret);
+    expect(message).toContain('Nenhuma simulação foi salva.');
+  }
+  const fails=vi.fn(async()=>{throw Error(secret);});
+  await expect(downloadTelegramPdf('token',file,fails as unknown as typeof fetch))
+    .rejects.toMatchObject({code:'TELEGRAM_DOWNLOAD'});
  });
  it('rejeita documento sem assinatura PDF, campos obrigatórios ou layout de extrato',async()=>{
   await expect(readTelegramInssPdf(new Uint8Array(100))).rejects.toThrow('PDF');
