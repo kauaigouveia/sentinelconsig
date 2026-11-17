@@ -8,7 +8,7 @@ import {
  telegramPortalLink,normalizeTelegramMenuInput,
 } from '../server/services/telegramProductMenu';
 import {parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,telegramPdfErrorCode,telegramPdfErrorMessage,TelegramPdfProcessingError} from '../server/services/telegramInssPdfService';
-import {beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,telegramNativeSteps} from '../server/services/telegramNativeSimulation';
+import {beginTelegramNativeSimulation,continueTelegramCltSimulation,cltConsultationOptions,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,telegramNativeSteps} from '../server/services/telegramNativeSimulation';
 
 /** Exercise the real Telegram message handler with in-memory transactional doubles; no bot token, DB or HTTP. */
 const source=ts.createSourceFile('telegramNotificationService.ts',fs.readFileSync(new URL('../server/services/telegramNotificationService.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true);
@@ -64,7 +64,11 @@ function scenario(authorized=true,portalEnabled=true){
   telegram:vi.fn(async(_config:any,_method:string,payload:any)=>{sends.push(payload);return{};}),
   telegramMainMenu,telegramSectionMenu,telegramMenuAction,telegramSimulationTarget,telegramPortalLink,
   normalizeTelegramMenuInput,parseTelegramSelectedContracts,TELEGRAM_PDF_TTL_MS,telegramPdfErrorCode,telegramPdfErrorMessage,
-  beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,
+  beginTelegramNativeSimulation,continueTelegramCltSimulation,cltConsultationOptions,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,
+  executeTelegramCltMargin:vi.fn(async()=>({
+    messages:['🏛️ Margem CLT · FACTA · R$ 315,50', '🔐 J17 · autorização pendente, consulte o banco'],
+    hasMargin:true,positiveBanks:['FACTA'],
+  })),
   executeTelegramNativeSimulation:vi.fn(async()=>({
     messages:['📊 Simulação realizada no Telegram · Banco Teste · R$ 1.500,00'],
     saved:true,offerCount:1,
@@ -127,33 +131,66 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(s.tx.proposal.findMany).toHaveBeenCalledTimes(1);
   expect(s.tx.proposal.findMany.mock.calls[0][0].where).toMatchObject({tenantId:'tenant-evolve',partnerId:'partner-a'});
  });
- it('consulta CLT inteiramente no Telegram, com autorização explícita e vínculo de empresa',async()=>{
+ it('consulta margem CLT antes de perguntar valor, confirma o titular e calcula por margem cheia',async()=>{
   const s=scenario();
-  await s.send('/start');
-  await s.send('💼 CLT');
-  const start=await s.send('💰 Simular todos os bancos');
+  await s.send('/start');await s.send('💼 CLT');
+  const start=await s.send('💰 Consultar margem e simular');
   expect(start.text).toContain('CPF do cliente');
   expect((await s.send('00000000000')).text).toContain('inválido');
   expect((await s.send('52998224725')).text).toContain('nome completo');
   expect((await s.send('Cliente Fictício')).text).toContain('telefone');
-  expect((await s.send('82999998888')).text).toContain('PARCELA');
-  expect((await s.send('PARCELA')).text).toContain('parcela mensal');
-  const review=await s.send('450,00');
-  expect(review.text).toContain('Confirmar simulação');
-  expect(review.text).not.toContain('52998224725');
-  const blocked=await s.send('Não autorizou');
-  expect(blocked.text).toContain('ainda não foi enviada');
+  const summary=await s.send('82999998888');
+  expect(summary.text).toContain('Consultar margem CLT');
+  expect(summary.text).not.toContain('PARCELA');
+  expect(summary.text).not.toContain('52998224725');
+  const denied=await s.send('Não autorizou');
+  expect(denied.text).toContain('ainda não foi enviada');
+  expect(s.deps.executeTelegramCltMargin).not.toHaveBeenCalled();
+  await s.send('✅ Consultar margem CLT');
+  expect(s.deps.executeTelegramCltMargin).toHaveBeenCalledTimes(1);
+  expect(s.sends.some(v=>v.text.includes('Margem CLT · FACTA'))).toBe(true);
+  const snapshot=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(snapshot.configValue.phase).toBe('CLT_OPTIONS');
+  expect(snapshot.configValue.cltMarginReady).toBe(true);
   expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
-  const calculated=await s.send('✅ Confirmar simulação');
-  expect(calculated.text).toContain('Banco Teste');
-  expect(s.deps.executeTelegramNativeSimulation).toHaveBeenCalledTimes(1);
+  const full=await s.send('💰 Simular margem cheia');
+  expect(full.text).toContain('Banco Teste');
   const args=(s.deps.executeTelegramNativeSimulation as any).mock.calls[0] as any[];
   expect(args[1]).toBe('tenant-evolve');
   expect(args[2]).toMatchObject({id:'partner-a',code:'010'});
-  expect(args[3].values.cpf).toBe('52998224725');
-  const snapshot=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
-  expect(snapshot.configValue.native).toBeUndefined();
-  expect(snapshot.configValue.phase).toBe('PRODUCT');
+  expect(args[3].cltStage).toBe('FULL');
+  expect(args[3].values.value).toBeUndefined();
+  expect(snapshot.configValue.native.values.cpf).toBe('52998224725');
+ });
+ it('personaliza valor, parcela e prazo após consultar a margem oficial',async()=>{
+  const s=scenario();
+  await s.send('/start');await s.send('💼 CLT');
+  await s.send('💰 Consultar margem e simular');
+  await s.send('52998224725');await s.send('Cliente Fictício');await s.send('82999998888');
+  await s.send('✅ Consultar margem CLT');
+  const prompt=await s.send('✏️ Escolher parcela ou valor');
+  expect(prompt.text).toContain('PARCELA');
+  expect((await s.send('PARCELA')).text).toContain('parcela mensal');
+  expect((await s.send('450,00')).text).toContain('Prazo');
+  const summary=await s.send('48');
+  expect(summary.text).toContain('Confirmar simulação');
+  await s.send('✅ Confirmar simulação');
+  const call=(s.deps.executeTelegramNativeSimulation as any).mock.calls.at(-1);
+  expect(call[3].cltStage).toBe('CUSTOM');
+  expect(call[3].values).toMatchObject({cpf:'52998224725',mode:'Payment',value:'450',term:'48'});
+  const state=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
+  expect(state.configValue.phase).toBe('CLT_OPTIONS');
+  expect(state.configValue.native.values.value).toBeUndefined();
+ });
+ it('não simula margem cheia quando o banco não confirmou margem positiva',async()=>{
+  const s=scenario();
+  s.deps.executeTelegramCltMargin.mockResolvedValueOnce({messages:['🔐 FACTA exige autorização'],hasMargin:false,positiveBanks:[]});
+  await s.send('/start');await s.send('💼 CLT');await s.send('💰 Consultar margem e simular');
+  await s.send('52998224725');await s.send('Cliente Fictício');await s.send('82999998888');
+  await s.send('✅ Consultar margem CLT');
+  const denied=await s.send('💰 Simular margem cheia');
+  expect(denied.text).toContain('Ainda não há margem positiva');
+  expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
  });
  it('permite FGTS diretamente na conversa em apenas duas etapas e respeita cancelamento',async()=>{
   const s=scenario();
@@ -240,15 +277,13 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(text).not.toContain('/parceiro?tab=simulacoes');
   expect(s.tx.partner.findFirst).not.toHaveReturnedWith(expect.objectContaining({id:'partner-a'}));
  });
- it('envia a consulta de dados CLT ao fluxo de vínculos do cliente, sem confundir com o perfil do parceiro',async()=>{
+ it('consulta vínculos e margem CLT no próprio bot sem enviar link para portal',async()=>{
   const s=scenario();
-  await s.send('/start');
-  await s.send('💼 CLT');
+  await s.send('/start');await s.send('💼 CLT');
   const client=await s.send('🪪 Dados do cliente');
-  expect(client.text).toContain('product=CLT');
-  expect(client.text).toContain('Consultar vínculos e margem');
-  expect(client.text).not.toContain('tab=perfil');
-  expect(client.text).toContain('Não envie CPF');
+  expect(client.text).toContain('Consulta de margem CLT');
+  expect(client.text).toContain('CPF do cliente');
+  expect(client.text).not.toContain('/parceiro?');
  });
  it('informa uma falha no download separadamente do formato do PDF',async()=>{
   const s=scenario();
