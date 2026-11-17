@@ -373,7 +373,7 @@ export const Header: React.FC<HeaderProps> = ({
         {activeUser?.role !== 'PLATFORM_MASTER' && !(activeUser?.availableMemberships || activeUser?.memberships || []).some((m:any)=>m.tenantId===StorageService.getCurrentTenantId()) && <option value={StorageService.getCurrentTenantId()}>{StorageService.getCurrentTenant().name}</option>}
       </select></label>}
       {/* CENTRO: Busca Global */}
-      <div className="flex-1 min-w-0 max-w-xl">
+      <div className="s2-header-search flex-1 min-w-0 max-w-xl">
         {redesignPreview ? <button className="s2-global-search" aria-label="Abrir busca universal" onClick={onOpenSearch}><Search size={17}/><span>Buscar páginas, cliente, CPF ou ADE</span><kbd>Ctrl K</kbd></button> : <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
           <input
@@ -392,7 +392,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* DIREITA: Status do Sistema, Notificações, Tema, Usuário */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="s2-header-actions flex items-center gap-1.5 shrink-0">
         {redesignPreview && <div className="hidden md:flex items-center gap-1">{onToggleFavorite && <button className="s2-button" aria-label={isFavorite?'Remover página dos favoritos':'Adicionar página aos favoritos'} aria-pressed={isFavorite} onClick={onToggleFavorite}><Star size={15} fill={isFavorite?'currentColor':'none'}/></button>}{onToggleDensity && <button className="s2-button" aria-label={`Densidade ${density==='compact'?'compacta':'confortável'}; alternar`} onClick={onToggleDensity}><Sliders size={15}/></button>}</div>}
         {/* Status do Sistema (Consolidated Popover) */}
         <div className="relative" ref={systemStatusRef}>

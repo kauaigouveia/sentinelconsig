@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { readFileSync } from 'node:fs';
 import { WorkbenchNavigation } from '../src/components/workbench/WorkbenchNavigation';
 import { WorkspaceGuide } from '../src/components/workbench/WorkspaceGuide';
+import { PremiumRecordWorkspace } from '../src/components/redesign/PremiumRecordWorkspace';
 
 afterEach(cleanup);
 describe('Sentinel v4: navegação por tarefa e orientação operacional',()=>{
@@ -42,6 +43,32 @@ describe('Sentinel v4: navegação por tarefa e orientação operacional',()=>{
   expect(within(section).getByRole('link',{name:'Simular crédito'})).toBeTruthy();
   fireEvent.click(within(section).getByRole('link',{name:'Simular crédito'}));
   expect(navigate).toHaveBeenCalledWith('/simulacoes');
+ });
+ it('remove o aviso redundante apenas da tela de simulações',()=>{
+  const navigate=vi.fn();
+  const {rerender}=render(<WorkspaceGuide pathname="/simulacoes" role="MASTER" navigate={navigate}/>);
+  expect(screen.queryByRole('complementary',{name:'Orientação da tela'})).toBeNull();
+  rerender(<WorkspaceGuide pathname="/propostas" role="MASTER" navigate={navigate}/>);
+  expect(screen.getByRole('complementary',{name:'Orientação da tela'})).toBeTruthy();
+ });
+ it('mantém registros, controles e resumo operacional sem desalinhamento estrutural',()=>{
+  const onMode=vi.fn();
+  render(<PremiumRecordWorkspace count={10} mode="table" onMode={onMode}
+    filters={<div>Filtro de teste</div>} summary={<p>Dados operacionais</p>}>
+    <p>Resultado da simulação</p>
+  </PremiumRecordWorkspace>);
+  expect(screen.getByRole('status').textContent).toBe('10 registros encontrados');
+  expect(screen.getByText('Registros')).toBeTruthy();
+  const toolbar=screen.getByText('Registros').closest('.p2-operational-toolbar');
+  expect(toolbar?.querySelector('.p2-actions')).toBeTruthy();
+  const info=screen.getByText('Visão operacional').closest('details');
+  expect(info?.previousElementSibling).toBe(toolbar);
+  expect(screen.queryByText('Filtro de teste')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:/Filtros/}));
+  expect(screen.getByText('Filtro de teste')).toBeTruthy();
+  fireEvent.click(screen.getByText('Visão operacional'));
+  expect(screen.getByText('Dados operacionais')).toBeTruthy();
+  expect(screen.getByText('Resultado da simulação')).toBeTruthy();
  });
  it('não mostra dicas de rotas sem permissão',()=>{
   render(<WorkspaceGuide pathname="/propostas" role="SIMULACAO" permissions={['simulations.view']} navigate={vi.fn()}/>);

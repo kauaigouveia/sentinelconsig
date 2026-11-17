@@ -38,6 +38,9 @@ export function WorkspaceGuide({ pathname, role, permissions = [], navigate }: {
   const match=matchRoute(pathname);
   const canonical=match?.route.path.startsWith('/propostas/:') ? '/propostas' : match?.route.path;
   const guide=canonical ? GUIDES[canonical] : undefined;
+  // Simulações já tem título, descrição e navegação operacional próprias.
+  // O aviso global duplicava esse conteúdo e ocupava toda a largura da página.
+  if (canonical === '/simulacoes') return null;
   if (!guide || !match || !canAccessRoute(match.route,role,permissions)) return null;
   const links=guide.next.filter(link=>{
     const route=APP_ROUTES.find(item=>item.path===link.path);
