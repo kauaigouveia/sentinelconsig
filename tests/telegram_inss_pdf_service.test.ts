@@ -143,6 +143,39 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
     expect(parseTelegramSelectedContracts(invalid,4)).toBeNull();
   expect(parseTelegramSelectedContracts('TODOS',14)).toBeNull();
  });
+ it('calcula quatro contratos individualmente em Daycoval, C6 e Paraná, mantendo o quarto no retorno',async()=>{
+  const book=encodeDaycoval({enabled:true,terms:[108],hash:'teste'} as any);
+  const db={systemConfig:{findUnique:vi.fn(async()=>({configValue:book}))}} as any;
+  const review={
+    birthDate:'1960-02-29',benefitType:32,benefitStartDate:'2011-12-15',uf:'AL',
+    benefitContractCount:4,loanMargin:87.66,
+    contracts:[
+      {bank:'041',numberSuffix:'9904',originalTerm:84,remaining:54,balance:7966.45,installment:216.3},
+      {bank:'237',numberSuffix:'5152',originalTerm:84,remaining:54,balance:22879.87,installment:621.22},
+      {bank:'237',numberSuffix:'5469',originalTerm:84,remaining:54,balance:1018.99,installment:30},
+      {bank:'623',numberSuffix:'3656',originalTerm:84,remaining:42,balance:1835.7,installment:64.66},
+    ],
+  };
+  const seen:{bank:string;contracts:number[]}[]=[];
+  const preview=vi.fn((bank:string,_book:any,input:any)=>{
+    seen.push({bank,contracts:input.contracts.map((c:any)=>c.installment)});
+    return {offers:[{name:'Tabela de teste',code:'800011',amount:900,term:108,rate:1.85,
+      installment:input.contracts.reduce((sum:number,c:any)=>sum+c.installment,0),
+      installmentChanges:input.contracts.map((c:any)=>({originalInstallment:c.installment,newInstallment:c.installment-1}))}]};
+  });
+  const selected=[0,1,2,3];
+  const result=await calculateTelegramInssQuotes(db,'tenant-evolve',review,selected,'NO',preview as any);
+  expect(result.calculatedBanks).toEqual(['DAYCOVAL','C6','PARANA']);
+  for(const bank of ['DAYCOVAL','C6','PARANA']){
+    const individual=seen.filter(x=>x.bank===bank&&x.contracts.length===1);
+    expect(individual).toHaveLength(4);
+    expect(individual.some(x=>x.contracts[0]===64.66)).toBe(true);
+  }
+  expect(seen.filter(x=>x.bank==='DAYCOVAL'&&x.contracts.length===3)).toHaveLength(4);
+  expect(result.texts.join('\\n')).toContain('Contrato 4');
+  expect(result.texts.join('\\n')).toContain('Unificação 1+2+4');
+  expect(result.texts.join('\\n')).toContain('C6');
+ });
  it('usa apenas planilhas do tenant, informa bancos indisponíveis e exibe diferenças por contrato',async()=>{
   const lookups:any[]=[];
   const book=encodeDaycoval({enabled:true,terms:[108],hash:'test'} as any);
