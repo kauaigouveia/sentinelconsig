@@ -9,7 +9,7 @@ import { SPREADSHEET_MODELS, type SpreadsheetBank } from './portRefinWorkbooks.j
 
 export const TELEGRAM_PDF_MAX_BYTES = 5 * 1024 * 1024;
 export const TELEGRAM_PDF_TTL_MS = 10 * 60 * 1000;
-export const TELEGRAM_MAX_CHOSEN_CONTRACTS = 3;
+export const TELEGRAM_MAX_CHOSEN_CONTRACTS = 13;
 
 export type TelegramPdfContract = {
   bank: string;
@@ -27,6 +27,12 @@ export type TelegramPdfReview = {
   benefitContractCount: number;
   loanMargin: number | null;
   contracts: TelegramPdfContract[];
+  /** Only in encrypted, short-lived Telegram state; never render or log this. */
+  bankConsultation?:{
+    cpf:string;benefitNumber:string;name:string;income:number;
+    legalRepresentative:boolean;
+    contracts:{number:string}[];
+  };
 };
 type TelegramFile = { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
 const money=(value:number|null|undefined)=>value != null && Number.isFinite(value)&&value>=0
@@ -187,6 +193,13 @@ export async function readTelegramInssPdf(bytes:Uint8Array):Promise<TelegramPdfR
       benefitContractCount:statement.contracts.length,
       loanMargin:parsedMoney(statement.loanMargin),
       contracts,
+      bankConsultation:{
+        cpf:statement.customer.cpf,benefitNumber:statement.customer.benefitNumber,
+        name:statement.customer.name.slice(0,120),
+        income:parsedMoney(statement.income)||0,
+        legalRepresentative:statement.legalRepresentative===true,
+        contracts:statement.contracts.map(c=>({number:c.originContractNumber})),
+      },
     };
   }catch(error){
     if(timedOut)throw new TelegramPdfProcessingError('PDF_TIMEOUT','Tempo limite excedido ao ler o PDF.');
@@ -206,21 +219,20 @@ export function telegramPdfReviewText(review:TelegramPdfReview):string{
       ' · final '+contract.numberSuffix+' · parcela '+money(contract.installment)+
       ' · saldo '+money(contract.balance)+' · '+contract.remaining+' restantes'),
     '',
-    review.contracts.length>3
-      ?'Digite até 3 números separados por vírgula (ex.: 1,2,4) para comparar. Para os demais, repita a seleção depois.'
-      :'Responda 1'+(review.contracts.length>1
-        ?','+review.contracts.map((_,index)=>String(index+1)).slice(1).join(','):'')+
-        ' para comparar os contratos ou escolha apenas o número desejado.',
+    'Responda TODOS para simular os '+review.contracts.length+' contratos ou informe os números separados por vírgula (ex.: 1,2,4). Nenhum contrato será ocultado.',
     'A seguir você confirmará a autorização do cliente e a condição de alfabetização.',
   ];
   return boundMessage(lines.join('\n'));
 }
 
 export function parseTelegramSelectedContracts(value:string,count:number):number[]|null{
-  if(!/^\s*\d{1,2}(?:\s*,\s*\d{1,2}){0,2}\s*$/.test(value))return null;
+  if(!Number.isInteger(count)||count<1||count>TELEGRAM_MAX_CHOSEN_CONTRACTS)return null;
+  if(/^\s*(todos|todas|all)\s*$/i.test(value))return Array.from({length:count},(_,i)=>i);
+  if(!/^\s*\d{1,2}(?:\s*,\s*\d{1,2})*\s*$/.test(value)||value.length>50)return null;
   const selected=value.split(',').map(item=>Number(item.trim())-1);
-  if(new Set(selected).size!==selected.length||selected.length>TELEGRAM_MAX_CHOSEN_CONTRACTS||
-      selected.some(index=>index<0||index>=count))return null;
+  if(new Set(selected).size!==selected.length||selected.length<1||
+      selected.length>TELEGRAM_MAX_CHOSEN_CONTRACTS||
+      selected.some(index=>!Number.isInteger(index)||index<0||index>=count))return null;
   return selected;
 }
 
@@ -284,7 +296,18 @@ export async function calculateTelegramInssQuotes(
       }catch{ /* Missing policy data or a calculation error is not an approved quote. */ }
     }
     if(bank==='DAYCOVAL'&&chosen.length>=2){
-      const combinations=chosen.length===2?[[0,1]]:[[0,1],[0,2],[1,2],[0,1,2]];
+      // Daycoval's validated workbook accepts at most three contracts per group.
+      // All selected contracts still receive individual quotes; cap only the
+      // optional cross-contract combinations to keep the response bounded.
+      const combinations:number[][]=[];
+      for(let size=2;size<=Math.min(3,chosen.length);size++){
+        const walk=(from:number,picked:number[])=>{
+          if(combinations.length>=24)return;
+          if(picked.length===size){combinations.push(picked);return;}
+          for(let i=from;i<chosen.length;i++)walk(i+1,[...picked,i]);
+        };
+        walk(0,[]);
+      }
       for(const group of combinations){
         try{
           const r=calculate(bank,book,{...raw,contracts:group.map(i=>rawContracts[i])},today);
