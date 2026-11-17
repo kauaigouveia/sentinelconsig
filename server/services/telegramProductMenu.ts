@@ -19,8 +19,8 @@ export function telegramMainMenu(label:string){
 export function telegramSectionMenu(section:Exclude<TelegramProductSection,'ROOT'>){
   switch(section){
     case 'CLT': return {
-      response:'💼 CLT · Menu Principal\n\n1️⃣ Simular todos os bancos\n2️⃣ Consultar proposta\n3️⃣ Consultar dados do cliente\n\nAs simulações são feitas nesta conversa com os bancos habilitados. A autorização do titular é obrigatória; alguns bancos podem exigir confirmação adicional.',
-      keyboard:[['💰 Simular todos os bancos'],['🔍 Consultar proposta','🪪 Dados do cliente'],['🏠 Menu principal','👤 Trocar parceiro']],
+      response:'💼 CLT · Consulta e simulação\n\n1️⃣ Consultar margem e simular bancos\n2️⃣ Consultar proposta\n3️⃣ Consultar vínculos e margem do cliente\n\nPrimeiro o bot consulta a margem informada pelas instituições habilitadas. Depois você pode simular a margem cheia ou escolher parcela, valor e prazo. Pendências de autorização e links oficiais, quando existentes, aparecem por banco.',
+      keyboard:[['💰 Consultar margem e simular'],['🔍 Consultar proposta','🪪 Dados do cliente'],['🏠 Menu principal','👤 Trocar parceiro']],
     };
     case 'FGTS':return {
       response:'💰 FGTS (Saque-Aniversário)\n\n1️⃣ Simular antecipação\n2️⃣ Consultar proposta\n\nO bot consulta as condições disponíveis e apresenta os valores aqui, sem contratação.',
@@ -54,7 +54,7 @@ export function telegramMenuAction(input:string,section:TelegramProductSection,a
   if(key==='refinanciamento inss')return 'REFIN';
   if(key==='portabilidade pura')return 'PORT_ONLY';
   if(key==='portabilidade refinanciamento'||key==='portabilidade e refinanciamento')return 'PORT_REFIN';
-  if(key==='simular todos os bancos'||key==='simular fgts'||key==='simular antecipacao')return 'SIMULATE';
+  if(key==='simular todos os bancos'||key==='consultar margem e simular'||key==='simular fgts'||key==='simular antecipacao')return 'SIMULATE';
   if(key==='dados do cliente'||key==='consultar dados do cliente')return 'CLIENT';
   if(key==='simular pelo extrato'||key==='enviar extrato'||key==='extrato inss'||key==='enviar extrato inss')return 'EXTRACT';
   if(!allowNumbers)return null;
