@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {daycovalTablePosition,selectPortabilityQuoteRows} from '../src/lib/portabilityQuoteSelection';
+import {daycovalTablePosition,orderDaycovalUnifications,selectPortabilityQuoteRows} from '../src/lib/portabilityQuoteSelection';
 const select=(rows:any[],bank:string)=>selectPortabilityQuoteRows(rows,bank,{
   name:r=>r.name,rate:r=>r.rate,amount:r=>r.amount,valid:r=>r.eligible!==false,
 });
@@ -20,6 +20,27 @@ describe('priorização INSS PORT_REFIN compartilhada entre Telegram e site',()=
     expect(select(rows,'DAYCOVAL').map(x=>x.name)).toEqual([
       '800585 - RFN - INSS 3','800583 - RFN - INSS 3',
     ]);
+  });
+  it('destaca melhor tabela de três contratos, depois melhor tabela de dois e ordena o restante pelo troco',()=>{
+    const groups=[
+      {indices:[0,1],name:'800586 - RFN - INSS 15K 6',amount:9546.63},
+      {indices:[0,1,3],name:'800585 - RFN - INSS 10K 5',amount:10312.75},
+      {indices:[0,2,3],name:'800584 - RFN - INSS 4',amount:3815.43},
+      {indices:[2,3],name:'800581 - RFN - INSS 1',amount:1406.45},
+      {indices:[0,1,2],name:'800586 - RFN - INSS 15K 6',amount:9971.91},
+      {indices:[1,2,3],name:'800585 - RFN - INSS 10K 5',amount:8375.77},
+      {indices:[1,2],name:'800586 - RFN - INSS 15K 6',amount:7506.37},
+    ];
+    const sorted=orderDaycovalUnifications(groups,row=>({
+      contractCount:row.indices.length,table:row.name,cashOut:row.amount,
+    }));
+    expect(sorted.slice(0,3).map(row=>row.indices.join('+'))).toEqual([
+      '0+2+3','2+3','0+1+3',
+    ]);
+    expect(sorted.slice(2).map(row=>row.amount)).toEqual([
+      10312.75,9971.91,9546.63,8375.77,7506.37,
+    ]);
+    expect(sorted).toHaveLength(groups.length);
   });
   it('seleciona uma oferta por banco com preferência por 1,85% e próxima menor taxa',()=>{
     const rows=[

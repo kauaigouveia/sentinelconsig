@@ -2,6 +2,7 @@ import type {TelegramPdfReview,TelegramSpreadsheetQuote} from './telegramInssPdf
 import {activePortabilityReplacement} from '../../src/lib/portabilityActiveRules.js';
 import {evaluateReplacementPolicy} from '../../src/lib/portabilityReplacementPolicy.js';
 import {institutionLabel,resolveInstitutionCode} from '../../src/lib/strParticipants.js';
+import {orderDaycovalUnifications} from '../../src/lib/portabilityQuoteSelection.js';
 
 type Official={index:number;rows:any[];saved:boolean;failed:boolean};
 const money=(value:unknown)=>value!=null&&value!==''&&Number.isFinite(Number(value))&&Number(value)>=0
@@ -78,9 +79,12 @@ export function formatTelegramInssPortfolio(
     lines.push('🎯 Outros bancos (roteiro compatível, sem simulação): '+(others.length?others.join(' / '):'nenhum confirmado com os dados disponíveis'));
     blocks.push(lines.join('\n'));
   }
-  const groups=sheets.filter(row=>row.bank==='DAYCOVAL'&&row.indices.length>1);
+  const groups=orderDaycovalUnifications(
+    sheets.filter(row=>row.bank==='DAYCOVAL'&&row.indices.length>1),
+    row=>({contractCount:row.indices.length,table:row.table,cashOut:row.amount}),
+  );
   if(groups.length){
-    blocks.push('🔄 DAYCOVAL · UNIFICAÇÕES POSSÍVEIS\nTabela mais próxima da 1 (até a 9), preservando todas as combinações calculáveis.\n⚠️ Alternativas aos contratos individuais; não somar aos respectivos trocos.');
+    blocks.push('🔄 DAYCOVAL · UNIFICAÇÕES POSSÍVEIS\nPrimeiro: melhor tabela entre as unificações com mais contratos; segundo: melhor tabela do agrupamento menor. Depois: maior troco estimado.\n⚠️ Alternativas aos contratos individuais; não somar aos respectivos trocos.');
     for(const group of groups){
       const lines=['Unificação '+group.indices.map(i=>i+1).join('+'),
         'Tabela: '+group.table];

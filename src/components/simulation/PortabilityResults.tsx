@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, Check, ClipboardCopy, Info } from 'lucide-react';
-import {selectPortabilityQuoteRows} from '../../lib/portabilityQuoteSelection';
+import {orderDaycovalUnifications,selectPortabilityQuoteRows} from '../../lib/portabilityQuoteSelection';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import {buildPortRefinBreakdown,portabilityBreakdownText,money,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import {PortRefinInstallmentsTable} from './PortRefinInstallmentsTable';
@@ -11,6 +11,7 @@ export type PortabilityResult = {
   contractLabel?: string;
   provider: string;
   unified?: boolean;
+  sourceContracts?: readonly unknown[];
   success: boolean;
   requiresReview?: boolean;
   reviewReason?: string;
@@ -71,7 +72,17 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
           amount:r=>r.troco,
           valid:r=>r.success,
         }));
-    return [...byContract.entries()];
+    const groups=[...byContract.entries()];
+    if(!unified)return groups;
+    return orderDaycovalUnifications(groups,([label,banks])=>{
+      const row=banks.get('DAYCOVAL')?.[0];
+      const indexed=label.match(/contratos\s+(\d+(?:\s*\+\s*\d+)*)/i)?.[1];
+      return {
+        contractCount:row?.sourceContracts?.length||indexed?.split('+').length||0,
+        table:row?.table?.name||row?.table?.cod_tabela,
+        cashOut:row?.troco,
+      };
+    });
   }, [rows, unified, providerFilter, conditionFor]);
 
   const lastPage = Math.max(0, Math.ceil(grouped.length / 3) - 1);

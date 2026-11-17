@@ -45,3 +45,31 @@ export function selectPortabilityQuoteRows<T>(
   };
   return [...eligible].sort((a,b)=>rank(a)-rank(b)||money(b)-money(a)).slice(0,1);
 }
+
+// The site and Telegram use the same business presentation order for
+// Daycoval combinations. Preserve one validated offer per combination.
+// First the best table of the largest group, then the best table of each
+// smaller group; afterwards order remaining options by estimated cash-out.
+export function orderDaycovalUnifications<T>(
+  items:readonly T[],
+  details:(item:T)=>{contractCount:number;table:unknown;cashOut:unknown},
+):T[]{
+  const entries=items.map((item,index)=>{
+    const detail=details(item),amount=Number(detail.cashOut);
+    return {item,index,count:detail.contractCount,
+      table:daycovalTablePosition(detail.table)??Number.POSITIVE_INFINITY,
+      amount:Number.isFinite(amount)&&amount>0?amount:0};
+  });
+  const groupCounts=[...new Set(entries.filter(e=>Number.isInteger(e.count)&&e.count>=2&&e.amount>0).map(e=>e.count))]
+    .sort((a,b)=>b-a);
+  const selected=new Set<number>();
+  const promoted:typeof entries=[];
+  for(const count of groupCounts){
+    const top=entries.filter(e=>e.count===count&&e.amount>0)
+      .sort((a,b)=>a.table-b.table||b.amount-a.amount||a.index-b.index)[0];
+    if(top){selected.add(top.index);promoted.push(top);}
+  }
+  const remaining=entries.filter(e=>!selected.has(e.index))
+    .sort((a,b)=>b.amount-a.amount||a.table-b.table||b.count-a.count||a.index-b.index);
+  return [...promoted,...remaining].map(e=>e.item);
+}
