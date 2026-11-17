@@ -227,7 +227,7 @@ export function telegramPdfReviewText(review:TelegramPdfReview):string{
 
 export function parseTelegramSelectedContracts(value:string,count:number):number[]|null{
   if(!Number.isInteger(count)||count<1||count>TELEGRAM_MAX_CHOSEN_CONTRACTS)return null;
-  if(/^\s*(todos|todas|all)\s*$/i.test(value))return Array.from({length:count},(_,i)=>i);
+  if(/^\s*(?:✅\s*)?(?:todos|todas|all|simular todos os contratos|todos os contratos)\s*$/i.test(value))return Array.from({length:count},(_,i)=>i);
   if(!/^\s*\d{1,2}(?:\s*,\s*\d{1,2})*\s*$/.test(value)||value.length>50)return null;
   const selected=value.split(',').map(item=>Number(item.trim())-1);
   if(new Set(selected).size!==selected.length||selected.length<1||
