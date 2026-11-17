@@ -37,6 +37,23 @@ const parsedMoney=(value:string):number|null=> {
 };
 const boundMessage=(text:string)=>text.slice(0,3850);
 
+/** Safe, diagnostic-only statuses. Never include raw PDF text, CPF, NB, file_id or bank response. */
+export type TelegramPdfFailureCode='TELEGRAM_DOWNLOAD'|'PDF_READER'|'PDF_CONTENT'|'PDF_TIMEOUT';
+export class TelegramPdfProcessingError extends Error {
+  constructor(public readonly code:TelegramPdfFailureCode,message:string){super(message);this.name='TelegramPdfProcessingError';}
+}
+export function telegramPdfErrorCode(error:unknown):TelegramPdfFailureCode{
+  return error instanceof TelegramPdfProcessingError?error.code:'PDF_READER';
+}
+export function telegramPdfErrorMessage(error:unknown):string{
+  switch(telegramPdfErrorCode(error)){
+    case 'TELEGRAM_DOWNLOAD':return '⚠️ O Telegram recebeu o documento, mas não consegui baixar o arquivo para análise. Isso não significa que o PDF esteja incorreto. Envie o mesmo PDF novamente em alguns instantes. Nenhuma simulação foi salva.';
+    case 'PDF_TIMEOUT':return '⚠️ O leitor do PDF excedeu o tempo disponível para processar o documento. O arquivo não foi considerado inválido. Você pode tentar novamente; se persistir, utilize o extrato no Portal do Parceiro. Nenhuma simulação foi salva.';
+    case 'PDF_CONTENT':return '⚠️ O PDF foi recebido e aberto, mas o leitor não conseguiu confirmar todos os dados e contratos do extrato com segurança. Confira o arquivo no Portal do Parceiro ou solicite revisão à mesa. Nenhuma simulação foi salva.';
+    default:return '⚠️ O arquivo foi recebido, mas houve uma falha técnica no leitor de PDF do servidor. O documento não foi declarado inválido. Tente novamente; se persistir, informe à mesa que houve falha de leitura no Telegram. Nenhuma simulação foi salva.';
+  }
+}
+
 export function validateTelegramPdfDocument(document:TelegramFile):void{
   if(!document||!String(document.file_name||'').toLowerCase().endsWith('.pdf')||
       (document.mime_type!=null && document.mime_type!=='application/pdf'))
@@ -51,6 +68,7 @@ export function validateTelegramPdfDocument(document:TelegramFile):void{
 /** Download only from Telegram's own fixed Bot API hostname; never follow a user supplied URL. */
 export async function downloadTelegramPdf(token:string,document:TelegramFile,fetcher:typeof fetch=fetch):Promise<Uint8Array>{
   validateTelegramPdfDocument(document);
+  try{
   const response=await fetcher('https://api.telegram.org/bot'+token+'/getFile',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({file_id:document.file_id}),signal:AbortSignal.timeout(10000),
@@ -93,6 +111,10 @@ export async function downloadTelegramPdf(token:string,document:TelegramFile,fet
     return bytes;
   }
   throw Error('O arquivo do Telegram não pode ser transferido.');
+  }catch(error){
+    if(error instanceof TelegramPdfProcessingError)throw error;
+    throw new TelegramPdfProcessingError('TELEGRAM_DOWNLOAD','Falha ao obter o PDF do Telegram.');
+  }
 }
 
 /** Same row-order extraction as the authorized browser parser, without saving the original PDF. */
@@ -100,12 +122,25 @@ export async function readTelegramInssPdf(bytes:Uint8Array):Promise<TelegramPdfR
   if(bytes.byteLength<200||bytes.byteLength>TELEGRAM_PDF_MAX_BYTES||
       String.fromCharCode(...bytes.slice(0,5))!=='%PDF-')
     throw Error('Selecione um PDF textual válido de até 5 MB.');
-  const { getDocument }=await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const task=getDocument({
+  // PDF.js on Node uses an in-process worker. Importing it explicitly also
+  // makes Vercel's function file tracer include pdf.worker.mjs, which is a
+  // dynamic dependency not guaranteed to be traced from pdf.mjs alone.
+  let getDocument:typeof import('pdfjs-dist/legacy/build/pdf.mjs').getDocument;
+  try{
+    await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+    ({getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs'));
+  }catch{
+    throw new TelegramPdfProcessingError('PDF_READER','Leitor de PDF indisponível no servidor.');
+  }
+  let task:ReturnType<typeof getDocument>;
+  try{task=getDocument({
     data:bytes,disableFontFace:true,useSystemFonts:false,useWorkerFetch:false,
     stopAtErrors:true,verbosity:0,
-  });
-  const timeout=setTimeout(()=>{void task.destroy();},18000);
+  });}catch{
+    throw new TelegramPdfProcessingError('PDF_READER','Falha na inicialização do leitor de PDF.');
+  }
+  let timedOut=false;
+  const timeout=setTimeout(()=>{timedOut=true;void task.destroy();},28000);
   try{
     const pdf=await task.promise;
     if(pdf.numPages<1||pdf.numPages>20)throw Error('O extrato deve ter até 20 páginas.');
@@ -125,12 +160,14 @@ export async function readTelegramInssPdf(bytes:Uint8Array):Promise<TelegramPdfR
       for(const part of parts){if(row.length&&Math.abs(part.y-row[0].y)>2)finish();row.push(part);}
       finish();page.cleanup();
     }
-    if(lines.length>1800)throw Error('O extrato excede os limites de processamento.');
-    const statement=parseInssStatement(lines);
-    if(statement.issues.length)throw Error('Alguns contratos do extrato exigem conferência manual. Envie um extrato textual íntegro e atual.');
+    if(lines.length>1800)throw new TelegramPdfProcessingError('PDF_CONTENT','O extrato excede os limites de linhas.');
+    let statement:ReturnType<typeof parseInssStatement>;
+    try{statement=parseInssStatement(lines);}
+    catch{throw new TelegramPdfProcessingError('PDF_CONTENT','Dados do extrato não reconhecidos pelo leitor.');}
+    if(statement.issues.length)throw new TelegramPdfProcessingError('PDF_CONTENT','Há linhas de contrato incompletas ou divergentes.');
     if(!statement.contracts.length||statement.contracts.length>13)
-      throw Error('O extrato deve conter entre 1 e 13 contratos de empréstimo válidos.');
-    validateSimulationContracts(statement.contracts);
+      throw new TelegramPdfProcessingError('PDF_CONTENT','O extrato não possui quantidade válida de contratos.');
+    try{validateSimulationContracts(statement.contracts);}catch{throw new TelegramPdfProcessingError('PDF_CONTENT','Dados financeiros dos contratos não passaram na validação.');}
     const contracts=statement.contracts.map((c:PortabilityContractDraft):TelegramPdfContract=>{
       const balance=parsedMoney(c.lastDueBalance),installment=parsedMoney(c.installmentFaceValue);
       if(balance==null||installment==null||balance<=0||installment<=0)throw Error('Contrato com valores inválidos no PDF.');
@@ -151,7 +188,11 @@ export async function readTelegramInssPdf(bytes:Uint8Array):Promise<TelegramPdfR
       loanMargin:parsedMoney(statement.loanMargin),
       contracts,
     };
-  }finally{clearTimeout(timeout);await task.destroy();}
+  }catch(error){
+    if(timedOut)throw new TelegramPdfProcessingError('PDF_TIMEOUT','Tempo limite excedido ao ler o PDF.');
+    if(error instanceof TelegramPdfProcessingError)throw error;
+    throw new TelegramPdfProcessingError('PDF_READER','Falha ao extrair os dados do documento PDF.');
+  }finally{clearTimeout(timeout);await task.destroy().catch(()=>{});}
 }
 
 export function telegramPdfReviewText(review:TelegramPdfReview):string{
