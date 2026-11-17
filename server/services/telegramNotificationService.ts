@@ -7,6 +7,7 @@ import { PartnerPortalService } from './partnerPortalService.js';
 import { AuditLogService } from './auditLogService.js';
 import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,telegramPdfErrorCode,telegramPdfErrorMessage,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
 import { calculateTelegramInssOfficialQuotes } from './telegramInssOfficialQuotes.js';
+import {formatTelegramInssPortfolio} from './telegramInssPortfolio.js';
 import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
 import {beginTelegramNativeSimulation,continueTelegramCltSimulation,cltConsultationOptions,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,type TelegramNativeDraft} from './telegramNativeSimulation.js';
 import {executeTelegramNativeSimulation,executeTelegramCltMargin} from './telegramNativeSimulationExecutor.js';
@@ -795,20 +796,12 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 reply_markup:{keyboard:[[{text:'✅ Simular todos os contratos'}],[{text:'🏠 Menu principal'}]],resize_keyboard:true},protect_content:true});
         return;
     }
+    let sheets:Awaited<ReturnType<typeof calculateTelegramInssQuotes>>|null=null;
+    let integration:Awaited<ReturnType<typeof calculateTelegramInssOfficialQuotes>>|null=null;
     try{
-        const quote=await calculateTelegramInssQuotes(db,job.account.tenantId,job.review,job.indices,job.illiterate);
-        if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
-        for(const line of quote.texts)
-            await telegram(config,'sendMessage',{chat_id:chatId,text:line,protect_content:true});
-        if(quote.unavailableBanks.length)
-            await telegram(config,'sendMessage',{chat_id:chatId,
-                text:'Planilhas sem cotação: '+quote.unavailableBanks.join('; ').slice(0,1150),
-                protect_content:true});
+        sheets=await calculateTelegramInssQuotes(db,job.account.tenantId,job.review,job.indices,job.illiterate);
     }catch{
-        if(await telegramAccountStillValid(db,config,chatId,job.account))
-            await telegram(config,'sendMessage',{chat_id:chatId,
-                text:'⚠️ O cálculo documental não terminou. As integrações bancárias serão consultadas separadamente. Nenhuma proposta foi contratada.',
-                protect_content:true});
+        // One provider's documentary failure must not block the official bank calls.
     }
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
     const partner=await db.partner.findFirst({
@@ -817,17 +810,20 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
     });
     if(!partner)return;
     try{
-        const output=await calculateTelegramInssOfficialQuotes(
+        integration=await calculateTelegramInssOfficialQuotes(
             db,job.account.tenantId,partner,job.review,job.indices,job.illiterate,job.attemptKey);
-        if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
-        for(const text of output.texts)
-            await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:true});
     }catch{
-        if(await telegramAccountStillValid(db,config,chatId,job.account))
-            await telegram(config,'sendMessage',{chat_id:chatId,
-                text:'⚠️ As integrações bancárias não concluíram o processamento. Confira as estimativas já enviadas e consulte novamente mais tarde. Não houve contratação.',
-                protect_content:true});
+        // No invented bank offers; still show the documentary results and an explicit status.
     }
+    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    const report=formatTelegramInssPortfolio(job.review,job.indices,sheets?.quotes||[],integration?.contracts||[]);
+    if(!sheets||!integration)report.push('⚠️ '+(!sheets?'Cálculo documental ':'')+
+        (!sheets&&!integration?'e ':'')+(!integration?'integrações bancárias ':'')+
+        'não concluído(s) nesta consulta. Verifique no Portal; isso não significa recusa.');
+    if(sheets?.unavailableBanks.length)
+        report.push('ℹ️ Planilhas sem cotação: '+sheets.unavailableBanks.join('; ').slice(0,1100));
+    for(const text of report)
+        await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:true});
     if(await telegramAccountStillValid(db,config,chatId,job.account))
         await telegram(config,'sendMessage',{chat_id:chatId,
             text:'✅ Consulta concluída para os contratos selecionados, sem contratação nem aprovação bancária. O histórico apresenta as cotações positivas das APIs. Para conferir detalhes adicionais:\n'+

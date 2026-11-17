@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, Check, ClipboardCopy, Info } from 'lucide-react';
-import { higherMonthlyRateFirst } from '../../lib/monthlyRateOrder';
+import {selectPortabilityQuoteRows} from '../../lib/portabilityQuoteSelection';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import {buildPortRefinBreakdown,portabilityBreakdownText,money,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import {PortRefinInstallmentsTable} from './PortRefinInstallmentsTable';
@@ -63,8 +63,16 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       if (!byProvider.has(row.provider)) byProvider.set(row.provider, []);
       byProvider.get(row.provider)!.push(row);
     }
+    for(const banks of byContract.values())
+      for(const [provider,conditions] of banks)
+        banks.set(provider,selectPortabilityQuoteRows(conditions,provider,{
+          name:r=>r.table?.name||r.table?.cod_tabela,
+          rate:r=>conditionFor(r).rate,
+          amount:r=>r.troco,
+          valid:r=>r.success,
+        }));
     return [...byContract.entries()];
-  }, [rows, unified, providerFilter]);
+  }, [rows, unified, providerFilter, conditionFor]);
 
   const lastPage = Math.max(0, Math.ceil(grouped.length / 3) - 1);
   const currentPage = Math.min(page, lastPage);
@@ -194,10 +202,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       className="space-y-4 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] p-3 sm:p-5">
       <h4 className="border-b border-[var(--border-default)] pb-3 text-sm font-bold">{label}</h4>
       {[...banks].map(([provider,conditions]) => {
-        const sorted = [...conditions].sort((a,b) =>
-          Number(b.success) - Number(a.success) ||
-          higherMonthlyRateFirst(conditionFor(a).rate,conditionFor(b).rate) ||
-          (Number(b.troco) || 0) - (Number(a.troco) || 0));
+        const sorted = [...conditions];
         return <section key={provider} className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <h5 className="text-sm font-bold">{bankName(provider)}</h5>

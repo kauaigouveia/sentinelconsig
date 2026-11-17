@@ -3,6 +3,7 @@ import { PartnerSimulationService } from './partnerSimulationService.js';
 import { PartnerSimulationTracking } from './partnerSimulationTracking.js';
 import { formatTelegramBankSimulation } from './telegramBankResultPresentation.js';
 import type { TelegramPdfReview } from './telegramInssPdfService.js';
+import {selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
 type Runner=typeof PartnerSimulationService.run;
 type RecordQuote=typeof PartnerSimulationTracking.record;
 const money=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -18,7 +19,7 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
     throw Error('Consulta inválida.');
   if(!privateData||privateData.contracts.length!==review.contracts.length||
     privateData.contracts.some((c,i)=>!c.number||c.number.replace(/[^A-Za-z0-9]/g,'').slice(-4)!==review.contracts[i].numberSuffix))
-    return {texts:['Integrações bancárias não consultadas: dados de origem não confirmados. Reenvie o PDF.'],consulted:0,positive:0,unavailableBanks:['Identificadores indisponíveis']};
+    return {texts:['Integrações bancárias não consultadas: dados de origem não confirmados. Reenvie o PDF.'],consulted:0,positive:0,unavailableBanks:['Identificadores indisponíveis'],contracts:[]};
   const run=deps?.run||PartnerSimulationService.run;
   const record=deps?.record||PartnerSimulationTracking.record;
   const results:{index:number;rows:any[];saved:boolean;failed:boolean}[]=[];
@@ -40,14 +41,23 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
         const result=await run(db,tenantId,input,'SIMULATE');
         const rows=(Array.isArray(result?.rows)?result.rows:[]).filter((r:any)=>
           !['DAYCOVAL','PARANA','C6'].includes(String(r.provider||r.institution||'').toUpperCase()));
-        const offers=rows.filter((r:any)=>r.state==='OFFER'&&Number(r.amount)>0);
+        const groups=new Map<string,any[]>();
+        for(const row of rows.filter((r:any)=>r.state==='OFFER'&&Number(r.amount)>0)){
+          const key=String(row.provider||row.institution||'').toUpperCase();
+          groups.set(key,[...(groups.get(key)||[]),row]);
+        }
+        const offers=[...groups.entries()].flatMap(([bank,items])=>
+          selectPortabilityQuoteRows(items,bank,{
+            name:r=>r.name||r.code,rate:r=>r.rate,amount:r=>r.amount,
+          }));
+        const compact=[...rows.filter((r:any)=>r.state!=='OFFER'),...offers];
         let saved=false;
         if(offers.length){
           const history=await record(db,{tenantId,partnerId:partner.id,partnerCode:partner.code,
             accessName:'Telegram PDF'},attemptKey+'-'+(index+1),input,offers);
           saved=!!history;
         }
-        results.push({index,rows,saved,failed:false});
+        results.push({index,rows:compact,saved,failed:false});
       }catch{results.push({index,rows:[],saved:false,failed:true});}
     }
   };
@@ -71,5 +81,5 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
       texts.push('ℹ️ '+bank+': nenhuma oferta positiva confirmada. Confira configuração, roteiro e autorização da instituição.');
   }
   texts.push('⚠️ Cotações preliminares sujeitas a autorização e análise. Nenhuma contratação foi realizada.');
-  return {texts,consulted:results.length,positive,unavailableBanks:results.filter(r=>r.failed).map(r=>'Contrato '+(r.index+1))};
+  return {texts,consulted:results.length,positive,unavailableBanks:results.filter(r=>r.failed).map(r=>'Contrato '+(r.index+1)),contracts:results};
 }

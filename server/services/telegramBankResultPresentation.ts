@@ -1,4 +1,5 @@
 import {cltOutcome,cltPublicMessage} from '../../src/lib/cltSimulationOutcome.js';
+import {selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
 
 type Product='CLT'|'FGTS'|'INSS';
 type Mode='SIMULATION'|'MARGIN';
@@ -92,11 +93,19 @@ const limitMessages=(lines:readonly string[]):string[]=>{
 export function formatTelegramBankSimulation(
   rows:readonly any[],product:Product,operation:string,saved:boolean,
 ):string[]{
-  const offerMap=new Map<string,any>();
+  const grouped=new Map<string,any[]>();
   for(const row of rows){
     if(normalizedOutcome(row)!=='OFFER')continue;
-    const bank=telegramBankName(row),current=offerMap.get(bank);
-    if(!current||Number(row.amount)>Number(current.amount))offerMap.set(bank,row);
+    const bank=telegramBankName(row);
+    grouped.set(bank,[...(grouped.get(bank)||[]),row]);
+  }
+  const offerMap=new Map<string,any>();
+  for(const [bank,items] of grouped){
+    const selected=product==='INSS'&&['PORT','PORT_REFIN'].includes(operation)?
+      selectPortabilityQuoteRows(items,String(items[0]?.provider||bank),{
+        name:r=>r.name||r.code,rate:r=>r.rate,amount:r=>r.amount,
+      })[0]:[...items].sort((a,b)=>Number(b.amount)-Number(a.amount))[0];
+    if(selected)offerMap.set(bank,selected);
   }
   const ordered=[...offerMap.entries()].sort((a,b)=>Number(b[1].amount)-Number(a[1].amount));
   const lines=['📊 SIMULAÇÃO '+product+(product==='INSS'?' · '+operation:'')];

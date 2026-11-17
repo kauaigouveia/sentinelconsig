@@ -6,6 +6,7 @@ import { money as moneyBR, portabilityInstallmentStatus } from '../../src/lib/po
 import { decodeDaycoval } from './daycovalWorkbook.js';
 import { previewPortRefin } from './portRefinPreview.js';
 import { SPREADSHEET_MODELS, type SpreadsheetBank } from './portRefinWorkbooks.js';
+import {selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
 
 export const TELEGRAM_PDF_MAX_BYTES = 5 * 1024 * 1024;
 export const TELEGRAM_PDF_TTL_MS = 10 * 60 * 1000;
@@ -236,7 +237,11 @@ export function parseTelegramSelectedContracts(value:string,count:number):number
   return selected;
 }
 
-export type TelegramQuoteResult={texts:string[];calculatedBanks:string[];unavailableBanks:string[]};
+export type TelegramSpreadsheetQuote={
+  bank:string;indices:number[];table:string;amount:number;rate:number;
+  installment:number;term:number;changes:{index:number;original:number;adjusted:number|null}[];
+};
+export type TelegramQuoteResult={texts:string[];calculatedBanks:string[];unavailableBanks:string[];quotes:TelegramSpreadsheetQuote[]};
 /** Read only; use exactly the tenant-bound stored workbooks and the approved calculation engine. */
 export async function calculateTelegramInssQuotes(
   db:Pick<PrismaClient,'systemConfig'>,
@@ -264,6 +269,7 @@ export async function calculateTelegramInssQuotes(
   };
   const banks:SpreadsheetBank[]=['DAYCOVAL','C6','PARANA'];
   const texts:string[]=[];
+  const quotes:TelegramSpreadsheetQuote[]=[];
   const calculatedBanks:string[]=[];
   const unavailableBanks:string[]=[];
   for(const bank of banks){
@@ -278,31 +284,35 @@ export async function calculateTelegramInssQuotes(
     for(const [position,contract]of rawContracts.entries()){
       try{
         const r=calculate(bank,book,{...raw,contracts:[contract]},today);
-        const offer=[...r.offers].filter(o=>Number.isFinite(o.amount)&&o.amount>0)
-          .sort((a,b)=>b.amount-a.amount)[0];
-        if(!offer)continue;
-        successes++;
-        const original=chosen[position].installment;
-        const adjusted=r.offers.find(o=>o===offer)?.installmentChanges?.[0]?.newInstallment;
-        const originalLine='Parcela portada: '+money(original)+' → '+
-          (adjusted!=null?money(adjusted):'recalculo não informado');
-        texts.push('🏦 '+bank+' · Contrato '+String(selectedIndices[position]+1)+' (final '+
-          chosen[position].numberSuffix+')\n'+
-          'Tabela: '+String(offer.name||offer.code||'Condição calculada').slice(0,70)+'\n'+
-          originalLine+'\n'+
-          'Parcela do refin: '+money(Number(offer.installment))+'\n'+
-          'Troco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
-          (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
+        const offers=selectPortabilityQuoteRows(r.offers,bank,{
+          name:o=>o.name||o.code,rate:o=>o.rate,amount:o=>o.amount,
+        }).filter(o=>Number(o.amount)>0);
+        for(const offer of offers){
+          successes++;
+          const original=chosen[position].installment;
+          const changed=offer.installmentChanges?.[0]?.newInstallment;
+          const adjusted=changed==null||!Number.isFinite(Number(changed))?null:Number(changed);
+          const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
+          quotes.push({bank,indices:[selectedIndices[position]],table,amount:Number(offer.amount),
+            rate:Number(offer.rate),installment:Number(offer.installment),term:Number(offer.term),
+            changes:[{index:selectedIndices[position],original,adjusted}]});
+          const originalLine='Parcela portada: '+money(original)+' → '+
+            (adjusted!=null?money(adjusted):'recalculo não informado');
+          texts.push('🏦 '+bank+' · Contrato '+String(selectedIndices[position]+1)+' (final '+
+            chosen[position].numberSuffix+')\nTabela: '+table+'\n'+originalLine+'\n'+
+            'Parcela do refin: '+money(Number(offer.installment))+'\n'+
+            'Troco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
+            (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
+        }
       }catch{ /* Missing policy data or a calculation error is not an approved quote. */ }
     }
     if(bank==='DAYCOVAL'&&chosen.length>=2){
       // Daycoval's validated workbook accepts at most three contracts per group.
       // All selected contracts still receive individual quotes; cap only the
-      // optional cross-contract combinations to keep the response bounded.
+      // optional cross-contract combinations without hiding valid groups.
       const combinations:number[][]=[];
       for(let size=2;size<=Math.min(3,chosen.length);size++){
         const walk=(from:number,picked:number[])=>{
-          if(combinations.length>=24)return;
           if(picked.length===size){combinations.push(picked);return;}
           for(let i=from;i<chosen.length;i++)walk(i+1,[...picked,i]);
         };
@@ -311,24 +321,34 @@ export async function calculateTelegramInssQuotes(
       for(const group of combinations){
         try{
           const r=calculate(bank,book,{...raw,contracts:group.map(i=>rawContracts[i])},today);
-          const offer=[...r.offers].filter(o=>Number.isFinite(o.amount)&&o.amount>0)
-            .sort((a,b)=>b.amount-a.amount)[0];
-          if(!offer)continue;
-          successes++;
-          const breakdown=group.map((i,n)=>{
-            const original=chosen[i].installment;
-            const adjusted=offer.installmentChanges?.[n]?.newInstallment;
-            const status=portabilityInstallmentStatus({
-              label:'Contrato '+(selectedIndices[i]+1),originalInstallment:original,
-              newInstallment:adjusted==null?null:Number(adjusted),
+          const offers=selectPortabilityQuoteRows(r.offers,bank,{
+            name:o=>o.name||o.code,rate:o=>o.rate,amount:o=>o.amount,
+          }).filter(o=>Number(o.amount)>0);
+          for(const offer of offers){
+            successes++;
+            const changes=group.map((i,n)=>{
+              const raw=offer.installmentChanges?.[n]?.newInstallment;
+              return {index:selectedIndices[i],original:chosen[i].installment,
+                adjusted:raw==null||!Number.isFinite(Number(raw))?null:Number(raw)};
             });
-            return '  Contrato '+(selectedIndices[i]+1)+': '+money(original)+' → '+
-              (adjusted!=null?money(adjusted):'não informado')+' ('+status.label+')';
-          });
-          texts.push('🔄 DAYCOVAL · Unificação '+group.map(i=>selectedIndices[i]+1).join('+')+'\n'+
-            breakdown.join('\n')+'\nParcela do refin: '+money(Number(offer.installment))+
-            '\nTroco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
-            (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
+            const breakdown=changes.map(change=>{
+              const status=portabilityInstallmentStatus({
+                label:'Contrato '+(change.index+1),originalInstallment:change.original,
+                newInstallment:change.adjusted,
+              });
+              return '  Contrato '+(change.index+1)+': '+money(change.original)+' → '+
+                (change.adjusted!=null?money(change.adjusted):'não informado')+' ('+status.label+')';
+            });
+            const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
+            quotes.push({bank,indices:group.map(i=>selectedIndices[i]),table,
+              amount:Number(offer.amount),rate:Number(offer.rate),
+              installment:Number(offer.installment),term:Number(offer.term),changes});
+            texts.push('🔄 DAYCOVAL · Unificação '+group.map(i=>selectedIndices[i]+1).join('+')+'\n'+
+              'Tabela: '+table+'\n'+breakdown.join('\n')+
+              '\nParcela do refin: '+money(Number(offer.installment))+
+              '\nTroco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
+              (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
+          }
         }catch{ /* Do not claim an unavailable group as approved. */ }
       }
     }
@@ -337,7 +357,7 @@ export async function calculateTelegramInssQuotes(
   }
   if(!texts.length)return {
     texts:['Não foi possível calcular cotações pelas planilhas ativas com os dados extraídos. Revise os dados e os roteiros no Portal do Parceiro. Nenhuma oferta bancária foi aprovada.'],
-    calculatedBanks,unavailableBanks,
+    calculatedBanks,unavailableBanks,quotes,
   };
   const disclaimer='\n\n⚠️ Estimativas de planilhas para conferência documental, vigência e política bancária. Não equivalem a aprovação, autorização nem contratação.';
   const headers='📊 Resultado das simulações INSS · Portabilidade + Refinanciamento\n\n';
@@ -351,5 +371,5 @@ export async function calculateTelegramInssQuotes(
     current+=quote+'\n\n';
   }
   if(current)messages.push(boundMessage(current+disclaimer));
-  return {texts:messages,calculatedBanks,unavailableBanks};
+  return {texts:messages,calculatedBanks,unavailableBanks,quotes};
 }
