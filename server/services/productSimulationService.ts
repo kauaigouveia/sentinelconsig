@@ -77,7 +77,16 @@ export class ProductSimulationService {
           try {
             const balance = await nossaCall('POST', '/nossa/v1/balance', { cpf: input.cpf, service_type: service });
             if (balance?.status !== 'completed' || balance?.eligible !== true || !balance?.key) {
-              rows.push({ provider: 'Nossa Fintech', institution, state: 'PENDING', message: balance?.message || 'Consulta de saldo pendente ou sem autorização/elegibilidade. Autorize a instituição no aplicativo FGTS e consulte novamente.' });
+              const explicitIneligible=balance?.status==='completed'&&balance?.eligible===false;
+              const reason=typeof balance?.message==='string'&&balance.message.trim()?balance.message.trim():undefined;
+              const explicitAuthorization=!!reason&&/autoriza|consent/i.test(reason);
+              rows.push({
+                provider:'Nossa Fintech',institution,state:'PENDING',
+                outcome:explicitIneligible?'INELIGIBLE':explicitAuthorization?'AUTHORIZATION_REQUIRED':'PENDING',
+                message:reason||(explicitIneligible
+                  ?'A instituição retornou que o cliente não está elegível para esta operação FGTS.'
+                  :'O saldo ainda não foi confirmado. Verifique o estado da consulta e a autorização no aplicativo FGTS antes de tentar novamente.'),
+              });
               return;
             }
             const body = { cpf: input.cpf, key: balance.key, number_of_installments: input.term, eligibility: input.eligibility, service_type: service };

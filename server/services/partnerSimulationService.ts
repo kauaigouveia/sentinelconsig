@@ -138,7 +138,11 @@ export class PartnerSimulationService {
         }
         const startOffers=offers.length;
         const ageError = finantoAgeError(input.birthDate, input.term,undefined,input.operation);
-        if (ageError) throw new Error(ageError);
+        if (ageError){
+          if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',
+            outcome:'INELIGIBLE',message:ageError});
+          return;
+        }
         const call = async (endpoint: string, body: any) => {
           const result = await FinantoService.request(prisma, tenantId, 'POST', endpoint, body);
           const payload = result.data as any;
