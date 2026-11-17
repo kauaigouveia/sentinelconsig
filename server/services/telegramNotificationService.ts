@@ -5,7 +5,7 @@ import type { Express, Request } from 'express';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { PartnerPortalService } from './partnerPortalService.js';
 import { AuditLogService } from './auditLogService.js';
-import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
+import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,telegramPdfErrorCode,telegramPdfErrorMessage,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
 import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
 import {beginTelegramNativeSimulation,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,type TelegramNativeDraft} from './telegramNativeSimulation.js';
 import {executeTelegramNativeSimulation} from './telegramNativeSimulationExecutor.js';
@@ -638,7 +638,10 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         try{
             const bytes=await downloadTelegramPdf(config.token,job.document);
             review=await readTelegramInssPdf(bytes);
-        }catch{
+        }catch(error){
+            // Do not log/document personally identifiable values, raw API errors
+            // (which may contain tokens), or the customer PDF. Only report stage.
+            console.warn('[telegram-pdf] failed stage:',telegramPdfErrorCode(error));
             const row=await db.systemConfig.findUnique({where:{id:stateId}});
             if(row){
                 const state=decrypt<ProposalQueryState>(row.configValue);
@@ -649,7 +652,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 }
             }
             await telegram(config,'sendMessage',{chat_id:chatId,
-                text:'Não foi possível interpretar esse PDF com segurança. Envie o extrato INSS textual, íntegro e sem senha, com CPF, benefício e os empréstimos legíveis. Nenhuma simulação foi salva.',
+                text:telegramPdfErrorMessage(error),
                 protect_content:true});
             return;
         }
