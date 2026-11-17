@@ -22,7 +22,7 @@ function makePdf(lines:string[]):Uint8Array{
   '<< /Type /Catalog /Pages 2 0 R >>',
   '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
   '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 615 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
   '<< /Length '+Buffer.byteLength(instructions,'latin1')+' >>\nstream\n'+instructions+'\nendstream',
  ];
  let doc='%PDF-1.4\n';const offsets=[0];
@@ -73,7 +73,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
     'https://api.telegram.org/file/bot123456:token_for_tests_only/documents/file_1.pdf',
   ]);
   const malicious=vi.fn(async()=>new Response(JSON.stringify({ok:true,result:{file_path:'../../evil'}})));
-  await expect(downloadTelegramPdf('token',file,malicious as unknown as typeof fetch)).rejects.toThrow('Caminho');
+  await expect(downloadTelegramPdf('token',file,malicious as unknown as typeof fetch)).rejects.toMatchObject({code:'TELEGRAM_DOWNLOAD'});
  });
  it('lê PDF textual real e guarda só mínimos dados para conferência, nunca CPF ou NB',async()=>{
   const parsed=await readTelegramInssPdf(new Uint8Array(pdf));
