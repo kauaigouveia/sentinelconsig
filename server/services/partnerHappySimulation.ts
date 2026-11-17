@@ -12,7 +12,13 @@ export async function partnerHappySimulation(prisma: PrismaClient, tenantId: str
     }
     const data = await HappySimulationService.consultarDataprevClt(prisma, tenantId, { cpf: input.cpf, nome: input.name, telefone: input.phone });
     if (!HappySimulationService.isCltApproved(data)) return pending(data.message || 'Aguarde a autorização do cliente na Happy.', data.url_consulta_autorizacao || undefined);
-    if (action !== 'SIMULATE') return pending('Consulta Happy autorizada. Você já pode simular.');
+    if (action !== 'SIMULATE') return pending('Consulta Happy autorizada. Você já pode simular informando uma parcela ou valor e prazo.');
+    if(input.autoConditions===true){
+      // The Happy CLT contract API accepts an amount, not a generic "full
+      // margin" flag. Never submit zero or guess a bank-provided margin.
+      return [{provider:'HAPPY',institution:'HAPPY / BYX',state:'PENDING',outcome:'MISSING_DATA',
+        message:'Happy exige parcela ou valor explícito para o cálculo. Escolha a opção personalizada no Telegram; a consulta Dataprev foi preservada.'}];
+    }
     if (!data.id_cliente) return pending('Happy não informou o identificador do cliente autorizado.');
     const offers: any[] = [];
     for (const condition of data.valores_credito || []) {

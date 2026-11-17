@@ -71,7 +71,7 @@ export class PartnerSimulationService {
     } catch {plan={priorityId:null,trace:[{code:'ROUTING_CONFIGURATION_UNAVAILABLE'}]};}
     const offers: any[] = [], assessments:any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
-      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { assessments.push({provider,institution:provider,state:'PENDING',policyStatus:check.status,message:check.reason});return; } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`);if(isPortability)assessments.push({provider,policyStatus:'TECHNICAL_FAILURE',message:'Falha técnica na integração.'}); }
+      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { assessments.push({provider,institution:provider,state:'PENDING',policyStatus:check.status,message:check.reason});return; } } await run(); } catch (error: any) { notes.push(`${provider}: consulta não concluída`);if(isPortability)assessments.push({provider,policyStatus:'TECHNICAL_FAILURE',message:'Falha técnica na integração.'});else assessments.push({provider,institution:provider,state:'ERROR',outcome:'TECHNICAL_ERROR',message:'Não foi possível concluir a consulta desta instituição. Confirme a integração ou tente novamente.'}); }
       if (['PORT','PORT_REFIN'].includes(input.operation)) { for (let index=offers.length-1;index>=0;index--) { const offer=offers[index]; const check=simulationPortabilityCheck(offer.provider||offer.institution,input,offer); if(check.blocked){notes.push(check.reason);assessments.push({provider:offer.provider||offer.institution,institution:offer.institution,state:'PENDING',policyStatus:check.status,message:check.reason});offers.splice(index,1);}else {offer.policyReview=check.reason;offer.policyStatus=check.status;} } }
       if (onRows) await onRows(isPortability?publicPortabilityRows(offers):[...offers,...assessments]);
     };
@@ -132,7 +132,11 @@ export class PartnerSimulationService {
       }),
       job('FINANTO', async () => {
         const config = await FinantoService.getConfig(prisma, tenantId);
-        if (!config.enabled || !config.isConfigured) return;
+        if (!config.enabled || !config.isConfigured) {
+          if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'UNSUPPORTED',message:'Integração FINANTO não habilitada ou não configurada nesta empresa.'});
+          return;
+        }
+        const startOffers=offers.length;
         const ageError = finantoAgeError(input.birthDate, input.term,undefined,input.operation);
         if (ageError) throw new Error(ageError);
         const call = async (endpoint: string, body: any) => {
@@ -144,7 +148,7 @@ export class PartnerSimulationService {
         const operation = ({ NEW: 1, PORT: 2, REFIN: 3, PORT_REFIN: 4 } as any)[input.operation];
         const products = items(await call('/v3/loan-products/search/basic', { type: { code: { eq: 20 } }, operation: { code: { eq: operation } } })).filter(item => Number(item.type?.code ?? item.typeCode) === 20);
         const ids = new Set(products.map(item => String(item.id)));
-        if (!ids.size) { notes.push('FINANTO: nenhum produto disponível para a modalidade.'); return; }
+        if (!ids.size) { if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'UNSUPPORTED',message:'A FINANTO não possui produto ativo para a modalidade selecionada.'});return; }
         const rules: any[] = [];
         for (let offset = 0; offset < 2000; offset += 20) {
           const page = items(await call('/v3/loan-product-rules/search/basic', { offset, limit: 20, operation: { code: { eq: operation } } }));
@@ -181,6 +185,10 @@ export class PartnerSimulationService {
               if (amount && amount > 0) offers.push({ provider: 'FINANTO', institution: data.lender?.name || data.fund?.name || 'FINANTO', state: 'OFFER', code: String(rule.code || rule.id), name: finantoTableLabel(rule,input.operation), amount, contractAmount: input.operation==='PORT_REFIN'?data.refinancing?.loanValue:data.loanValue, installment: data.installmentValue || input.value, term: input.term, rate: choice.rate });
             } catch (error: any) { notes.push(`FINANTO (${rule.name}): ${error.message}`); }
           }));
+        }
+        if(!isPortability&&offers.length===startOffers){
+          assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'MISSING_DATA',
+            message:'A FINANTO não retornou uma cotação positiva para o prazo e os dados informados. Confira as tabelas e taxas ativas na integração.'});
         }
       }),
     ];
