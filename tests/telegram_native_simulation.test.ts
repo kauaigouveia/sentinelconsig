@@ -1,10 +1,10 @@
 import {describe,it,expect,vi} from 'vitest';
 import {
- beginTelegramNativeSimulation,telegramNativeSteps,telegramNativePrompt,
+ beginTelegramNativeSimulation,continueTelegramCltSimulation,telegramNativeSteps,telegramNativePrompt,
  acceptTelegramNativeAnswer,telegramNativeSummary,toTelegramNativeInput,
  formatTelegramNativeResults,type TelegramNativeDraft,
 } from '../server/services/telegramNativeSimulation';
-import {executeTelegramNativeSimulation} from '../server/services/telegramNativeSimulationExecutor';
+import {executeTelegramNativeSimulation,executeTelegramCltMargin} from '../server/services/telegramNativeSimulationExecutor';
 
 const CPF='52998224725'; // Brazilian check-digit-valid synthetic test identifier
 function fill(product:'CLT'|'FGTS'|'INSS',operation?:'NEW'|'REFIN'|'PORT'|'PORT_REFIN'){
@@ -33,15 +33,23 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   expect(wrong.ok).toBe(false);
   const valid=acceptTelegramNativeAnswer(draft,CPF);
   expect(valid.ok).toBe(true);
-  const full=fill('CLT');
-  expect(full.index).toBe(5);
-  expect(toTelegramNativeInput(full,'partner-a')).toMatchObject({
-   product:'CLT',operation:'NEW',cpf:CPF,phone:'82999998888',mode:'Payment',
-   value:450,term:0,partnerId:'partner-a',automaticAuthorization:false,
+  const consulted=fill('CLT');
+  expect(consulted.index).toBe(3);
+  expect(consulted.cltStage).toBe('CONSULT');
+  expect(toTelegramNativeInput(consulted,'partner-a')).toMatchObject({
+   product:'CLT',operation:'NEW',cpf:CPF,phone:'82999998888',
+   value:0,term:0,partnerId:'partner-a',automaticAuthorization:false,
   });
-  const text=telegramNativeSummary(full);
+  const text=telegramNativeSummary(consulted);
   expect(text).not.toContain(CPF);
-  expect(text).toContain('Confirmar simulação');
+  expect(text).toContain('Consultar margem CLT');
+  const full=continueTelegramCltSimulation(consulted,'FULL');
+  expect(toTelegramNativeInput(full,'partner-a')).toMatchObject({
+   product:'CLT',autoConditions:true,value:0,term:0,mode:'Payment',observeOnly:true,
+  });
+  const custom=continueTelegramCltSimulation(consulted,'CUSTOM');
+  expect(telegramNativePrompt(custom)).toContain('PARCELA');
+  expect(telegramNativeSteps(custom)).toHaveLength(3);
  });
  it('FGTS precisa apenas do CPF e quantidade de saques; não exige entrada no portal',()=>{
   const state=fill('FGTS');
@@ -76,8 +84,8 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   }
  });
  it('simula pelo valor líquido quando o parceiro escolhe VALOR',()=>{
-  let state=beginTelegramNativeSimulation({product:'CLT'});
-  const answers=['52998224725','Cliente Teste','82999998888','VALOR','8.500,00'];
+  let state=continueTelegramCltSimulation(fill('CLT'),'CUSTOM');
+  const answers=['VALOR','8.500,00','48'];
   for(const answer of answers){
     const response=acceptTelegramNativeAnswer(state,answer);
     if('error' in response)throw Error(response.error);
@@ -85,7 +93,7 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   }
   expect(state.values.mode).toBe('Liquid');
   expect(state.values.value).toBe('8500');
-  expect(toTelegramNativeInput(state,'p')).toMatchObject({mode:'Liquid',value:8500});
+  expect(toTelegramNativeInput(state,'p')).toMatchObject({mode:'Liquid',value:8500,term:48});
   expect(telegramNativeSummary(state)).toContain('Crédito líquido solicitado');
  });
  it('não aceita prazo inválido, data impossível, margem negativa ou parcelas abertas acima do original',()=>{
@@ -112,11 +120,32 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   expect(text).toContain('1.500,00');
   expect(text).not.toContain('1.000,00');
   expect(text).not.toContain(CPF);
-  expect(text).toContain('instituição(ões) não concluíram');
+  expect(text).toContain('Falha na integração');
   expect(text).toContain('histórico');
  });
- it('executa o serviço real por injeção com escopo do tenant e registra somente ofertas positivas',async()=>{
+ it('consulta margem CLT com REFRESH, sem solicitar SMS ou criar uma proposta',async()=>{
   const draft=fill('CLT');
+  const run=vi.fn(async()=>({rows:[
+   {provider:'FACTA',institution:'FACTA',state:'DATA',data:{margin:{available_balance:315.5,can_continue:true}}},
+   {provider:'Nossa Fintech',institution:'J17',state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',
+    message:'Cliente precisa autorizar',data:{authorization:{status:'NOT_FOUND',mechanism:'BANK_CHANNEL'}}},
+  ]}));
+  const result=await executeTelegramCltMargin({} as any,'tenant-evolve',
+    {id:'partner-a',name:'Parceiro Teste',code:'010'},draft,{run:run as any});
+  expect(run).toHaveBeenCalledWith(expect.anything(),'tenant-evolve',expect.objectContaining({
+   cpf:CPF,product:'CLT',value:0,term:0,observeOnly:true,automaticAuthorization:false,
+  }),'REFRESH');
+  expect(result.hasMargin).toBe(true);
+  expect(result.messages.join('\n')).toContain('FACTA');
+  expect(result.messages.join('\n')).toContain('315,50');
+  expect(result.messages.join('\n')).toContain('J17');
+  expect(result.messages.join('\n')).toContain('Autorização pendente');
+  await expect(executeTelegramNativeSimulation({} as any,'tenant-evolve',
+    {id:'p',name:'Partner',code:'010'},draft,'0123456789ABCDEF',{run:run as any}))
+    .rejects.toThrow('Consulte a margem');
+ });
+ it('executa o serviço real por injeção com escopo do tenant e registra somente ofertas positivas',async()=>{
+  const draft=continueTelegramCltSimulation(fill('CLT'),'FULL');
   const spy=vi.fn(async (_db:any,tenant:string,body:any,action:string)=>({
     rows:[
      {provider:'BANCO1',state:'OFFER',amount:1300,installment:450,term:36,rate:2.5},
