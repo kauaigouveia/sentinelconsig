@@ -80,17 +80,22 @@ function scenario(authorized=true,portalEnabled=true){
   downloadTelegramPdf:vi.fn(async()=>new Uint8Array([37,80,68,70,45])),
   readTelegramInssPdf:vi.fn(async()=>({
     birthDate:'1966-06-15',benefitType:32,benefitStartDate:'2020-01-01',uf:'AL',
-    benefitContractCount:3,loanMargin:120,
+    benefitContractCount:4,loanMargin:120,
     contracts:[
       {bank:'237',numberSuffix:'1111',originalTerm:84,remaining:50,balance:500,installment:30},
       {bank:'041',numberSuffix:'2222',originalTerm:84,remaining:52,balance:600,installment:40},
       {bank:'237',numberSuffix:'3333',originalTerm:84,remaining:44,balance:700,installment:50},
+      {bank:'623',numberSuffix:'4444',originalTerm:84,remaining:40,balance:1200,installment:65},
     ],
   })),
   telegramPdfReviewText:(data:any)=>'📄 Extrato conferido · contratos: '+data.contracts.length+
-    '\\nSelecione contratos 1,2 ou 3',
+    '\\nDigite TODOS ou selecione contratos 1,2,3,4',
   calculateTelegramInssQuotes:vi.fn(async()=>({texts:['📊 Daycoval · parcela original → recalculada · troco estimado R$ 500,00'],
     calculatedBanks:['DAYCOVAL'],unavailableBanks:['C6 (não cadastrado)']})),
+  calculateTelegramInssOfficialQuotes:vi.fn(async()=>({
+    texts:['🏦 FINANTO · Contrato 4 · R$ 1.200,00','🏦 Nossa Fintech · Contratos 1,2,3,4'],
+    consulted:4,positive:4,unavailableBanks:[],
+  })),
   process:{env:{APP_URL:'https://sentinelconsig.com.br'}},
  };
  const handle=makeHandler(deps);
@@ -297,7 +302,7 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   const state=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
   expect(state.configValue.phase).toBe('PDF_WAIT');
  });
- it('recebe o extrato somente após selecionar a opção, confirma três contratos e calcula no bot',async()=>{
+ it('recebe o extrato, seleciona TODOS os quatro contratos e executa as planilhas mais APIs bancárias',async()=>{
   const s=scenario();
   await s.send('/start');
   const premature=await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
@@ -307,12 +312,16 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(invite.text).toContain('Envie agora o extrato');
   const extract=await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
   expect(extract.text).toContain('Extrato conferido');
-  expect(extract.text).toContain('3');
-  const chosen=await s.send('1,2,3');
-  expect(chosen.text).toContain('Contratos selecionados: 1, 2, 3');
+  expect(extract.text).toContain('4');
+  const chosen=await s.send('TODOS');
+  expect(chosen.text).toContain('Contratos selecionados: 1, 2, 3, 4');
   const done=await s.send('✅ Autorizado · NÃO analfabeto');
   expect(s.sends.some(value=>value.text.includes('Daycoval'))).toBe(true);
-  expect(done.text).toContain('portal autenticado');
+  expect(s.sends.some(value=>value.text.includes('FINANTO · Contrato 4'))).toBe(true);
+  expect(done.text).toContain('Consulta concluída');
+  expect(s.deps.calculateTelegramInssOfficialQuotes).toHaveBeenCalledTimes(1);
+  const call=(s.deps.calculateTelegramInssOfficialQuotes as any).mock.calls[0];
+  expect(call[4]).toEqual([0,1,2,3]);
   expect(done.text).toContain('operation=PORT_REFIN');
   const saved=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
   expect(JSON.stringify(saved)).not.toContain('52998224725');
