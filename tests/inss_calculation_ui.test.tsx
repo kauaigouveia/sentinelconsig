@@ -82,7 +82,6 @@ it('runs all six individual bank paths for two contracts and one explicit Daycov
  fireEvent.click(screen.getByRole('button',{name:'Adicionar contrato à lista'}));
  expect((screen.getByLabelText('Número do contrato') as HTMLInputElement).value).toBe('');
  expect((screen.getByRole('button',{name:'Comparar ofertas'}).closest('form') as HTMLFormElement).checkValidity()).toBe(true);
- fireEvent.click(screen.getByRole('checkbox',{name:/Calcular também unificações/}));
  const submit=screen.getByRole('button',{name:'Comparar ofertas'}).closest('form')!;
  fireEvent.submit(submit);fireEvent.submit(submit);
  await screen.findByRole('button',{name:/Unificações Daycoval/});

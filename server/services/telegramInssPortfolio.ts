@@ -98,7 +98,7 @@ export function formatTelegramInssPortfolio(
    ' | libera '+money(offer.amount)+' | '+offer.term+'x | parcela '+
    money(offer.installment)+' | '+pct(offer.rate)+' | '+short(offer.table,42));
  else if(margin.status==='NO_MARGIN')marginLines.push('Não há margem positiva para simulação de NOVO');
- else if(margin.status==='NO_OFFER')marginLines.push('Bancos ativos consultados, sem oferta positiva de NOVO');
+ else if(margin.status==='NO_OFFER')marginLines.push('Nenhuma oferta positiva retornada pelos bancos disponíveis');
  else if(margin.status==='MISSING_IDENTITY')marginLines.push('⚠️ Identificação insuficiente para consulta bancária');
  else marginLines.push('⚠️ Integrações indisponíveis; verificar novamente');
  blocks.push(marginLines.join('\n'));

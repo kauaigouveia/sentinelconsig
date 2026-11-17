@@ -32,15 +32,15 @@ describe('prioridade de unificações Daycoval no portal',()=>{
   const visible=()=>[...document.querySelectorAll('article h4')].map(x=>x.textContent);
   expect(visible()).toEqual([
     'Unificação Daycoval · contratos 1 + 3 + 4',
-    'Unificação Daycoval · contratos 3 + 4',
     'Unificação Daycoval · contratos 1 + 2 + 4',
+    'Unificação Daycoval · contratos 2 + 3 + 4',
   ]);
   expect(screen.getByText('Página 1 de 4 · 10 grupos')).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Próxima'}));
   expect(visible()).toEqual([
     'Unificação Daycoval · contratos 1 + 2 + 3',
-    'Unificação Daycoval · contratos 1 + 2',
-    'Unificação Daycoval · contratos 2 + 3 + 4',
+    'Unificação Daycoval · contratos 3 + 4',
+    'Unificação Daycoval · contratos 1 + 4',
   ]);
  });
 });

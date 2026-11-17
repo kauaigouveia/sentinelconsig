@@ -30,50 +30,62 @@ it('cannot use a workbook from another tenant even when its ID is supplied by th
  const {app,write}=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-b'});expect((await request(app).post('/api/daycoval/calculate').send({...body,tenantId:'synthetic-a'})).status).toBe(422);expect(write).not.toHaveBeenCalled();expect(mocks.calculate).not.toHaveBeenCalled();
 });
 
-it('calculates Daycoval combinations in one tenant-scoped request without business writes',async()=>{
+
+it('unifica no máximo três, evita sobreposição e não grava propostas',async()=>{
  const {app,findUnique,write}=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-a'});
- const contracts=Array.from({length:5},(_,index)=>({...body.contracts[0],contractNumber:`SYNTHETIC-${index}`}));
+ const contracts=Array.from({length:6},(_,i)=>({...body.contracts[0],contractNumber:'SYN-'+i}));
  const result=await request(app).post('/api/daycoval/calculate-groups').send({...body,contracts});
- expect(result.status).toBe(200);expect(result.body.groups).toHaveLength(20);expect(findUnique).toHaveBeenCalledTimes(1);
- expect(result.body.groups.every((group:any)=>group.indices.length>=2&&group.indices.length<=3)).toBe(true);
- expect(mocks.calculate.mock.calls.every(call=>call[2].contracts.every((contract:any)=>contract.paidInstallments===27))).toBe(true);
+ expect(result.status).toBe(200);
+ expect(result.body.groups).toHaveLength(2);
+ expect(result.body.groups.map((g:any)=>g.indices.length)).toEqual([3,3]);
+ const indices=result.body.groups.flatMap((g:any)=>g.indices);
+ expect(new Set(indices).size).toBe(indices.length);
+ expect(result.body.nextOffset).toBeNull();
+ expect(findUnique).toHaveBeenCalledTimes(1);
  expect(write).not.toHaveBeenCalled();
 });
-it('rejects unauthenticated and duplicate groups before reading any workbook',async()=>{
- const denied=setup(null);expect((await request(denied.app).post('/api/daycoval/calculate-groups').send(body)).status).toBe(403);expect(denied.findUnique).not.toHaveBeenCalled();
+it('mantém uma única unificação de dois, e não inventa grupos sem cotação',async()=>{
+ const {app,write}=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-a'});
+ const contracts=Array.from({length:2},(_,i)=>({...body.contracts[0],contractNumber:'SYN-'+i}));
+ const result=await request(app).post('/api/daycoval/calculate-groups').send({...body,contracts});
+ expect(result.status).toBe(200);
+ expect(result.body.groups.map((g:any)=>g.indices)).toEqual([[0,1]]);
+ expect(write).not.toHaveBeenCalled();
+});
+it('respeita tenant da sessão e rejeita duplicados antes de acessar planilha',async()=>{
+ const denied=setup(null);
+ expect((await request(denied.app).post('/api/daycoval/calculate-groups').send(body)).status).toBe(403);
+ expect(denied.findUnique).not.toHaveBeenCalled();
  const allowed=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-a'});
  const contract={...body.contracts[0],contractNumber:'SYNTHETIC'};
  expect((await request(allowed.app).post('/api/daycoval/calculate-groups').send({...body,contracts:[contract,contract]})).status).toBe(400);
  expect(allowed.findUnique).not.toHaveBeenCalled();
+ const foreign=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-b'});
+ const distinct=[{...contract,contractNumber:'A'},{...contract,contractNumber:'B'}];
+ const result=await request(foreign.app).post('/api/daycoval/calculate-groups').send({...body,tenantId:'synthetic-a',contracts:distinct});
+ expect(result.status).toBe(200);
+ expect(result.body.groups).toEqual([]);
+ expect(foreign.findUnique.mock.calls[0][0].where.tenantId_configKey.tenantId).toBe('synthetic-b');
+ expect(mocks.calculate).not.toHaveBeenCalled();
 });
-it('isolates failed groups and cannot load the requested foreign tenant workbook',async()=>{
- const {app,findUnique,write}=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-b'});
- const contracts=[{...body.contracts[0],contractNumber:'A'},{...body.contracts[0],contractNumber:'B'}];
- const result=await request(app).post('/api/daycoval/calculate-groups').send({...body,tenantId:'synthetic-a',contracts});
- expect(result.body.groups[0].offers).toEqual([]);expect(result.body.groups[0].error).toMatch(/ausente/);
- expect(findUnique.mock.calls[0][0].where.tenantId_configKey.tenantId).toBe('synthetic-b');expect(mocks.calculate).not.toHaveBeenCalled();expect(write).not.toHaveBeenCalled();
-});
-
-it('continues the other Daycoval groups when one creditor is explicitly blocked',async()=>{
+it('prioriza trios válidos e usa pares apenas se o roteiro bloquear o trio',async()=>{
  const {app,write}=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-a'});
  const contracts=[{...body.contracts[0],contractNumber:'A'},{...body.contracts[0],contractNumber:'B',originBank:'626'},{...body.contracts[0],contractNumber:'C'}];
  const result=await request(app).post('/api/daycoval/calculate-groups').send({...body,contracts});
- expect(result.status).toBe(200);expect(result.body.groups).toHaveLength(4);
- expect(result.body.groups.filter((group:any)=>group.offers.length)).toHaveLength(1);
- expect(result.body.groups.find((group:any)=>group.offers.length).indices).toEqual([0,2]);expect(write).not.toHaveBeenCalled();
+ expect(result.status).toBe(200);
+ expect(result.body.groups).toHaveLength(1);
+ expect(result.body.groups[0].indices).toEqual([0,2]);
+ expect(write).not.toHaveBeenCalled();
 });
-
-it('paginates all 364 groups for thirteen contracts without exceeding three contracts per calculation',async()=>{
+it('não gera centenas de combinações com 13 contratos',async()=>{
  const {app,write}=setup({user:{id:'synthetic-user',role:'MASTER'},effectiveTenantId:'synthetic-a'});
- const contracts=Array.from({length:13},(_,index)=>({...body.contracts[0],contractNumber:`SYNTHETIC-${index}`}));
- const all:number[][]=[];let offset=0,pages=0;
- while(true){
-  const result=await request(app).post('/api/daycoval/calculate-groups').send({...body,contracts,offset});
-  expect(result.status).toBe(200);expect(result.body.total).toBe(364);expect(result.body.groups.length).toBeLessThanOrEqual(35);
-  all.push(...result.body.groups.map((group:any)=>group.indices));pages++;
-  if(result.body.nextOffset==null)break;offset=result.body.nextOffset;
- }
- expect(pages).toBe(11);expect(all).toHaveLength(364);expect(new Set(all.map(group=>group.join('|'))).size).toBe(364);
- expect(all.every(group=>group.length===2||group.length===3)).toBe(true);expect(write).not.toHaveBeenCalled();
+ const contracts=Array.from({length:13},(_,i)=>({...body.contracts[0],contractNumber:'SYN-'+i}));
+ const result=await request(app).post('/api/daycoval/calculate-groups').send({...body,contracts});
+ expect(result.status).toBe(200);
+ expect(result.body.groups).toHaveLength(4);
+ expect(result.body.groups.every((g:any)=>g.indices.length<=3)).toBe(true);
+ expect(new Set(result.body.groups.flatMap((g:any)=>g.indices)).size).toBe(12);
+ expect(result.body.nextOffset).toBeNull();
+ expect(write).not.toHaveBeenCalled();
  expect((await request(app).post('/api/daycoval/calculate-groups').send({...body,contracts:[...contracts,{...contracts[0],contractNumber:'FOURTEENTH'}]})).status).toBe(400);
 });
