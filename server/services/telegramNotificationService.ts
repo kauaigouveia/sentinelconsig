@@ -6,6 +6,7 @@ import { hasPermission } from '../../src/lib/permissions.js';
 import { PartnerPortalService } from './partnerPortalService.js';
 import { AuditLogService } from './auditLogService.js';
 import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,telegramPdfErrorCode,telegramPdfErrorMessage,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
+import { calculateTelegramInssOfficialQuotes } from './telegramInssOfficialQuotes.js';
 import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
 import {beginTelegramNativeSimulation,continueTelegramCltSimulation,cltConsultationOptions,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,type TelegramNativeDraft} from './telegramNativeSimulation.js';
 import {executeTelegramNativeSimulation,executeTelegramCltMargin} from './telegramNativeSimulationExecutor.js';
@@ -304,7 +305,7 @@ type ProposalQueryState = {
 
 type TelegramPdfWork=
     |{kind:'READ';account:TelegramAccount;document:{file_id:string;file_name?:string;mime_type?:string;file_size?:number}}
-    |{kind:'CALCULATE';account:TelegramAccount;review:TelegramPdfReview;indices:number[];illiterate:'YES'|'NO'}
+    |{kind:'CALCULATE';account:TelegramAccount;review:TelegramPdfReview;indices:number[];illiterate:'YES'|'NO';attemptKey:string}
     |{kind:'NATIVE';account:TelegramAccount;draft:TelegramNativeDraft;attemptKey:string}
     |{kind:'CLT_MARGIN';account:TelegramAccount;draft:TelegramNativeDraft;attemptKey:string};
 async function telegramAccountStillValid(db:PrismaClient,config:BotConfig,chatId:string,account:TelegramAccount):Promise<boolean>{
@@ -486,7 +487,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                       '\n\nConfirme que o titular autorizou esta consulta e informe se ele é analfabeto. Isso influencia a elegibilidade nos bancos. Nenhuma contratação será realizada.';
                     keyboard=[['✅ Autorizado · NÃO analfabeto'],['✅ Autorizado · Analfabeto'],['🏠 Menu principal']];
                 }else {
-                    response='Selecione de 1 a 3 números distintos de contratos válidos, separados por vírgula (ex.: 1,2,4).\n\n'+telegramPdfReviewText(review.review);
+                    response='Digite TODOS para incluir todos os contratos ou informe números distintos de 1 a '+review.review.contracts.length+' separados por vírgula.\n\n'+telegramPdfReviewText(review.review);
                     keyboard=[['🏠 Menu principal']];
                 }
             } else if(state.phase==='PDF_CONFIRM' && state.pendingPdf?.selectedIndices?.length){
@@ -495,12 +496,17 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 if(!illiterate){
                     response='Antes da simulação, confirme a autorização do titular e selecione se ele é analfabeto.';
                     keyboard=[['✅ Autorizado · NÃO analfabeto'],['✅ Autorizado · Analfabeto'],['🏠 Menu principal']];
+                }else if(!(await takeQuerySlot())){
+                    response='Limite de consultas atingido neste intervalo. Aguarde alguns minutos antes de confirmar os contratos; nenhuma instituição foi consultada.';
+                    keyboard=[['✅ Autorizado · NÃO analfabeto'],['✅ Autorizado · Analfabeto'],['🏠 Menu principal']];
                 }else{
                     pdfWork={kind:'CALCULATE',account:state.selected!,review:state.pendingPdf.review,
-                        indices:state.pendingPdf.selectedIndices,illiterate};
+                        indices:state.pendingPdf.selectedIndices,illiterate,attemptKey:randomBytes(16).toString('hex')};
+                    // The consultation identifiers are deleted from the encrypted
+                    // chat state before any calls to bank APIs leave this process.
                     state.pendingPdf=undefined;
                     state.phase='PRODUCT';state.section='PORT';
-                    response='🔎 Conferência registrada. Calculando as planilhas disponíveis da empresa. Os valores são estimativas, não aprovações bancárias.';
+                    response='🔎 Conferência registrada. Vou calcular TODOS os contratos selecionados nas planilhas e consultar as integrações bancárias habilitadas. Cada contrato receberá seu próprio resultado. Nenhuma contratação será realizada.';
                     keyboard=telegramSectionMenu('PORT').keyboard;
                 }
             } else if(menuChoice==='CLT'||menuChoice==='FGTS'||menuChoice==='INSS'||menuChoice==='PORT'){
@@ -510,7 +516,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 keyboard=[['🏠 Menu principal']];
                 response='📄 Envie agora o extrato de empréstimos INSS em PDF textual (até 5 MB, máximo 20 páginas).'+
                   '\n\nO titular deve ter autorizado a consulta. O bot apenas lê o documento em memória, extrai os contratos para conferência e calcula estimativas das planilhas ativas. O PDF original não é guardado no Sentinel.'+
-                  '\n\nDepois de conferir os contratos você escolherá até 3 por comparação, e informará se o titular é analfabeto. Para cancelar, toque em Menu principal.';
+                  '\n\nDepois de conferir os contratos, responda TODOS para simular todos de uma vez ou selecione números específicos. Informe também se o titular é analfabeto. Para cancelar, toque em Menu principal.';
             }else if(state.phase==='PDF_WAIT'){
                 response='Envie um extrato INSS em formato PDF textual de até 5 MB como documento. Se a seleção anterior expirou, envie o arquivo novamente.';
                 keyboard=[['🏠 Menu principal']];
@@ -790,22 +796,41 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         return;
     }
     try{
-        const output=await calculateTelegramInssQuotes(db,job.account.tenantId,job.review,job.indices,job.illiterate);
+        const quote=await calculateTelegramInssQuotes(db,job.account.tenantId,job.review,job.indices,job.illiterate);
         if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
-        for(const line of output.texts)
+        for(const line of quote.texts)
             await telegram(config,'sendMessage',{chat_id:chatId,text:line,protect_content:true});
-        if(output.unavailableBanks.length)
+        if(quote.unavailableBanks.length)
             await telegram(config,'sendMessage',{chat_id:chatId,
-                text:'Bancos sem resultado nesta consulta: '+output.unavailableBanks.join('; ').slice(0,1200)+
-                  '. Para esclarecer condições ou dados faltantes, use o Portal do Parceiro.',
+                text:'Planilhas sem cotação: '+quote.unavailableBanks.join('; ').slice(0,1150),
                 protect_content:true});
+    }catch{
+        if(await telegramAccountStillValid(db,config,chatId,job.account))
+            await telegram(config,'sendMessage',{chat_id:chatId,
+                text:'⚠️ O cálculo documental não terminou. As integrações bancárias serão consultadas separadamente. Nenhuma proposta foi contratada.',
+                protect_content:true});
+    }
+    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    const partner=await db.partner.findFirst({
+        where:{id:job.account.partnerId,tenantId:job.account.tenantId,status:'ATIVO',deletedAt:null},
+        select:{id:true,name:true,code:true},
+    });
+    if(!partner)return;
+    try{
+        const output=await calculateTelegramInssOfficialQuotes(
+            db,job.account.tenantId,partner,job.review,job.indices,job.illiterate,job.attemptKey);
+        if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+        for(const text of output.texts)
+            await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:true});
+    }catch{
+        if(await telegramAccountStillValid(db,config,chatId,job.account))
+            await telegram(config,'sendMessage',{chat_id:chatId,
+                text:'⚠️ As integrações bancárias não concluíram o processamento. Confira as estimativas já enviadas e consulte novamente mais tarde. Não houve contratação.',
+                protect_content:true});
+    }
+    if(await telegramAccountStillValid(db,config,chatId,job.account))
         await telegram(config,'sendMessage',{chat_id:chatId,
-            text:'✅ Consulta finalizada sem contratação ou aprovação bancária. Para revisar contratos e registrar cotações na esteira, entre no portal autenticado:\n'+
+            text:'✅ Consulta concluída para os contratos selecionados, sem contratação nem aprovação bancária. O histórico apresenta as cotações positivas das APIs. Para conferir detalhes adicionais:\n'+
               telegramPortalLink({product:'INSS',operation:'PORT_REFIN'},process.env.APP_URL||'https://sentinelconsig.com.br'),
             protect_content:true});
-    }catch{
-        await telegram(config,'sendMessage',{chat_id:chatId,
-            text:'Não foi possível concluir o cálculo das planilhas. Revise as condições no Portal do Parceiro. O PDF não foi armazenado e nenhuma proposta foi contratada.',
-            protect_content:true});
-    }
 }
