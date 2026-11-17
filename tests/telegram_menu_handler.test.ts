@@ -336,7 +336,7 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   await s.send('📄 Enviar extrato INSS');
   await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
   const wrong=await s.send('qualquer coisa');
-  expect(wrong.text).toContain('Selecione de 1 a 3 números');
+  expect(wrong.text).toContain('Digite TODOS para incluir todos os contratos');
   await s.send('1');
   const no=await s.send('não autorizou');
   expect(no.text).toContain('confirme');
