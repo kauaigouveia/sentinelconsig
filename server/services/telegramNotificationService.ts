@@ -799,22 +799,26 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
     }
     let sheets:Awaited<ReturnType<typeof calculateTelegramInssQuotes>>|null=null;
     let integration:Awaited<ReturnType<typeof calculateTelegramInssOfficialQuotes>>|null=null;
-    try{
-        sheets=await calculateTelegramInssQuotes(db,job.account.tenantId,job.review,job.indices,job.illiterate);
-    }catch{
-        // One provider's documentary failure must not block the official bank calls.
-    }
-    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
     const partner=await db.partner.findFirst({
         where:{id:job.account.partnerId,tenantId:job.account.tenantId,status:'ATIVO',deletedAt:null},
         select:{id:true,name:true,code:true},
     });
     if(!partner)return;
+    // First consult other banks; their *completed* status determines whether
+    // installments >= R$ 50 may be routed to Daycoval as a fallback.
     try{
         integration=await calculateTelegramInssOfficialQuotes(
             db,job.account.tenantId,partner,job.review,job.indices,job.illiterate,job.attemptKey);
     }catch{
-        // No invented bank offers; still show the documentary results and an explicit status.
+        // No invented rejections or approvals when a provider fails.
+    }
+    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    try{
+        sheets=await calculateTelegramInssQuotes(
+            db,job.account.tenantId,job.review,job.indices,job.illiterate,
+            undefined,integration?.contracts||[]);
+    }catch{
+        // An unavailable documentary workbook must not hide official quotes.
     }
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
     const margin=await calculateTelegramInssMarginQuotes(

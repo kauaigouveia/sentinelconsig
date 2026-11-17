@@ -172,9 +172,9 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
     expect(individual).toHaveLength(4);
     expect(individual.some(x=>x.contracts[0]===64.66)).toBe(true);
   }
-  expect(seen.filter(x=>x.bank==='DAYCOVAL'&&x.contracts.length===3).length).toBeGreaterThanOrEqual(1);
+  expect(seen.filter(x=>x.bank==='DAYCOVAL'&&x.contracts.length>=2)).toHaveLength(0);
   expect(result.texts.join('\\n')).toContain('Contrato 4');
-  expect(result.quotes.filter(x=>x.bank==='DAYCOVAL'&&x.indices.length>1)).toHaveLength(1);
+  expect(result.quotes.filter(x=>x.bank==='DAYCOVAL'&&x.indices.length>1)).toHaveLength(0);
   expect(result.texts.join('\\n')).toContain('C6');
  });
  it('usa apenas planilhas do tenant, informa bancos indisponíveis e exibe diferenças por contrato',async()=>{
@@ -201,7 +201,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(lookups.every(v=>v.tenantId==='tenant-evolve')).toBe(true);
   expect(result.calculatedBanks).toEqual(['DAYCOVAL','PARANA']);
   expect(result.unavailableBanks.join('')).toContain('C6');
-  expect(result.quotes.some(x=>x.bank==='DAYCOVAL'&&x.indices.join('+')==='0+1')).toBe(true);
+  expect(result.quotes.some(x=>x.bank==='DAYCOVAL'&&x.indices.join('+')==='0+1')).toBe(false);
   expect(result.texts.join('')).toContain('R$');
   expect(result.texts.join('')).toContain('Parcela portada');
   expect(result.texts.join('')).toContain('Parcela do refin');

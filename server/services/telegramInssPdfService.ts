@@ -6,7 +6,7 @@ import { money as moneyBR, portabilityInstallmentStatus } from '../../src/lib/po
 import { decodeDaycoval } from './daycovalWorkbook.js';
 import { previewPortRefin } from './portRefinPreview.js';
 import { SPREADSHEET_MODELS, type SpreadsheetBank } from './portRefinWorkbooks.js';
-import {planDaycovalUnifications,selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
+import {eligibleDaycovalContractIndices,planDaycovalUnifications,selectPortabilityQuoteRows,type DaycovalOtherBankResult} from '../../src/lib/portabilityQuoteSelection.js';
 
 export const TELEGRAM_PDF_MAX_BYTES = 5 * 1024 * 1024;
 export const TELEGRAM_PDF_TTL_MS = 10 * 60 * 1000;
@@ -250,6 +250,7 @@ export async function calculateTelegramInssQuotes(
   selectedIndices:number[],
   illiterate:'YES'|'NO',
   calculate:typeof previewPortRefin=previewPortRefin,
+  officialResults:readonly DaycovalOtherBankResult[]=[],
 ):Promise<TelegramQuoteResult>{
   if(!tenantId||!['YES','NO'].includes(illiterate)||selectedIndices.length<1||
       selectedIndices.length>TELEGRAM_MAX_CHOSEN_CONTRACTS||
@@ -272,6 +273,7 @@ export async function calculateTelegramInssQuotes(
   const quotes:TelegramSpreadsheetQuote[]=[];
   const calculatedBanks:string[]=[];
   const unavailableBanks:string[]=[];
+  let daycovalBook:ReturnType<typeof decodeDaycoval>|null=null;
   for(const bank of banks){
     const config=await db.systemConfig.findUnique({
       where:{tenantId_configKey:{tenantId,configKey:SPREADSHEET_MODELS[bank].key}},
@@ -280,6 +282,7 @@ export async function calculateTelegramInssQuotes(
     let book;
     try{book=decodeDaycoval(config.configValue);}catch{unavailableBanks.push(bank+' (arquivo inválido)');continue;}
     if(book.enabled===false){unavailableBanks.push(bank+' (desabilitado)');continue;}
+    if(bank==='DAYCOVAL')daycovalBook=book;
     let successes=0;
     for(const [position,contract]of rawContracts.entries()){
       try{
@@ -306,27 +309,43 @@ export async function calculateTelegramInssQuotes(
         }
       }catch{ /* Missing policy data or a calculation error is not an approved quote. */ }
     }
-    if(bank==='DAYCOVAL'&&chosen.length>=2){
-      const groups=planDaycovalUnifications(rawContracts,indices=>
-        calculate(bank,book,{...raw,contracts:indices.map(i=>rawContracts[i])},today));
-      for(const {indices:group,result} of groups){
-        const offer=result.offers[0];if(!offer)continue;
-        successes++;
-        const changes=group.map((i,n)=>{
-          const value=offer.installmentChanges?.[n]?.newInstallment;
-          return {index:selectedIndices[i],original:chosen[i].installment,
-            adjusted:value==null||!Number.isFinite(Number(value))?null:Number(value)};
-        });
-        const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
-        quotes.push({bank,indices:group.map(i=>selectedIndices[i]),table,
-          amount:Number(offer.amount),rate:Number(offer.rate),
-          installment:Number(offer.installment),term:Number(offer.term),changes});
-        texts.push('🔄 DAYCOVAL · Contratos '+group.map(i=>selectedIndices[i]+1).join('+')+
-          ' · Tabela: '+table+' · Troco: '+money(offer.amount));
-      }
-    }
     if(successes)calculatedBanks.push(bank);
     else unavailableBanks.push(bank+' (sem condição calculável para os dados informados)');
+  }
+  // The official consultation must finish before large installments can
+  // be used in Daycoval (only confirmed no-offer, never a timeout/pending).
+  const permitted=eligibleDaycovalContractIndices(review.contracts,selectedIndices,quotes,officialResults);
+  const allowed=new Set(permitted);
+  const pairs=quotes.map((quote,i)=>({quote,text:texts[i]})).filter(item=>
+    item.quote.bank!=='DAYCOVAL'||item.quote.indices.every(i=>allowed.has(i)));
+  quotes.splice(0,quotes.length,...pairs.map(item=>item.quote));
+  texts.splice(0,texts.length,...pairs.map(item=>item.text));
+  if(daycovalBook&&permitted.length>=2){
+    const positions=permitted.map(index=>selectedIndices.indexOf(index));
+    const groups=planDaycovalUnifications(positions.map(i=>rawContracts[i]),indices=>
+      calculate('DAYCOVAL',daycovalBook!,{...raw,contracts:indices.map(i=>rawContracts[positions[i]])},today));
+    for(const {indices:local,result} of groups){
+      const offer=result.offers[0];
+      if(!offer)continue;
+      const group=local.map(i=>positions[i]);
+      const changes=group.map((position,n)=>{
+        const value=offer.installmentChanges?.[n]?.newInstallment;
+        return {index:selectedIndices[position],original:chosen[position].installment,
+          adjusted:value==null||!Number.isFinite(Number(value))?null:Number(value)};
+      });
+      const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
+      quotes.push({bank:'DAYCOVAL',indices:group.map(i=>selectedIndices[i]),table,
+        amount:Number(offer.amount),rate:Number(offer.rate),
+        installment:Number(offer.installment),term:Number(offer.term),changes});
+      texts.push('🔄 DAYCOVAL · Contratos '+group.map(i=>selectedIndices[i]+1).join('+')+
+        ' · Tabela: '+table+' · Troco: '+money(offer.amount));
+    }
+  }
+  // Do not announce a calculated Daycoval bank when all its quotes were
+  // suppressed by the priority/confirmed-fallback policy.
+  if(!quotes.some(quote=>quote.bank==='DAYCOVAL')){
+    const idx=calculatedBanks.indexOf('DAYCOVAL');
+    if(idx>=0)calculatedBanks.splice(idx,1);
   }
   if(!texts.length)return {
     texts:['Não foi possível calcular cotações pelas planilhas ativas com os dados extraídos. Revise os dados e os roteiros no Portal do Parceiro. Nenhuma oferta bancária foi aprovada.'],

@@ -84,9 +84,20 @@ export function formatTelegramInssPortfolio(
     ' | '+short(group.table,50)+
     '\nTroco '+money(group.amount)+' | parcela '+money(group.installment)+
     ' | '+group.term+'x | '+pct(group.rate));
-   for(const change of group.changes)
-    if(change.adjusted!=null&&Math.abs(change.adjusted-change.original)>.005)
-     lines.push('↳ Parcela '+(change.index+1)+': '+money(change.original)+' → '+money(change.adjusted));
+   for(const change of group.changes){
+    const old=change.original,next=change.adjusted;
+    const label=next==null?'recalculo não informado':
+      Math.abs(next-old)<.005?'mantida':next<old?'reduzida':'aumentada';
+    const contract=review.contracts[change.index];
+    lines.push('↳ Contrato '+(change.index+1)+
+      (contract?' (final '+contract.numberSuffix+')':'')+': '+
+      money(old)+' → '+(next==null?'não informado':money(next))+' ('+label+')');
+   }
+   const complete=group.changes.every(change=>change.adjusted!=null);
+   const before=group.changes.reduce((sum,change)=>sum+change.original,0);
+   const after=complete?group.changes.reduce((sum,change)=>sum+(change.adjusted||0),0):null;
+   lines.push('Total das portadas: '+money(before)+' → '+money(after));
+   lines.push('Parcela do NOVO refin: '+money(group.installment)+' (não somar ao total das portadas)');
   }
   blocks.push(lines.join('\n'));
  }

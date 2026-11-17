@@ -101,3 +101,32 @@ export function planDaycovalUnifications<T,R extends {offers?:readonly any[]}>(
  }
  return selected;
 }
+
+// < R$ 50,00 is the primary Daycoval route. Larger installments may enter
+// only when the completed official multibank consultation explicitly has no
+// offers, and no other calculated spreadsheet/bank offer exists.
+// Missing, partial or failed consultations are not customer rejections.
+export type DaycovalOtherBankResult={
+ index:number;failed:boolean;completedWithoutOffer?:boolean;
+ rows?:readonly {state?:string;provider?:string;institution?:string;amount?:unknown}[];
+};
+export function eligibleDaycovalContractIndices(
+ contracts:readonly {installment:number}[],indices:readonly number[],
+ spreadsheets:readonly {bank:string;indices:readonly number[];amount:number}[],
+ external:readonly DaycovalOtherBankResult[]=[],
+):number[]{
+ return indices.filter(index=>{
+  const installment=Number(contracts[index]?.installment);
+  if(!Number.isFinite(installment)||installment<=0)return false;
+  if(installment<50)return true;
+  const completed=external.find(x=>x.index===index);
+  if(!completed||completed.failed||completed.completedWithoutOffer!==true)return false;
+  const otherSheetOffer=spreadsheets.some(q=>
+    q.bank.toUpperCase()!=='DAYCOVAL'&&q.indices.length===1&&
+    q.indices[0]===index&&Number(q.amount)>0);
+  const otherApiOffer=completed.rows?.some(q=>q.state==='OFFER'&&
+    !['DAYCOVAL'].includes(String(q.provider||q.institution||'').toUpperCase())&&
+    Number(q.amount)>0)===true;
+  return !otherSheetOffer&&!otherApiOffer;
+ });
+}

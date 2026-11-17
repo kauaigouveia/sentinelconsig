@@ -22,7 +22,7 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
     return {texts:['Integrações bancárias não consultadas: dados de origem não confirmados. Reenvie o PDF.'],consulted:0,positive:0,unavailableBanks:['Identificadores indisponíveis'],contracts:[]};
   const run=deps?.run||PartnerSimulationService.run;
   const record=deps?.record||PartnerSimulationTracking.record;
-  const results:{index:number;rows:any[];saved:boolean;failed:boolean}[]=[];
+  const results:{index:number;rows:any[];saved:boolean;failed:boolean;completedWithoutOffer:boolean}[]=[];
   let next=0;
   const worker=async()=>{
     while(next<indices.length){
@@ -57,8 +57,9 @@ export async function calculateTelegramInssOfficialQuotes(db:PrismaClient,tenant
             accessName:'Telegram PDF'},attemptKey+'-'+(index+1),input,offers);
           saved=!!history;
         }
-        results.push({index,rows:compact,saved,failed:false});
-      }catch{results.push({index,rows:[],saved:false,failed:true});}
+        results.push({index,rows:compact,saved,failed:false,
+          completedWithoutOffer:result.operationalStatus==='NO_OFFERS'&&offers.length===0});
+      }catch{results.push({index,rows:[],saved:false,failed:true,completedWithoutOffer:false});}
     }
   };
   await Promise.all(Array.from({length:Math.min(2,indices.length)},()=>worker()));

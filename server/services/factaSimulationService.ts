@@ -13,6 +13,7 @@ export type FactaInssInput = {
   mode: 'AMOUNT' | 'INSTALLMENT'; value: number; rate?: number;
   debt?: number; originalTerm?: number; remainingTerm?: number; originalInstallment?: number;
   income?: number; contract?: string; originalBank?: string; state?: string; benefitStartDate?: string;
+  illiterate?: 'YES'|'NO';
 };
 export type FactaOffer = { policyStatus?:string;policyReview?:string; code: string; name: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number; portabilityCode?: string };
 export const factaNumber = (value: unknown): number | undefined => {
@@ -119,16 +120,29 @@ export class FactaSimulationService {
       if (/LOAS|BPC/.test(name + ' ' + (table.grupos || '')) && ![87, 88].includes(input.benefitType)) return false;
       return true;
     };
+    // FACTA can return "INSS NOVO ILETRADO" even when the borrower is
+    // explicitly literate. Commercial eligibility must not be inferred from
+    // a technically successful bank response.
+    const literacyEligible = (table:any) => {
+      const title=String(table.tabela||'').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'').toUpperCase();
+      const illiterate=/\b(?:ILETRAD[OA]S?|ANALFABET[OA]S?|NAO\s+ALFABETIZAD[OA]S?)\b/.test(title);
+      const literate=/\b(?:ALFABETIZAD[OA]S?|LETRAD[OA]S?)\b/.test(title)&&
+        !/\bNAO\s+(?:ALFABETIZAD[OA]S?|LETRAD[OA]S?)\b/.test(title);
+      if(illiterate&&input.illiterate!=='YES')return false;
+      if(literate&&input.illiterate==='YES')return false;
+      return true;
+    };
     // The selected refinancing rate is not the rate of the debt being ported.
     const rateEligible = (table: any) => input.operation === 'PORT' || !input.rate || Math.abs((factaNumber(table.taxa) || 0) - input.rate) < 0.0001;
     const targetTerm = input.operation === 'PORT' ? input.remainingTerm : input.term;
     const termEligible = (table: any) => !targetTerm || factaNumber(table.prazo) === targetTerm;
-    const eligible = (table: any) => benefitEligible(table) && rateEligible(table) && termEligible(table);
+    const eligible = (table: any) => benefitEligible(table) && literacyEligible(table) && rateEligible(table) && termEligible(table);
     // Production responses can assign several comma-separated groups to one table.
     const groupsOf = (table: any): string[] => [...new Set(String(table.grupos || '').split(',').map(group => group.trim().replace(/\s+/g, ' ').toUpperCase()).filter(Boolean))];
     let offers: FactaOffer[];
     if (input.operation === 'PORT_REFIN') {
-      const ports = list(result.tabelas_portabilidade).filter(benefitEligible);
+      const ports = list(result.tabelas_portabilidade).filter(table=>benefitEligible(table)&&literacyEligible(table));
       offers = list(result.tabelas_refin_portabilidade).filter(eligible).flatMap(table => {
         const groups = new Set(groupsOf(table));
         return ports.filter(port => groupsOf(port).some(group => groups.has(group))).map(port => ({ ...this.offer(table), portabilityCode: String(port.codigoTabela), name: `${table.tabela} · portabilidade ${port.tabela}` }));
@@ -144,7 +158,7 @@ export class FactaSimulationService {
       return {offers:checks.filter(row=>!row.check?.blocked).map(row=>row.check?{...row.offer,policyStatus:row.check.status,policyReview:row.check.reason}:row.offer),message:checks.filter(row=>row.check?.blocked).map(row=>row.check!.reason).join(' ')||undefined};
     }
     const returned = list(input.operation === 'PORT_REFIN' ? result.tabelas_refin_portabilidade : input.operation === 'PORT' ? result.tabelas_portabilidade : result.tabelas);
-    const compatible = returned.filter(benefitEligible);
+    const compatible = returned.filter(table=>benefitEligible(table)&&literacyEligible(table));
     const rateMatches = compatible.filter(rateEligible);
     const termMatches = rateMatches.filter(termEligible);
     const formatValues = (values: number[], suffix: string) => [...new Set(values)].sort((a, b) => a - b).map(value => `${value.toLocaleString('pt-BR')}${suffix}`).join(', ');
@@ -152,7 +166,7 @@ export class FactaSimulationService {
       const bankMessage = [result.mensagem, result.msg, result.message].find(value => typeof value === 'string' && value.trim());
       return { offers, message: `A FACTA não retornou tabelas para esta operação e os dados informados. Resposta HTTP de sucesso não comprova conclusão ou oferta.${bankMessage ? ` Retorno do banco: ${safeFactaMessage(bankMessage.trim()) || 'Mensagem indisponível.'}` : ''}` };
     }
-    if (!compatible.length) return { offers, message: 'As tabelas retornadas pela FACTA têm restrições incompatíveis com a espécie do benefício selecionada.' };
+    if (!compatible.length) return { offers, message: 'As tabelas retornadas pela FACTA não são compatíveis com a espécie do benefício ou a alfabetização informada. Nenhuma oferta foi confirmada.' };
     if (!rateMatches.length) {
       const rates = compatible.filter(termEligible).map(table => factaNumber(table.taxa)).filter((value): value is number => value != null);
       return { offers, message: `A FACTA retornou tabelas, mas nenhuma na taxa de ${input.rate?.toLocaleString('pt-BR')}% selecionada.${rates.length ? ` Taxas retornadas para ${targetTerm} meses: ${formatValues(rates, '%')}.` : ''}` };
@@ -162,7 +176,7 @@ export class FactaSimulationService {
       return { offers, message: `A FACTA retornou tabelas, mas nenhuma com prazo de ${targetTerm} meses.${terms.length ? ` Prazos retornados: ${formatValues(terms, ' meses')}.` : ''}` };
     }
     const returnedPorts = list(result.tabelas_portabilidade);
-    const compatiblePorts = returnedPorts.filter(benefitEligible);
+    const compatiblePorts = returnedPorts.filter(table=>benefitEligible(table)&&literacyEligible(table));
     const describeGroups = (tables: any[]) => [...new Set(tables.flatMap(table => groupsOf(table).length ? groupsOf(table) : ['(não informado)']))].join(', ') || '(nenhum)';
     const reason = !returnedPorts.length
       ? 'A FACTA retornou refinanciamento, mas a lista de portabilidade veio vazia.'

@@ -47,6 +47,32 @@ describe('FACTA simulações conforme manuais oficiais', () => {
     vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas: [table, { ...table, tabela: 'BNF 32' }, { ...table, tabela: 'INVALIDEZ' }, { ...table, tabela: 'LOAS' }, { ...table, prazo: 84 }, { ...table, taxa: 1.8 }] });
     expect((await FactaSimulationService.inss(prisma, 'tenant', { ...input, rate: 1.85 })).offers).toHaveLength(1);
   });
+  it('exclui tabela ILETRADO para cliente alfabetizado e preserva tabela convencional',async()=>{
+    vi.spyOn(FactaSimulationService,'request').mockResolvedValue({tabelas:[
+      {...table,codigoTabela:'17114',tabela:'17114 - INSS NOVO ILETRADO SB'},
+      {...table,codigoTabela:'100',tabela:'100 - INSS NOVO NORMAL SB'},
+    ]});
+    const result=await FactaSimulationService.inss(prisma,'tenant',{...input,illiterate:'NO'});
+    expect(result.offers.map(o=>o.code)).toEqual(['100']);
+    const unknown=await FactaSimulationService.inss(prisma,'tenant',input);
+    expect(unknown.offers.map(o=>o.code)).toEqual(['100']);
+  });
+  it('não inventa oferta alfabetizada quando FACTA só retorna ILETRADO',async()=>{
+    vi.spyOn(FactaSimulationService,'request').mockResolvedValue({tabelas:[
+      {...table,codigoTabela:'17114',tabela:'17114 - INSS NOVO ILETRADO SB'},
+    ]});
+    const result=await FactaSimulationService.inss(prisma,'tenant',{...input,illiterate:'NO'});
+    expect(result.offers).toEqual([]);
+    expect(result.message).toContain('alfabetização');
+  });
+  it('preserva ILETRADO quando declarado, sem utilizar tabela explicitamente alfabetizada',async()=>{
+    vi.spyOn(FactaSimulationService,'request').mockResolvedValue({tabelas:[
+      {...table,codigoTabela:'17114',tabela:'17114 - INSS NOVO ILETRADO SB'},
+      {...table,codigoTabela:'100',tabela:'100 - INSS NOVO ALFABETIZADO'},
+    ]});
+    const result=await FactaSimulationService.inss(prisma,'tenant',{...input,illiterate:'YES'});
+    expect(result.offers.map(o=>o.code)).toEqual(['17114']);
+  });
   it('não chama API se integração estiver desabilitada', async () => {
     vi.spyOn(FactaBankService, 'getTenantConfig').mockResolvedValue({ ...config, simulationEnabled: false } as any);
     const request = vi.spyOn(FactaSimulationService, 'request');

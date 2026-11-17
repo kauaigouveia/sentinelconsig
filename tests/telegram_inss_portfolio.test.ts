@@ -52,6 +52,13 @@ describe('resumo consolidado INSS: privacidade e valores não duplicados',()=>{
   const messages=formatTelegramInssPortfolio(four,[0,1,2,3],sheets,[]);
   const text=messages.join('\n');
   expect(text).toContain('Contratos 1+3+4');
+  expect(text).toContain('Contrato 1 (final 5152)');
+  expect(text).toContain('Contrato 3 (final 5469)');
+  expect(text).toContain('Contrato 4 (final 3656)');
+  expect(text).toContain('(mantida)');
+  expect(text).toContain('(reduzida)');
+  expect(text).toContain('Total das portadas:');
+  expect(text).toContain('Parcela do NOVO refin:');
   expect(text).toContain('800584 - RFN - INSS 4');
   expect(text).toContain('R$');
   expect(messages.every(message=>message.length<=3750)).toBe(true);
