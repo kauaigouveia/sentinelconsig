@@ -53,7 +53,7 @@ describe('Sentinel v4: navegação por tarefa e orientação operacional',()=>{
  });
  it('mantém registros, controles e resumo operacional sem desalinhamento estrutural',()=>{
   const onMode=vi.fn();
-  render(<PremiumRecordWorkspace count={10} mode="table" onMode={onMode}
+  render(<PremiumRecordWorkspace count={10} mode="list" onMode={onMode}
     filters={<div>Filtro de teste</div>} summary={<p>Dados operacionais</p>}>
     <p>Resultado da simulação</p>
   </PremiumRecordWorkspace>);
@@ -63,9 +63,9 @@ describe('Sentinel v4: navegação por tarefa e orientação operacional',()=>{
   expect(toolbar?.querySelector('.p2-actions')).toBeTruthy();
   const info=screen.getByText('Visão operacional').closest('details');
   expect(info?.previousElementSibling).toBe(toolbar);
-  expect(screen.queryByText('Filtro de teste')).toBeNull();
+  expect(screen.getByText('Filtro de teste').closest('aside')?.hidden).toBe(true);
   fireEvent.click(screen.getByRole('button',{name:/Filtros/}));
-  expect(screen.getByText('Filtro de teste')).toBeTruthy();
+  expect(screen.getByText('Filtro de teste').closest('aside')?.hidden).toBe(false);
   fireEvent.click(screen.getByText('Visão operacional'));
   expect(screen.getByText('Dados operacionais')).toBeTruthy();
   expect(screen.getByText('Resultado da simulação')).toBeTruthy();
