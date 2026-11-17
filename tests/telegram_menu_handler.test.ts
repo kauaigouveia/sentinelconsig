@@ -104,7 +104,7 @@ function scenario(authorized=true,portalEnabled=true){
     '🏦 FINANTO · Contrato 4 · R$ 1.200,00',
   ]),
   waitUntil:vi.fn((_task:Promise<unknown>)=>{}),
-  process:{env:{APP_URL:'https://sentinelconsig.com.br'}},
+  process:{env:{APP_URL:'https://sentinelconsig.com.br',VERCEL:''}},
  };
  const handle=makeHandler(deps);
  let id=0;
