@@ -1,3 +1,4 @@
+import {planDaycovalUnifications} from '../../src/lib/portabilityQuoteSelection.js';
 import {contractKey,daycovalContractGroups,MAX_SIMULATION_CONTRACTS} from '../../src/lib/multiContractSimulation.js';
 import { parseIlliteracy,portabilityReviewMetadata } from '../../src/lib/portabilitySimulationPolicy.js';
 import { nossaWorkbookTables } from './nossaFintechWorkbook.js';
@@ -57,14 +58,12 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
         if(contracts.some((c:any)=>!c?.originBank||!String(c?.contractNumber||'').trim())||new Set(keys).size!==keys.length)return res.status(400).json({error:'Informe contratos distintos, com banco e número.'});
         const book=await read(ctx.tenantId,bank);
         const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-        const combinations=daycovalContractGroups(contracts),offset=req.body?.offset??0;
-        if(!Number.isInteger(offset)||offset<0||offset>=combinations.length)return res.status(400).json({error:'Página de unificações inválida.'});
-        const groups=combinations.slice(offset,offset+35).map(group=>{
-          const indices=group.map(contract=>contracts.indexOf(contract));
-          try{return {indices,...previewPortRefin(bank,book,{...req.body,contracts:group},today)};}
-          catch(error:any){return {indices,offers:[],error:error.message||'Cálculo indisponível para este grupo.'};}
-        });
-        return res.json({groups,total:combinations.length,nextOffset:offset+groups.length<combinations.length?offset+groups.length:null});
+        const offset=req.body?.offset??0;
+        if(offset!==0)return res.status(400).json({error:'A unificação é retornada em um único conjunto.'});
+        const selected=planDaycovalUnifications(contracts,indices=>
+          previewPortRefin(bank,book,{...req.body,contracts:indices.map(index=>contracts[index])},today));
+        const groups=selected.map(({indices,result})=>({indices,...result}));
+        return res.json({groups,total:groups.length,nextOffset:null});
       }catch{return res.status(422).json({error:'Não foi possível calcular as unificações.'});}
     });
     app.post(`${path}/calculate`,calculationLimiter,async(req,res)=>{

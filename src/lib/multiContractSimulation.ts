@@ -13,15 +13,16 @@ export function validateSimulationContracts(contracts:PortabilityContractDraft[]
   const key=contractKey(c);if(keys.has(key))throw Error('Contrato repetido para o mesmo banco.');keys.add(key);
  }
 }
-export function daycovalContractGroups<T>(contracts:T[]):T[][]{
+/** Daycoval groups contain 2 or 3 contracts, without overlapping.
+ * The single leftover contract retains its individual quotation.
+ */
+export function daycovalContractGroups<T>(contracts:readonly T[]):T[][]{
  const groups:T[][]=[];
- for(let a=0;a<contracts.length;a++)for(let b=a+1;b<contracts.length;b++){
-  groups.push([contracts[a],contracts[b]]);
-  for(let c=b+1;c<contracts.length;c++)groups.push([contracts[a],contracts[b],contracts[c]]);
+ for(let i=0;i+1<contracts.length;i+=3){
+  const group=contracts.slice(i,i+3);if(group.length>=2)groups.push(group);
  }
  return groups;
 }
-
 /** Only origin-contract fields are cleared; customer and shared calculation settings remain. */
 export const EMPTY_ORIGIN_CONTRACT={originLenderCode:'',originContractNumber:'',originalTerm:'',openedInstallmentNumber:'',lastDueBalance:'',installmentFaceValue:''};
 export function hasOriginContractDraft(contract:PortabilityContractDraft):boolean{return Object.keys(EMPTY_ORIGIN_CONTRACT).some(key=>String(contract[key as keyof typeof EMPTY_ORIGIN_CONTRACT]??'').trim()!=='');}

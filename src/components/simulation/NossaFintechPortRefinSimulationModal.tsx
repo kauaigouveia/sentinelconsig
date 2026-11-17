@@ -43,7 +43,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [form, setForm] = useState<typeof EMPTY_FORM & {reviewMetadata?:Record<string,string>}>({...EMPTY_FORM, ...statement?.customer, benefitContractCount: statement?.benefitContractCount ?? '', legalRepresentative: statement ? statement.legalRepresentative : false});
   type FormSnapshot=typeof form & {reviewMetadata?:Record<string,string>};
   const [contractQueue,setContractQueue]=useState<PortabilityContractDraft[]>(statement?.contracts ?? []);
-  const [unify,setUnify]=useState(false);
+  const unify=true;
   const [progress,setProgress]=useState('');
   const running=React.useRef(false);
   const identity=()=>`${StorageService.getCurrentTenantId()}:${StorageService.getActiveUser()?.id||''}`;
@@ -343,7 +343,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setForm(current=>({...current,...EMPTY_ORIGIN_CONTRACT}));setError('');setRows([]);setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage('');}catch(error:any){setError(error.message);}
           }}>Adicionar contrato à lista</button></>}
           {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span>{!statement && <button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage('');}}>Remover</button>}</div>)}
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unify} disabled={loading} onChange={e=>setUnify(e.target.checked)}/>Calcular também unificações Daycoval de 2 ou 3 contratos</label>
+          <p className="text-xs text-[var(--text-secondary)]">Daycoval: unificações automáticas de até 3 contratos, sem repetições, priorizando tabelas de 1 a 9.</p>
           <p className="text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)]">Alternativas que usam o mesmo contrato não podem ser somadas. Unificações são estimativas para revisão e não geram propostas.</p>
         </section>
         <p className="rounded-lg bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">As integrações retornam propostas de simulação separadas. Os dados pessoais são usados para identificar a modalidade; confirme autorização do cliente antes de consultar os bancos.</p>

@@ -46,30 +46,58 @@ export function selectPortabilityQuoteRows<T>(
   return [...eligible].sort((a,b)=>rank(a)-rank(b)||money(b)-money(a)).slice(0,1);
 }
 
-// The site and Telegram use the same business presentation order for
-// Daycoval combinations. Preserve one validated offer per combination.
-// First the best table of the largest group, then the best table of each
-// smaller group; afterwards order remaining options by estimated cash-out.
+/** Group order: three contracts, then two; table 1..9; greater cash on ties. */
 export function orderDaycovalUnifications<T>(
-  items:readonly T[],
-  details:(item:T)=>{contractCount:number;table:unknown;cashOut:unknown},
+ items:readonly T[],details:(item:T)=>{contractCount:number;table:unknown;cashOut:unknown},
 ):T[]{
-  const entries=items.map((item,index)=>{
-    const detail=details(item),amount=Number(detail.cashOut);
-    return {item,index,count:detail.contractCount,
-      table:daycovalTablePosition(detail.table)??Number.POSITIVE_INFINITY,
-      amount:Number.isFinite(amount)&&amount>0?amount:0};
-  });
-  const groupCounts=[...new Set(entries.filter(e=>Number.isInteger(e.count)&&e.count>=2&&e.amount>0).map(e=>e.count))]
-    .sort((a,b)=>b-a);
-  const selected=new Set<number>();
-  const promoted:typeof entries=[];
-  for(const count of groupCounts){
-    const top=entries.filter(e=>e.count===count&&e.amount>0)
-      .sort((a,b)=>a.table-b.table||b.amount-a.amount||a.index-b.index)[0];
-    if(top){selected.add(top.index);promoted.push(top);}
+ return items.map((item,index)=>{
+  const d=details(item),n=Number(d.cashOut);
+  return {item,index,count:d.contractCount,
+    rank:daycovalTablePosition(d.table)??Number.POSITIVE_INFINITY,
+    amount:Number.isFinite(n)&&n>0?n:0};
+ }).sort((a,b)=>b.count-a.count||a.rank-b.rank||b.amount-a.amount||a.index-b.index)
+   .map(row=>row.item);
+}
+/** Select up to three disjoint loans per output. Try eligible triples first;
+ * where creditor policy blocks all triples, try pairs. Find the best Daycoval
+ * table in a bounded window (at most 6 inputs / 20 triple calculations).
+ * Do NOT emit all tested combinations as customer-facing simulations.
+ */
+export function planDaycovalUnifications<T,R extends {offers?:readonly any[]}>(
+ contracts:readonly T[],calculate:(indices:readonly number[])=>R,
+):Array<{indices:number[];result:R&{offers:any[]}}>{
+ const remaining=contracts.map((_,index)=>index);
+ const selected:Array<{indices:number[];result:R&{offers:any[]}}>=[];
+ while(remaining.length>=2){
+  const size=Math.min(3,remaining.length);
+  const window=remaining.slice(0,Math.min(6,remaining.length));
+  let best:{indices:number[];result:R&{offers:any[]};rank:number;cash:number}|null=null;
+  for(const target of size===3?[3,2]:[2]){
+   const candidates:number[][]=[];
+   const walk=(start:number,chosen:number[])=>{
+    if(chosen.length===target){candidates.push(chosen);return;}
+    for(let i=start;i<window.length;i++)walk(i+1,[...chosen,window[i]]);
+   };
+   walk(0,[]);
+   for(const indices of candidates){
+    let result:R;
+    try{result=calculate(indices);}catch{continue;}
+    const offer=selectPortabilityQuoteRows(result.offers||[],'DAYCOVAL',{
+      name:(row:any)=>row.name||row.tableName||row.code||row.tableId,
+      rate:(row:any)=>row.rate,
+      amount:(row:any)=>row.amount,
+    }).find(row=>Number.isFinite(Number(row.amount))&&Number(row.amount)>0);
+    if(!offer)continue;
+    const rank=daycovalTablePosition(offer.name||offer.tableName||offer.code||offer.tableId)??Number.POSITIVE_INFINITY;
+    const cash=Number(offer.amount);
+    if(!best||rank<best.rank||rank===best.rank&&cash>best.cash)
+     best={indices,result:{...result,offers:[offer]},rank,cash};
+   }
+   if(best)break;
   }
-  const remaining=entries.filter(e=>!selected.has(e.index))
-    .sort((a,b)=>b.amount-a.amount||a.table-b.table||b.count-a.count||a.index-b.index);
-  return [...promoted,...remaining].map(e=>e.item);
+  if(!best){if(size===2)break;remaining.shift();continue;}
+  selected.push({indices:best.indices,result:best.result});
+  for(const index of best.indices){const i=remaining.indexOf(index);if(i>=0)remaining.splice(i,1);}
+ }
+ return selected;
 }

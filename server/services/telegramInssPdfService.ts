@@ -6,7 +6,7 @@ import { money as moneyBR, portabilityInstallmentStatus } from '../../src/lib/po
 import { decodeDaycoval } from './daycovalWorkbook.js';
 import { previewPortRefin } from './portRefinPreview.js';
 import { SPREADSHEET_MODELS, type SpreadsheetBank } from './portRefinWorkbooks.js';
-import {selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
+import {planDaycovalUnifications,selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelection.js';
 
 export const TELEGRAM_PDF_MAX_BYTES = 5 * 1024 * 1024;
 export const TELEGRAM_PDF_TTL_MS = 10 * 60 * 1000;
@@ -307,49 +307,22 @@ export async function calculateTelegramInssQuotes(
       }catch{ /* Missing policy data or a calculation error is not an approved quote. */ }
     }
     if(bank==='DAYCOVAL'&&chosen.length>=2){
-      // Daycoval's validated workbook accepts at most three contracts per group.
-      // All selected contracts still receive individual quotes; cap only the
-      // optional cross-contract combinations without hiding valid groups.
-      const combinations:number[][]=[];
-      for(let size=2;size<=Math.min(3,chosen.length);size++){
-        const walk=(from:number,picked:number[])=>{
-          if(picked.length===size){combinations.push(picked);return;}
-          for(let i=from;i<chosen.length;i++)walk(i+1,[...picked,i]);
-        };
-        walk(0,[]);
-      }
-      for(const group of combinations){
-        try{
-          const r=calculate(bank,book,{...raw,contracts:group.map(i=>rawContracts[i])},today);
-          const offers=selectPortabilityQuoteRows(r.offers,bank,{
-            name:o=>o.name||o.code,rate:o=>o.rate,amount:o=>o.amount,
-          }).filter(o=>Number(o.amount)>0);
-          for(const offer of offers){
-            successes++;
-            const changes=group.map((i,n)=>{
-              const raw=offer.installmentChanges?.[n]?.newInstallment;
-              return {index:selectedIndices[i],original:chosen[i].installment,
-                adjusted:raw==null||!Number.isFinite(Number(raw))?null:Number(raw)};
-            });
-            const breakdown=changes.map(change=>{
-              const status=portabilityInstallmentStatus({
-                label:'Contrato '+(change.index+1),originalInstallment:change.original,
-                newInstallment:change.adjusted,
-              });
-              return '  Contrato '+(change.index+1)+': '+money(change.original)+' → '+
-                (change.adjusted!=null?money(change.adjusted):'não informado')+' ('+status.label+')';
-            });
-            const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
-            quotes.push({bank,indices:group.map(i=>selectedIndices[i]),table,
-              amount:Number(offer.amount),rate:Number(offer.rate),
-              installment:Number(offer.installment),term:Number(offer.term),changes});
-            texts.push('🔄 DAYCOVAL · Unificação '+group.map(i=>selectedIndices[i]+1).join('+')+'\n'+
-              'Tabela: '+table+'\n'+breakdown.join('\n')+
-              '\nParcela do refin: '+money(Number(offer.installment))+
-              '\nTroco estimado: '+money(offer.amount)+' · '+offer.term+' meses · '+
-              (Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0 ? Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.' : 'taxa não informada'));
-          }
-        }catch{ /* Do not claim an unavailable group as approved. */ }
+      const groups=planDaycovalUnifications(rawContracts,indices=>
+        calculate(bank,book,{...raw,contracts:indices.map(i=>rawContracts[i])},today));
+      for(const {indices:group,result} of groups){
+        const offer=result.offers[0];if(!offer)continue;
+        successes++;
+        const changes=group.map((i,n)=>{
+          const value=offer.installmentChanges?.[n]?.newInstallment;
+          return {index:selectedIndices[i],original:chosen[i].installment,
+            adjusted:value==null||!Number.isFinite(Number(value))?null:Number(value)};
+        });
+        const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
+        quotes.push({bank,indices:group.map(i=>selectedIndices[i]),table,
+          amount:Number(offer.amount),rate:Number(offer.rate),
+          installment:Number(offer.installment),term:Number(offer.term),changes});
+        texts.push('🔄 DAYCOVAL · Contratos '+group.map(i=>selectedIndices[i]+1).join('+')+
+          ' · Tabela: '+table+' · Troco: '+money(offer.amount));
       }
     }
     if(successes)calculatedBanks.push(bank);

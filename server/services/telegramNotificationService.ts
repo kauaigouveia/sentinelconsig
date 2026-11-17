@@ -8,6 +8,7 @@ import { AuditLogService } from './auditLogService.js';
 import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,telegramPdfErrorCode,telegramPdfErrorMessage,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
 import { calculateTelegramInssOfficialQuotes } from './telegramInssOfficialQuotes.js';
 import {formatTelegramInssPortfolio} from './telegramInssPortfolio.js';
+import {calculateTelegramInssMarginQuotes} from './telegramInssMarginQuotes.js';
 import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
 import {beginTelegramNativeSimulation,continueTelegramCltSimulation,cltConsultationOptions,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,type TelegramNativeDraft} from './telegramNativeSimulation.js';
 import {executeTelegramNativeSimulation,executeTelegramCltMargin} from './telegramNativeSimulationExecutor.js';
@@ -816,7 +817,11 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         // No invented bank offers; still show the documentary results and an explicit status.
     }
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
-    const report=formatTelegramInssPortfolio(job.review,job.indices,sheets?.quotes||[],integration?.contracts||[]);
+    const margin=await calculateTelegramInssMarginQuotes(
+        db,job.account.tenantId,partner,job.review,job.illiterate,job.attemptKey);
+    if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    const report=formatTelegramInssPortfolio(
+        job.review,job.indices,sheets?.quotes||[],integration?.contracts||[],margin);
     if(!sheets||!integration)report.push('⚠️ '+(!sheets?'Cálculo documental ':'')+
         (!sheets&&!integration?'e ':'')+(!integration?'integrações bancárias ':'')+
         'não concluído(s) nesta consulta. Verifique no Portal; isso não significa recusa.');
