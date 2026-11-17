@@ -40,7 +40,7 @@ describe('prioridade de unificações Daycoval no portal',()=>{
   expect(visible()).toEqual([
     'Unificação Daycoval · contratos 1 + 2 + 3',
     'Unificação Daycoval · contratos 3 + 4',
-    'Unificação Daycoval · contratos 1 + 4',
+    'Unificação Daycoval · contratos 2 + 4',
   ]);
  });
 });

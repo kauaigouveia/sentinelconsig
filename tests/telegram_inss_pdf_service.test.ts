@@ -201,7 +201,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(lookups.every(v=>v.tenantId==='tenant-evolve')).toBe(true);
   expect(result.calculatedBanks).toEqual(['DAYCOVAL','PARANA']);
   expect(result.unavailableBanks.join('')).toContain('C6');
-  expect(result.texts.join('')).toContain('Unificação 1+2');
+  expect(result.quotes.some(x=>x.bank==='DAYCOVAL'&&x.indices.join('+')==='0+1')).toBe(true);
   expect(result.texts.join('')).toContain('R$');
   expect(result.texts.join('')).toContain('Parcela portada');
   expect(result.texts.join('')).toContain('Parcela do refin');

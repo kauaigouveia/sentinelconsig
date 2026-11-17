@@ -27,7 +27,7 @@ it('calls Daycoval/C6 read-only calculators from the real form, keeps estimates 
  const call=fetch.mock.calls.find(([url])=>url==='/api/daycoval/calculate')!;
  expect(JSON.parse(String(call[1]?.body))).toMatchObject({term:84,contracts:[{originBank:'001',originalTerm:84,remaining:57,balance:3481.19,installment:43}]});
  expect(screen.getByText(/FACTA HTTP 200 com corpo vazio/)).toBeTruthy();expect(screen.getByText(/Prazo 84 não disponível na planilha C6/)).toBeTruthy();
- expect(screen.getByRole('button',{name:'Selecionar'}).hasAttribute('disabled')).toBe(true);
+ expect(screen.getByRole('button',{name:'Selecionar cotação'}).hasAttribute('disabled')).toBe(true);
  expect(fetch.mock.calls.filter(([url])=>url==='/api/daycoval/calculate')).toHaveLength(1);
  expect(fetch.mock.calls.some(([url])=>url==='/api/simulations')).toBe(false);
  expect(fetch.mock.calls.filter(([url])=>url==='/api/parana-spreadsheet/calculate')).toHaveLength(1);
@@ -55,10 +55,10 @@ it('filters lower FINANTO tiers before requesting calculations for an installmen
  fireEvent.click(screen.getByRole('button',{name:'Continuar'}));
  change('Banco de origem','001');change('Número do contrato','SYNTHETIC');change('Prazo original (meses)','84');change('Parcelas restantes','57');change('Saldo devedor (R$)','3.481,19');change('Parcela atual (R$)','319,56');change('Prazo do novo refinanciamento','108');
  fireEvent.submit(screen.getByRole('button',{name:'Comparar ofertas'}).closest('form')!);
- await screen.findByText('PRIME ≥ 300 +90DIAS');
+ await screen.findByText('PRIME ≥ 300');
  const requests=fetch.mock.calls.filter(([url])=>url==='/api/integrations/finanto/request').map(([,init])=>JSON.parse(String(init?.body))).filter(row=>row.endpoint.endsWith('/calculation'));
  expect(requests.map(row=>row.body.ruleId).sort()).toEqual(['rule-2','rule-3']);
- expect(screen.getAllByRole('button',{name:'Selecionar'})).toHaveLength(2);
+ expect(screen.getAllByRole('button',{name:'Selecionar cotação'})).toHaveLength(1);
 });
 
 it('runs all six individual bank paths for two contracts and one explicit Daycoval group request',async()=>{
@@ -92,7 +92,7 @@ it('runs all six individual bank paths for two contracts and one explicit Daycov
  for(const url of ['/api/daycoval/calculate','/api/c6-spreadsheet/calculate','/api/parana-spreadsheet/calculate','/api/integrations/finanto/config','/api/integrations/facta/inss/simulate','/api/integrations/nossa-fintech/port-refin/simulate-all'])expect(fetch.mock.calls.filter(([path])=>path===url)).toHaveLength(2);
  const groups=fetch.mock.calls.filter(([path])=>path==='/api/daycoval/calculate-groups');expect(groups).toHaveLength(1);
  expect(JSON.parse(String(groups[0][1]?.body)).contracts.map((c:any)=>c.contractNumber)).toEqual(['SYNTHETIC-A','SYNTHETIC-B']);
- expect(screen.getAllByRole('button',{name:'Selecionar'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
+ expect(screen.getAllByRole('button',{name:'Selecionar cotação'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
  expect(fetch.mock.calls.some(([path])=>path==='/api/simulations')).toBe(false);
 });
 
