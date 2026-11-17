@@ -75,18 +75,21 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   const malicious=vi.fn(async()=>new Response(JSON.stringify({ok:true,result:{file_path:'../../evil'}})));
   await expect(downloadTelegramPdf('token',file,malicious as unknown as typeof fetch)).rejects.toMatchObject({code:'TELEGRAM_DOWNLOAD'});
  });
- it('lê PDF textual real e guarda só mínimos dados para conferência, nunca CPF ou NB',async()=>{
+ it('lê PDF textual e só exibe números mascarados, com identificadores bancários temporários',async()=>{
   const parsed=await readTelegramInssPdf(new Uint8Array(pdf));
   expect(parsed.benefitType).toBe(42);
   expect(parsed.birthDate).toBe('1960-02-29');
   expect(parsed.loanMargin).toBe(100);
   expect(parsed.contracts).toHaveLength(2);
   expect(parsed.contracts[0]).toMatchObject({bank:'237',numberSuffix:'01A1',originalTerm:84,remaining:27,installment:50,balance:1300.44});
-  const raw=JSON.stringify(parsed);
-  expect(raw).not.toContain('12345678909');
-  expect(raw).not.toContain('0000000001');
-  expect(raw).not.toContain('Pessoa Teste');
-  expect(raw).not.toContain('001A-1');
+  expect(parsed.bankConsultation).toMatchObject({
+    cpf:'12345678909',benefitNumber:'0000000001',
+    contracts:[{number:'001A-1'},{number:'002B-2'}],
+  });
+  // Public preview is masked; sensitive fields exist only in encrypted TTL chat state.
+  const publicText=telegramPdfReviewText(parsed);
+  for(const secret of ['12345678909','0000000001','Pessoa Teste','001A-1'])
+    expect(publicText).not.toContain(secret);
   expect(telegramPdfReviewText(parsed)).toContain('contratos: 2');
  });
  it('reconhece os quatro empréstimos de um extrato de tabela extensa com cartão separado',async()=>{
@@ -130,10 +133,15 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   await expect(readTelegramInssPdf(new Uint8Array(100))).rejects.toThrow('PDF');
   await expect(readTelegramInssPdf(makePdf(['documento aleatório','sem contratos']))).rejects.toThrow();
  });
- it('valida a seleção em lote sem índices repetidos ou mais de três contratos',()=>{
+ it('aceita TODOS os contratos e seleção de até treze índices distintos',()=>{
   expect(parseTelegramSelectedContracts('1, 2, 4',4)).toEqual([0,1,3]);
-  expect(parseTelegramSelectedContracts('1',4)).toEqual([0]);
-  for(const invalid of ['1,1','0','5','1,2,3,4','1;2','a'])expect(parseTelegramSelectedContracts(invalid,4)).toBeNull();
+  expect(parseTelegramSelectedContracts('1,2,3,4',4)).toEqual([0,1,2,3]);
+  expect(parseTelegramSelectedContracts('TODOS',4)).toEqual([0,1,2,3]);
+  expect(parseTelegramSelectedContracts('todos',13)).toHaveLength(13);
+  expect(parseTelegramSelectedContracts(Array.from({length:13},(_,i)=>String(i+1)).join(','),13)).toHaveLength(13);
+  for(const invalid of ['1,1','0','5','1;2','a','14','1,2,1'])
+    expect(parseTelegramSelectedContracts(invalid,4)).toBeNull();
+  expect(parseTelegramSelectedContracts('TODOS',14)).toBeNull();
  });
  it('usa apenas planilhas do tenant, informa bancos indisponíveis e exibe diferenças por contrato',async()=>{
   const lookups:any[]=[];
