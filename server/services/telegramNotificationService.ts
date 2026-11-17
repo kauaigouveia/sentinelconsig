@@ -340,6 +340,24 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         let keyboard: string[][] = [['👤 Trocar parceiro']];
         let htmlMode = false;
         let pdfWork:TelegramPdfWork|undefined;
+        const takeQuerySlot=async():Promise<boolean>=>{
+            if(!state.selected)return false;
+            const rateKey='TELEGRAM_NATIVE_RATE_V1_'+hash(chatId+':'+state.selected.partnerId).slice(0,32);
+            const oldRate=await tx.systemConfig.findUnique({
+                where:{tenantId_configKey:{tenantId:state.selected.tenantId,configKey:rateKey}},
+            });
+            const limit=oldRate?JSON.parse(oldRate.configValue):null;
+            const active=limit&&typeof limit.since==='number'&&limit.since>Date.now()-15*60_000;
+            const previousCount=active?Number(limit.count)||0:0;
+            if(previousCount>=10)return false;
+            await tx.systemConfig.upsert({
+                where:{tenantId_configKey:{tenantId:state.selected.tenantId,configKey:rateKey}},
+                create:{tenantId:state.selected.tenantId,configKey:rateKey,
+                    configValue:JSON.stringify({since:active?limit.since:Date.now(),count:previousCount+1})},
+                update:{configValue:JSON.stringify({since:active?limit.since:Date.now(),count:previousCount+1})},
+            });
+            return true;
+        };
         const valid = async (account: TelegramAccount) => {
             if (config.ownerTenant && account.tenantId !== config.ownerTenant) return false;
             const current = await activeBot(tx, account.tenantId);
@@ -511,20 +529,30 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                     response='A consulta de margem expirou. Inicie uma nova consulta CLT para usar valores atuais.';
                     keyboard=telegramSectionMenu('CLT').keyboard;
                 }else if(selection==='simular margem cheia'&&state.cltMarginReady){
+                    if(!(await takeQuerySlot())){
+                        response='Limite de dez consultas a cada quinze minutos atingido. Aguarde antes de consultar os bancos novamente.';
+                        keyboard=options;
+                    }else{
                     pdfWork={kind:'NATIVE',account:state.selected!,
                         draft:continueTelegramCltSimulation(consulted,'FULL'),attemptKey:randomBytes(16).toString('hex')};
                     state.native={...consulted,expires:Date.now()+10*60_000};
                     response='💰 Calculando as condições com a margem oficial de cada banco compatível. A Happy exige um valor explícito e será apresentada como pendente, não receberá valor fictício.';
                     keyboard=options;
+                    }
                 }else if(selection==='escolher parcela ou valor'&&state.cltMarginReady){
                     state.native=continueTelegramCltSimulation(consulted,'CUSTOM');state.phase='SIM_INPUT';
                     response=telegramNativePrompt(state.native);keyboard=[['🏠 Menu principal']];
                 }else if(selection==='atualizar margem clt'){
+                    if(!(await takeQuerySlot())){
+                        response='Limite de dez consultas a cada quinze minutos atingido. Aguarde antes de atualizar as margens.';
+                        keyboard=options;
+                    }else{
                     const fresh={...consulted,cltStage:'CONSULT' as const,index:3,expires:Date.now()+10*60_000};
                     state.native=fresh;state.phase='CLT_LOADING';state.cltMarginReady=false;
                     pdfWork={kind:'CLT_MARGIN',account:state.selected!,draft:fresh,attemptKey:randomBytes(16).toString('hex')};
                     response='🔍 Atualizando vínculos, margem e autorizações nos canais bancários habilitados. Nenhum SMS foi solicitado automaticamente.';
                     keyboard=[['🏠 Menu principal']];
+                    }
                 }else{
                     response=state.cltMarginReady?
                         'Escolha 💰 Simular margem cheia, ✏️ Escolher parcela ou valor, ou 🔄 Atualizar margem CLT.':
@@ -550,26 +578,11 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 const consultCLT=state.native.product==='CLT'&&state.native.cltStage==='CONSULT';
                 const expected=consultCLT?'consultar margem clt':'confirmar simulacao';
                 if(normalizeTelegramMenuInput(text)===expected){
-                    // Bank integrations may consume external quota or initiate
-                    // authorization. Enforce an independent per-partner+tenant
-                    // throttle, not just the Telegram update replay receipt.
-                    const rateKey='TELEGRAM_NATIVE_RATE_V1_'+hash(chatId+':'+state.selected!.partnerId).slice(0,32);
-                    const oldRate=await tx.systemConfig.findUnique({
-                        where:{tenantId_configKey:{tenantId:state.selected!.tenantId,configKey:rateKey}},
-                    });
-                    const limit=oldRate?JSON.parse(oldRate.configValue):null;
-                    const active=limit && typeof limit.since==='number' && limit.since>Date.now()-15*60_000;
-                    const previousCount=active?Number(limit.count)||0:0;
-                    if(previousCount>=10){
+                    // Includes margin consultations, full-margin quotes and custom queries.
+                    if(!(await takeQuerySlot())){
                         response='Limite de consultas desta empresa/parceiro atingido neste intervalo. Aguarde alguns minutos antes de solicitar outra simulação. Nenhum banco foi consultado.';
                         keyboard=[['🏠 Menu principal']];
                     }else{
-                        await tx.systemConfig.upsert({
-                            where:{tenantId_configKey:{tenantId:state.selected!.tenantId,configKey:rateKey}},
-                            create:{tenantId:state.selected!.tenantId,configKey:rateKey,
-                                configValue:JSON.stringify({since:active?limit.since:Date.now(),count:previousCount+1})},
-                            update:{configValue:JSON.stringify({since:active?limit.since:Date.now(),count:previousCount+1})},
-                        });
                         const draft=state.native;
                         const attemptKey=randomBytes(16).toString('hex');
                         pdfWork=consultCLT?
