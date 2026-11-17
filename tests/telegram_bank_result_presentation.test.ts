@@ -75,8 +75,8 @@ describe('Telegram: retorno por banco, autorização e consulta de margem',()=>{
    const content=report.messages.join('\n');
    expect(report.hasMargin).toBe(true);
    expect(report.positiveBanks).toEqual(['FACTA','Nossa Fintech · QI Tech']);
-   expect(content).toContain('R$ 310,50');
-   expect(content).toContain('R$ 350,00');
+   expect(content).toMatch(/R\$\s*310,50/);
+   expect(content).toMatch(/R\$\s*350,00/);
    expect(content).not.toContain('R$ 660,50');
    expect(content).toContain('BMP');
    expect(content).toContain('SMS');
