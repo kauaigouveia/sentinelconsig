@@ -612,10 +612,19 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                     keyboard=[[consultCLT?'✅ Consultar margem CLT':'✅ Confirmar simulação'],['🏠 Menu principal']];
                 }
             }else if(menuChoice==='CLIENT'){
-                // The partner's profile is NOT a client-data lookup. Require a
-                // logged-in portal session and use the CLT vínculos/margem flow.
-                openPortal({product:'CLT'});
-                response+='\n\nPara consultar os dados do cliente CLT, preencha o CPF no portal e escolha “Consultar vínculos e margem”. Não envie CPF ou documentos pelo bot.';
+                const access=await tx.partnerPortalAccess.findFirst({
+                    where:{tenantId:state.selected!.tenantId,partnerId:state.selected!.partnerId,active:true},
+                    select:{id:true},
+                });
+                if(!access){
+                    response='O acesso ao Portal do Parceiro está inativo. Solicite ao gestor a reativação antes de consultar vínculos e margem CLT.';
+                    keyboard=telegramSectionMenu('CLT').keyboard;
+                }else{
+                    state.native=beginTelegramNativeSimulation({product:'CLT'});
+                    state.section='CLT';state.phase='SIM_INPUT';state.pendingPdf=undefined;state.cltMarginReady=false;
+                    response=telegramNativePrompt(state.native);
+                    keyboard=[['🏠 Menu principal']];
+                }
             }else if(telegramSimulationTarget(state.section||'ROOT',menuChoice)){
                 const access=await tx.partnerPortalAccess.findFirst({
                     where:{tenantId:state.selected!.tenantId,partnerId:state.selected!.partnerId,active:true},
