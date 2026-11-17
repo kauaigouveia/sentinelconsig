@@ -137,6 +137,7 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(parseTelegramSelectedContracts('1, 2, 4',4)).toEqual([0,1,3]);
   expect(parseTelegramSelectedContracts('1,2,3,4',4)).toEqual([0,1,2,3]);
   expect(parseTelegramSelectedContracts('TODOS',4)).toEqual([0,1,2,3]);
+  expect(parseTelegramSelectedContracts('✅ Simular todos os contratos',4)).toEqual([0,1,2,3]);
   expect(parseTelegramSelectedContracts('todos',13)).toHaveLength(13);
   expect(parseTelegramSelectedContracts(Array.from({length:13},(_,i)=>String(i+1)).join(','),13)).toHaveLength(13);
   for(const invalid of ['1,1','0','5','1;2','a','14','1,2,1'])

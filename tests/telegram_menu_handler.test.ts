@@ -313,7 +313,8 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   const extract=await s.send('',{document:{file_id:'document12345678',file_name:'extrato.pdf',mime_type:'application/pdf',file_size:1200}});
   expect(extract.text).toContain('Extrato conferido');
   expect(extract.text).toContain('4');
-  const chosen=await s.send('TODOS');
+  expect(extract.reply_markup.keyboard.flat().map((b:any)=>b.text)).toContain('✅ Simular todos os contratos');
+  const chosen=await s.send('✅ Simular todos os contratos');
   expect(chosen.text).toContain('Contratos selecionados: 1, 2, 3, 4');
   const done=await s.send('✅ Autorizado · NÃO analfabeto');
   expect(s.sends.some(value=>value.text.includes('Daycoval'))).toBe(true);
