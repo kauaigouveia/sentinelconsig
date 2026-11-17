@@ -162,12 +162,16 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   await s.send('✅ Consultar margem CLT');
   expect(s.deps.executeTelegramCltMargin).toHaveBeenCalledTimes(1);
   expect(s.sends.some(v=>v.text.includes('Margem CLT · FACTA'))).toBe(true);
+  expect(s.sends.filter(v=>v.text.includes('Margem CLT · FACTA'))
+    .every(v=>v.protect_content===false)).toBe(true);
+  expect(summary.protect_content).toBe(true);
   const snapshot=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
   expect(snapshot.configValue.phase).toBe('CLT_OPTIONS');
   expect(snapshot.configValue.cltMarginReady).toBe(true);
   expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
   const full=await s.send('💰 Simular margem cheia');
   expect(full.text).toContain('Banco Teste');
+  expect(full.protect_content).toBe(false);
   const args=(s.deps.executeTelegramNativeSimulation as any).mock.calls[0] as any[];
   expect(args[1]).toBe('tenant-evolve');
   expect(args[2]).toMatchObject({id:'partner-a',code:'010'});
@@ -216,6 +220,8 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(review.text).toContain('Confirmar simulação');
   const done=await s.send('✅ Confirmar simulação');
   expect(done.text).toContain('Banco Teste');
+  expect(done.protect_content).toBe(false);
+  expect(review.protect_content).toBe(true);
   await s.send('💰 Simular FGTS');
   await s.send('🏠 Menu principal');
   const state=[...s.records.values()].find((v:any)=>v.configKey==='TELEGRAM_PROPOSAL_QUERY_V1');
@@ -327,7 +333,13 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   const done=await s.send('✅ Autorizado · NÃO analfabeto');
   expect(s.sends.some(value=>value.text.includes('Daycoval'))).toBe(true);
   expect(s.sends.some(value=>value.text.includes('FINANTO · Contrato 4'))).toBe(true);
+  const shareable=s.sends.filter(value=>
+    value.text.includes('Daycoval')||value.text.includes('FINANTO · Contrato 4'));
+  expect(shareable).toHaveLength(2);
+  expect(shareable.every(value=>value.protect_content===false)).toBe(true);
+  expect(chosen.protect_content).toBe(true);
   expect(done.text).toContain('Consulta concluída');
+  expect(done.protect_content).toBe(false);
   expect(s.deps.calculateTelegramInssOfficialQuotes).toHaveBeenCalledTimes(1);
   const call=(s.deps.calculateTelegramInssOfficialQuotes as any).mock.calls[0];
   expect(call[4]).toEqual([0,1,2,3]);

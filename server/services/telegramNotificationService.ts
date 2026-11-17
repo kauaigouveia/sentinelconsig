@@ -712,8 +712,10 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                 data:{configValue:encrypt(updated)},
             });
             if(changed.count!==1)return;
+            // Only the calculated bank responses are shareable; the client input and
+            // authorization flow remain protected.
             for(const line of output.messages)
-                await telegram(config,'sendMessage',{chat_id:chatId,text:line,protect_content:true});
+                await telegram(config,'sendMessage',{chat_id:chatId,text:line,protect_content:false});
             await telegram(config,'sendMessage',{chat_id:chatId,
                 text:output.hasMargin?'Escolha uma opção para continuar com a margem já consultada.':'Para simular, primeiro é necessário confirmar margem positiva em pelo menos uma instituição.',
                 reply_markup:{keyboard:(output.hasMargin?cltConsultationOptions():[['🔄 Atualizar margem CLT'],['🏠 Menu principal']]).map(row=>row.map(text=>({text}))),resize_keyboard:true},
@@ -746,7 +748,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             );
             if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
             for(const text of output.messages)
-                await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:true});
+                await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:false});
         }catch{
             if(await telegramAccountStillValid(db,config,chatId,job.account))
                 await telegram(config,'sendMessage',{
@@ -844,13 +846,15 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
         'não concluído(s) nesta consulta. Verifique no Portal; isso não significa recusa.');
     if(sheets?.unavailableBanks.length)
         report.push('ℹ️ Planilhas sem cotação: '+sheets.unavailableBanks.join('; ').slice(0,1100));
+    // The portfolio formatter masks identifying numbers. Keep the results
+    // copyable so the partner can share the estimates with the customer.
     for(const text of report)
-        await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:true});
+        await telegram(config,'sendMessage',{chat_id:chatId,text,protect_content:false});
     if(await telegramAccountStillValid(db,config,chatId,job.account))
         await telegram(config,'sendMessage',{chat_id:chatId,
             text:'✅ Consulta concluída para os contratos selecionados, sem contratação nem aprovação bancária. O histórico apresenta as cotações positivas das APIs. Para conferir detalhes adicionais:\n'+
               telegramPortalLink({product:'INSS',operation:'PORT_REFIN'},process.env.APP_URL||'https://sentinelconsig.com.br'),
-            protect_content:true});
+            protect_content:false});
     };
     const safeCalculate=async()=>{
       try{await calculate();}
