@@ -1,3 +1,4 @@
+import {formatTelegramBankSimulation} from './telegramBankResultPresentation.js';
 import {isValidCpf} from '../../src/lib/utils.js';
 import {normalizeTelegramMenuInput,type TelegramSimulationTarget} from './telegramProductMenu.js';
 
@@ -12,6 +13,7 @@ export type TelegramNativeField='cpf'|'name'|'phone'|'mode'|'birthDate'|'benefit
 export type TelegramNativeDraft={
   product:TelegramNativeProduct;
   operation:TelegramNativeOperation;
+  cltStage?:'CONSULT'|'FULL'|'CUSTOM';
   index:number;
   values:Partial<Record<TelegramNativeField,string>>;
   expires:number;
@@ -51,7 +53,10 @@ const currency=(s:string):number|null=>{
   return Number.isFinite(n)&&n>0&&n<=2_000_000?Math.round(n*100)/100:null;
 };
 export function telegramNativeSteps(target:Pick<TelegramNativeDraft,'product'|'operation'>):Step[]{
-  if(target.product==='CLT')return [CPF,NAME,PHONE,MODE,INST];
+  if(target.product==='CLT'){
+    const stage=(target as TelegramNativeDraft).cltStage||'CONSULT';
+    return stage==='CONSULT'?[CPF,NAME,PHONE]:stage==='CUSTOM'?[MODE,INST,TERM]:[];
+  }
   if(target.product==='FGTS')return [CPF,{field:'term',prompt:'Quantos saques-aniversário deseja antecipar? Informe de 1 a 10.'}];
   const basic=[CPF,BIRTH,BENEFIT,BENEFIT_TYPE,STATE,BENEFIT_START,OPTIONAL_NAME,OPTIONAL_PHONE];
   if(['PORT','PORT_REFIN'].includes(target.operation))return [
@@ -71,9 +76,22 @@ export function beginTelegramNativeSimulation(
   target:TelegramSimulationTarget,now=Date.now(),
 ):TelegramNativeDraft {
   const operation:TelegramNativeOperation=target.product==='INSS'?target.operation||'NEW':'NEW';
-  const draft={product:target.product,operation,index:0,values:{},expires:now+10*60_000};
+  const draft={product:target.product,operation,index:0,cltStage:target.product==='CLT'?'CONSULT' as const:undefined,values:{},expires:now+10*60_000};
   if(!telegramNativeSteps(draft).length)throw Error('Produto não disponível.');
   return draft;
+}
+export function continueTelegramCltSimulation(
+  consulted:TelegramNativeDraft,stage:'FULL'|'CUSTOM',now=Date.now(),
+):TelegramNativeDraft{
+  if(consulted.product!=='CLT'||!['FULL','CUSTOM'].includes(stage)||
+     !consulted.values.cpf||!consulted.values.name||!consulted.values.phone)
+    throw Error('Consulta de margem CLT incompleta.');
+  return {...consulted,cltStage:stage,index:0,
+    values:{cpf:consulted.values.cpf,name:consulted.values.name,phone:consulted.values.phone},
+    expires:now+10*60_000};
+}
+export function cltConsultationOptions():string[][]{
+  return [['💰 Simular margem cheia'],['✏️ Escolher parcela ou valor'],['🔄 Atualizar margem CLT'],['🏠 Menu principal']];
 }
 const masked=(raw:string,suffix=4)=>raw.length>suffix?'••••'+raw.slice(-suffix):'••••';
 export function telegramNativePrompt(draft:TelegramNativeDraft):string {
@@ -81,7 +99,7 @@ export function telegramNativePrompt(draft:TelegramNativeDraft):string {
   const step=steps[draft.index];
   if(!step)return telegramNativeSummary(draft);
   const title=draft.product==='INSS'?'INSS '+({NEW:'Novo',REFIN:'Refinanciamento',PORT:'Portabilidade',PORT_REFIN:'Portabilidade + Refin'}[draft.operation]):draft.product;
-  return '💬 Simulação '+title+' · etapa '+(draft.index+1)+'/'+steps.length+
+  return (draft.product==='CLT'&&draft.cltStage==='CONSULT'?'🏛️ Consulta de margem CLT':'💬 Simulação '+title)+' · etapa '+(draft.index+1)+'/'+steps.length+
     '\n\n'+(step.field==='value'&&draft.values.mode==='Liquid'?'Qual valor líquido de crédito deseja solicitar? Ex.: 5.000,00':step.prompt)+
     (step.optional?'\n\nCampo opcional: utilize PULAR.':'')+
     '\n\nEnvie somente o dado solicitado. Use 🏠 Menu principal para cancelar.';
@@ -131,8 +149,9 @@ const money=(value:unknown)=>Number.isFinite(Number(value))&&Number(value)>0
   ?Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'Não informado';
 export function telegramNativeSummary(draft:TelegramNativeDraft):string {
   const v=draft.values;
+  const consult=draft.product==='CLT'&&draft.cltStage==='CONSULT';
   const entries=[
-    '📋 Confira antes de consultar os bancos',
+    consult?'📋 Confirme a consulta de vínculos e margem CLT':'📋 Confira antes de consultar os bancos',
     'Produto: '+draft.product+(draft.product==='INSS'?' · '+draft.operation:''),
     'Cliente: CPF '+masked(v.cpf||''),
     ...(v.benefitNumber?['Benefício: '+masked(v.benefitNumber)]:[]),
@@ -148,7 +167,7 @@ export function telegramNativeSummary(draft:TelegramNativeDraft):string {
     '',
     'Ao confirmar, declaro ter autorização do titular para consultar as instituições habilitadas da empresa. A consulta pode transmitir os dados informados aos bancos integrados. Cálculo não é aprovação nem contratação.',
     '',
-    'Selecione ✅ Confirmar simulação ou 🏠 Menu principal para cancelar.',
+    consult?'Selecione ✅ Consultar margem CLT ou 🏠 Menu principal para cancelar.':'Selecione ✅ Confirmar simulação ou 🏠 Menu principal para cancelar.',
   ];
   return entries.join('\n').slice(0,3900);
 }
@@ -157,9 +176,10 @@ export function toTelegramNativeInput(draft:TelegramNativeDraft,partnerId:string
   const product=draft.product,operation=product==='INSS'?draft.operation:'NEW';
   const input:Record<string,unknown>={
     product,operation,cpf:v.cpf,name:v.name||'',phone:v.phone||'',
-    mode:v.mode||'Payment',term:Number(v.term??(product==='CLT'?'0':product==='FGTS'?'4':'108')),
-    value:Number(v.value??v.originalInstallment??'0'),
-    eligibility:true,autoConditions:false,automaticAuthorization:false,observeOnly:true,
+    mode:draft.product==='CLT'&&draft.cltStage==='FULL'?'Payment':v.mode||'Payment',
+    term:Number(draft.product==='CLT'&&draft.cltStage==='FULL'?0:v.term??(product==='CLT'?'0':product==='FGTS'?'4':'108')),
+    value:Number(draft.product==='CLT'&&draft.cltStage==='FULL'?0:v.value??v.originalInstallment??'0'),
+    eligibility:true,autoConditions:product==='CLT'&&draft.cltStage==='FULL',automaticAuthorization:false,observeOnly:true,
     partnerId,
   };
   if(product==='INSS'){
@@ -179,47 +199,7 @@ export function toTelegramNativeInput(draft:TelegramNativeDraft,partnerId:string
   return input;
 }
 export function formatTelegramNativeResults(
-  rows:readonly any[],product:TelegramNativeProduct,operation:TelegramNativeOperation,
-  saved:boolean,
+  rows:readonly any[],product:TelegramNativeProduct,operation:TelegramNativeOperation,saved:boolean,
 ):string[]{
-  const candidates=rows.filter(r=>r&&r.state==='OFFER'&&Number.isFinite(Number(r.amount))&&Number(r.amount)>0);
-  const best=new Map<string,any>();
-  for(const offer of candidates){
-    const bank=String(offer.provider||offer.institution||'Banco').replace(/[\r\n\x00-\x1f]/g,' ').slice(0,45);
-    const prior=best.get(bank);
-    if(!prior||Number(offer.amount)>Number(prior.amount))best.set(bank,offer);
-  }
-  const offers=[...best.entries()].sort((a,b)=>Number(b[1].amount)-Number(a[1].amount)).slice(0,12);
-  const totalBanks=best.size;
-  const lines=['📊 Simulação '+product+(product==='INSS'?' · '+operation:'')];
-  if(!offers.length)lines.push('\nNenhuma cotação com valor positivo foi retornada nesta consulta.');
-  else{
-    lines.push('\nMelhor condição calculada por banco:');
-    for(const [bank,offer] of offers){
-      const values=['🏦 '+bank];
-      const valueLabel=product==='FGTS'?'Líquido estimado':product==='INSS'&&['PORT','PORT_REFIN'].includes(operation)?'Troco estimado':
-        operation==='REFIN'?'Valor liberado estimado':'Valor do crédito estimado';
-      values.push(valueLabel+': '+money(offer.amount));
-      if(Number.isFinite(Number(offer.installment))&&Number(offer.installment)>0)values.push('Parcela: '+money(offer.installment));
-      if(Number.isFinite(Number(offer.term))&&Number(offer.term)>0)values.push((product==='FGTS'?'Antecipação: ':'Prazo: ')+Math.trunc(offer.term)+(product==='FGTS'?' saques':' meses'));
-      if(Number.isFinite(Number(offer.rate))&&Number(offer.rate)>0)values.push('Taxa informada: '+Number(offer.rate).toLocaleString('pt-BR',{maximumFractionDigits:3})+'% a.m.');
-      lines.push('\n'+values.join(' · '));
-    }
-    if(totalBanks>offers.length)lines.push('\n'+(totalBanks-offers.length)+' outros bancos retornaram resultados. Consulte o histórico para ver todas as condições.');
-  }
-  const pending=rows.filter(r=>r&&(r.state==='PENDING'||r.outcome==='AUTHORIZATION_REQUIRED'));
-  if(pending.length){
-    lines.push('\n⏳ '+pending.length+' retorno(s) dependem de autorização, elegibilidade ou processamento bancário. A mesa poderá conferir os detalhes.');
-  }
-  const errors=rows.filter(r=>r?.state==='ERROR');
-  if(errors.length)lines.push('\n⚠️ '+errors.length+' instituição(ões) não concluíram a consulta. Não foram criadas ofertas fictícias.');
-  if(saved)lines.push('\n✅ Resultados positivos registrados no histórico de simulações da empresa e do parceiro.');
-  lines.push('\n⚠️ Condições preliminares, sujeitas a política, validade, biometria, autorização e aprovação bancária. Nenhuma contratação foi realizada.');
-  const output:string[]=[];let current='';
-  for(const line of lines){
-    if(current.length+line.length>3500){output.push(current);current='';}
-    current+=line+'\n';
-  }
-  if(current)output.push(current);
-  return output;
+  return formatTelegramBankSimulation(rows,product,operation,saved);
 }
