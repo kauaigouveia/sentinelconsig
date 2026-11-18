@@ -323,6 +323,16 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                   </h3>
                 </div>
 
+                <label className="flex items-center gap-2 text-xs font-semibold">
+                  <input type="checkbox" checked={!!config.fgtsSimulationEnabled} onChange={e=>setConfig({...config,fgtsSimulationEnabled:e.target.checked})}/>
+                  Habilitar simulação FGTS C6 para esta empresa
+                </label>
+                <label className="block text-xs font-semibold">Código do convênio FGTS C6
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={16}
+                    className="mt-1 block w-full rounded-lg border p-2 bg-transparent" value={config.fgtsCovenantCode||''}
+                    placeholder="Convênio FGTS disponibilizado pelo C6"
+                    onChange={e=>setConfig({...config,fgtsCovenantCode:e.target.value})}/>
+                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">

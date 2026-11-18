@@ -215,8 +215,12 @@ export class ProductSimulationService {
       let config;
       try {config=await C6FgtsSimulationService.config(prisma,tenantId);}
       catch {return;}
-      if(!config.enabled || !config.isConfigured)return;
+      if(!config.enabled)return;
       configured=true;
+      if(!config.isConfigured){
+        rows.push({provider:'C6',institution:'C6 BANK',state:'PENDING',message:'Credenciais C6 não configuradas nesta empresa. Revise as Integrações Bancárias.'});
+        return;
+      }
       if(!config.fgtsSimulationEnabled){
         rows.push({provider:'C6',institution:'C6 BANK',state:'PENDING',message:'Simulação FGTS C6 não habilitada para esta empresa. O gestor pode ativá-la em Integrações Bancárias.'});
         return;
