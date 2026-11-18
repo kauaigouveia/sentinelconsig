@@ -70,7 +70,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 Não foi possível carregar o Sentinel Consig
               </h1>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                Veja. Antecipe. Comande.
+                Inteligência em cada operação.
               </p>
             </div>
 
