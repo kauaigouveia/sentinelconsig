@@ -1,3 +1,4 @@
+import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
@@ -474,6 +475,7 @@ async function auditAndEnsureMasterUser() {
           role: 'PLATFORM_MASTER',
           active: true,
           isMasterProtected: true,
+          mustChangePassword: true,
           tenantId: tenant.id,
           customPermissions: [],
         },
@@ -738,6 +740,23 @@ async function auditAndEnsureMasterUser() {
         });
       } catch (err) {
         console.warn('[AUTH] Falha ao consultar usuário no banco de dados:', err);
+      }
+
+      if (!dbUser && process.env.VERCEL && shouldBootstrapInitialMaster(
+        { email: cleanEmail, password: cleanPassword },
+        { masterEmail: process.env.INITIAL_MASTER_EMAIL, masterPassword: process.env.INITIAL_MASTER_PASSWORD },
+      )) {
+        // Only the configured initial master credentials can initialize a brand-new database.
+        // Serverless deployments never call startServer(), so the CLI bootstrap is not invoked.
+        await auditAndEnsureMasterUser();
+        try {
+          dbUser = await prisma.user.findFirst({
+            where: { email: { equals: cleanEmail, mode: 'insensitive' }, deletedAt: null },
+            include: { tenant: true, memberships: { where: { active: true }, include: { tenant: true } } },
+          });
+        } catch (err) {
+          logger.warn({ error: err instanceof Error ? err.name : 'UnknownError' }, '[AUTH] Master bootstrap lookup failed');
+        }
       }
 
       if (!dbUser) {
