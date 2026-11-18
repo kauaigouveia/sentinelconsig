@@ -26,12 +26,12 @@ export interface EffectiveTenantBranding {
 export const SYSTEM_IDENTITY = {
   name: 'Sentinel Consig',
   displayName: 'SENTINEL CONSIG',
-  tagline: 'Inteligência que antecipa. Controle que transforma.',
-  shortTagline: 'Veja. Antecipe. Comande.',
+  tagline: 'Inteligência em cada operação.',
+  shortTagline: 'Inteligência em cada operação.',
   description: 'Sentinel Consig — inteligência operacional, controle e automação para sua operação.',
-  title: 'Sentinel Consig | Inteligência que antecipa. Controle que transforma.',
+  title: 'Sentinel Consig | Inteligência em cada operação.',
   badge: 'ENTERPRISE',
-  subtitle: 'Veja. Antecipe. Comande.',
+  subtitle: 'Inteligência em cada operação.',
   defaultLogo: '/branding/sentinel-symbol-v6.png',
 };
 
