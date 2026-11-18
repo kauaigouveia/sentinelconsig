@@ -66,8 +66,8 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
             body: JSON.stringify({
               fileBase64,
               mimeType: file.type,
-              fileName: file.name,
-              targetTenantId: (currentWl as any).tenantId || StorageService.getCurrentTenantId()
+              fileName: file.name
+              // The API resolves the active tenant from the authenticated session.
             })
           });
           const data = await res.json();
