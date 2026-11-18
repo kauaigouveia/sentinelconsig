@@ -1,7 +1,7 @@
 {
   "name": "Sentinel Consig",
   "short_name": "Sentinel",
-  "description": "Veja. Antecipe. Comande.",
+  "description": "Inteligência em cada operação.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080d18",

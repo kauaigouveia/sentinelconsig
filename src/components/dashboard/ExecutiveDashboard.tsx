@@ -211,7 +211,7 @@ export const ExecutiveDashboard: React.FC = () => {
       {/* Header */}
       <ActionBar
         title="SENTINEL CONSIG — Cockpit Executivo & Inteligência Estratégica"
-        subtitle="Inteligência que antecipa. Controle que transforma."
+        subtitle="Inteligência em cada operação."
         badgeText="PAINEL DA DIRETORIA"
         badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
         actions={

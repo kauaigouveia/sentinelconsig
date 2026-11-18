@@ -426,7 +426,7 @@ export function CommandCenterView() {
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
-              Inteligência que antecipa. Controle que transforma.
+              Inteligência em cada operação.
             </p>
           </div>
         </div>
