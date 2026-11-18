@@ -1,4 +1,5 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
+import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
@@ -531,11 +532,12 @@ async function auditAndEnsureMasterUser() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://challenges.cloudflare.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "blob:", "https://*.blob.core.windows.net", "https://*.googleusercontent.com"],
-          connectSrc: ["'self'", "ws:", "wss:", "https://*.blob.core.windows.net", "https://*.firebaseio.com", "https://*.googleapis.com"],
+          connectSrc: ["'self'", "ws:", "wss:", "https://*.blob.core.windows.net", "https://*.firebaseio.com", "https://*.googleapis.com", "https://challenges.cloudflare.com"],
+          frameSrc: ["'self'", "https://challenges.cloudflare.com"],
           mediaSrc: ["'self'", "data:", "blob:"],
           frameAncestors: ["'self'", "https://*.google.com", "https://*.ai.studio", "https://*.aistudio.google.com", "https://*.googleusercontent.com"],
           objectSrc: ["'none'"],
@@ -18222,10 +18224,22 @@ async function auditAndEnsureMasterUser() {
     } catch (error: any) { return res.status(502).json({ error: error.message || 'Não foi possível concluir e registrar a simulação.' }); }
   });
 
+  // Public sitekey only; the server-side secret is never returned to the browser.
+  app.get('/api/partner-portal/security/turnstile', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json(getPartnerTurnstileConfig());
+  });
+
   // 1. POST /api/partner-portal/auth/login
   app.post('/api/partner-portal/auth/login', partnerPortalRateLimiter, async (req, res) => {
     try {
-      const { email, password } = req.body || {};
+      const { email, password, turnstileToken } = req.body || {};
+      const turnstile = await verifyPartnerTurnstile({
+        token: turnstileToken,
+        expectedHostname: req.get('host') || '',
+      });
+      if (!turnstile.ok) return res.status(turnstile.status).json({ error: turnstile.error });
+
       const result = await PartnerPortalService.login(email, password, req, prisma);
 
       if (!result.success) {
