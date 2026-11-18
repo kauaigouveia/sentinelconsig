@@ -27,7 +27,7 @@ export const APP_ROUTES: RouteConfig[] = [
     title: 'Dashboard / Início',
     category: 'Início',
     requiredPermission: 'dashboard.view',
-    aliases: ['/torre-controle'],
+    aliases: ['/torre-controle', '/login'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Dashboard' },

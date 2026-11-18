@@ -50,7 +50,7 @@ export async function sendTenantOwnerWelcome(
   const company = String(details.tenantName || 'Sua empresa').trim().slice(0, 120);
   const owner = String(details.ownerName || 'Administrador').trim().slice(0, 100);
   const plan = String(details.plan || 'PRO').trim().slice(0, 40);
-  const url = `https://${slug}.sentinelconsig.com.br/login`;
+  const url = `https://${slug}.sentinelconsig.com.br/`;
   const subject = 'Bem-vindo ao Sentinel Consig — sua empresa está pronta!';
   const text = [
     `Olá, ${owner}!`,

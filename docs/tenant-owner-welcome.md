@@ -7,11 +7,17 @@ Em **Plataforma → Empresas → Nova empresa**, preencher os campos obrigatóri
 - **Remetente**: Sentinel Consig <notificacoes@sentinelconsig.com.br>
 - **Resposta**: suporte@sentinelconsig.com.br (Cloudflare Email Routing)
 - **Assunto**: Bem-vindo ao Sentinel Consig — sua empresa está pronta!
-- **Dados enviados**: nome da empresa, plano, nome do administrador, login, senha temporária única e URL do subdomínio (`https://{slug}.sentinelconsig.com.br/login`).
+- **Dados enviados**: nome da empresa, plano, nome do administrador, login, senha temporária única e URL do subdomínio (`https://{slug}.sentinelconsig.com.br/`).
 - **Visual**: HTML responsivo com as cores oficiais #06141B, #11212D, #CCD0CF, #9BA8AB; cartão de acesso e CTA para login. Inclui texto puro como alternativa.
 - **Senha**: gerada exclusivamente para este evento com `crypto.randomBytes(18)`, hash salvo por `hashPassword` (Argon2), `mustChangePassword: true`. A senha temporária não é gravada em texto puro nem retornada pela API de criação, e não aparece em logs.
 - **Envio**: somente depois da transação de criação e da auditoria; `dispatchImportWorker` usa `waitUntil` na Vercel.
 - **Idempotência**: header SHA-256 baseado em tenant e owner; evita e-mails duplicados em reenvios do mesmo evento.
+
+## Correção de link de primeiro acesso (18/11/2026)
+
+- O e-mail agora aponta para a **raiz HTTPS do subdomínio** (`https://{slug}.sentinelconsig.com.br/`); o formulário operacional é exibido automaticamente para visitantes sem sessão.
+- A rota antiga `/login`, presente em e-mails anteriores, é reconhecida como alias de entrada e direciona usuários autenticados à página inicial; não exibe mais o 404.
+- Credenciais e sessão seguem validadas no backend e a exigência de troca inicial de senha permanece inalterada.
 
 ## Condições importantes
 

@@ -245,7 +245,7 @@ function AppMainContent() {
   // If at root or dashboard, respect role default (e.g. DIGITADOR -> home-digitador)
   // Otherwise use route's viewId
   const effectiveView = useMemo(() => {
-    if (pathname === '/' || pathname === '/dashboard') {
+    if (pathname === '/' || pathname === '/dashboard' || pathname === '/login') {
       if (activeUser?.role === 'DIGITADOR') return 'home-digitador';
       if (activeUser?.role === 'SUPORTE') return 'suporte';
       if (activeUser?.role === 'SIMULACAO') return 'simulacoes';
@@ -501,6 +501,15 @@ function AppMainContent() {
     setProductionFilter(filter);
     navigate('/propostas');
   };
+
+  // Compatibilidade com links de boas-vindas já enviados antes da correção.
+  // Visitantes sem sessão continuam vendo LoginView normalmente; usuários
+  // autenticados chegam à página inicial em vez da tela HTTP 404.
+  useEffect(() => {
+    if (!isVerifyingSession && isAuthenticated && pathname === '/login') {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, isVerifyingSession, pathname, navigate]);
 
   // Preserve requested destination if unauthenticated
   useEffect(() => {

@@ -152,6 +152,13 @@ describe('Sentinel Frontend Routing Suite', () => {
   });
 
   describe('3. Backward-Compatibility Aliases', () => {
+    it('preserves legacy tenant welcome /login links without displaying 404 for authenticated owners', () => {
+      const route = matchRoute('/login');
+      expect(route).not.toBeNull();
+      expect(route?.route.path).toBe('/');
+      expect(route?.route.viewId).toBe('torre-controle');
+    });
+
     it('matches legacy /producao to Propostas', () => {
       const match = matchRoute('/producao');
       expect(match).not.toBeNull();
