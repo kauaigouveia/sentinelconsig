@@ -39,10 +39,12 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
 
     // Only accept PNG, JPG/JPEG, WebP
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -97,6 +99,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
       return;
     }
 
+    setIsSaving(true);
     try {
       const updated: WhiteLabelConfig = {
         companyName: companyName.trim(),
@@ -144,6 +147,8 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
       }, 1000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao salvar configurações White-Label.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -502,10 +507,11 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
               <button
                 type="button"
                 onClick={handleSave}
+                disabled={isSubmitting || isSaving}
                 className="px-5 py-2 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] text-xs font-bold rounded-lg  cursor-pointer transition-all flex items-center gap-1.5"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Aplicar White-Label</span>
+                <span>{isSaving ? 'Salvando...' : isSubmitting ? 'Enviando logo...' : 'Aplicar White-Label'}</span>
               </button>
             </div>
           </div>
