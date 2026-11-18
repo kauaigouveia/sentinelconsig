@@ -1,15 +1,7 @@
 name: Sentinel Consig - Backup PostgreSQL criptografado
 
 on:
-  # Executa uma vez quando o proprio workflow e atualizado na main.
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/neon-external-backup.yml'
   workflow_dispatch:
-  schedule:
-    # UTC: 00:17, 06:17, 12:17 e 18:17
-    - cron: '17 */6 * * *'
 
 permissions:
   contents: read
