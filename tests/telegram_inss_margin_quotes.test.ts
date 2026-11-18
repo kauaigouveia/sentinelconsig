@@ -33,6 +33,15 @@ describe('Margem livre INSS por integrações oficiais',()=>{
   expect(result.offers.find(x=>x.bank==='FINANTO')).toMatchObject({amount:3000,rate:1.85});
   expect(record).toHaveBeenCalledTimes(1);
  });
+ it('não calcula crédito novo quando o demonstrativo informa bloqueio para empréstimo',async()=>{
+  const run=vi.fn(async()=>({rows:[]}));
+  const result=await calculateTelegramInssMarginQuotes({} as any,'tenant-A',partner,
+    {...review,loanMargin:28.49,loanBlocked:true,benefitStartDate:''},
+    'NO','0123456789ABCDEF',{run:run as any});
+  expect(result.status).toBe('BLOCKED');
+  expect(result.offers).toEqual([]);
+  expect(run).not.toHaveBeenCalled();
+ });
  it('não consulta margem zerada nem inventa oferta quando banco não retorna',async()=>{
   const run=vi.fn(async()=>({rows:[]}));
   const empty=await calculateTelegramInssMarginQuotes({} as any,'tenant-A',

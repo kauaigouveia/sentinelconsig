@@ -27,6 +27,7 @@ export type TelegramPdfReview = {
   uf: string;
   benefitContractCount: number;
   loanMargin: number | null;
+  loanBlocked?: boolean;
   contracts: TelegramPdfContract[];
   /** Only in encrypted, short-lived Telegram state; never render or log this. */
   bankConsultation?:{
@@ -193,6 +194,7 @@ export async function readTelegramInssPdf(bytes:Uint8Array):Promise<TelegramPdfR
       uf:statement.uf,
       benefitContractCount:statement.contracts.length,
       loanMargin:parsedMoney(statement.loanMargin),
+      loanBlocked:statement.loanBlocked===true,
       contracts,
       bankConsultation:{
         cpf:statement.customer.cpf,benefitNumber:statement.customer.benefitNumber,
@@ -214,6 +216,8 @@ export function telegramPdfReviewText(review:TelegramPdfReview):string{
     '📄 Extrato INSS lido para conferência',
     'Espécie: '+review.benefitType+' · contratos: '+review.contracts.length,
     'Margem para novo empréstimo: '+money(review.loanMargin),
+    ...(review.loanBlocked?['⚠️ Demonstrativo indica benefício bloqueado para empréstimo. Crédito novo não será simulado automaticamente.']:[]),
+    ...(!review.benefitStartDate?['ℹ️ DIB ausente: a DDB não substitui a data de início do benefício. Bancos que exigem DIB dependerão de conferência.']:[]),
     '',
     'Contratos identificados (número completo oculto):',
     ...review.contracts.map((contract,index)=>String(index+1)+'. Banco '+contract.bank+

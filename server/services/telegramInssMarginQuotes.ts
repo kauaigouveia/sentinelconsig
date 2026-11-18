@@ -5,7 +5,7 @@ import {selectPortabilityQuoteRows} from '../../src/lib/portabilityQuoteSelectio
 import type {TelegramPdfReview} from './telegramInssPdfService.js';
 export type InssMarginOffer={bank:string;table:string;amount:number;installment:number;term:number;rate:number|null};
 export type TelegramInssMarginResult={
- status:'NO_MARGIN'|'MISSING_IDENTITY'|'NO_OFFER'|'ERROR'|'OFFERS';
+ status:'NO_MARGIN'|'BLOCKED'|'MISSING_IDENTITY'|'NO_OFFER'|'ERROR'|'OFFERS';
  installment:number|null;offers:InssMarginOffer[];saved:boolean;
 };
 /** Simulate INSS NEW just once, using the positive loan-margin installment
@@ -19,6 +19,7 @@ export async function calculateTelegramInssMarginQuotes(
  const installment=review.loanMargin;
  const empty=(status:TelegramInssMarginResult['status']):TelegramInssMarginResult=>
   ({status,installment,offers:[],saved:false});
+ if(review.loanBlocked===true)return empty('BLOCKED');
  if(installment==null||!Number.isFinite(installment)||installment<=0)return empty('NO_MARGIN');
  const data=review.bankConsultation;
  if(!data||!data.cpf||!data.benefitNumber)return empty('MISSING_IDENTITY');

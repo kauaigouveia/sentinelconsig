@@ -116,6 +116,55 @@ describe('Telegram: extrato PDF sem armazenamento do original',()=>{
   expect(JSON.stringify(parsed)).not.toContain('99999999999999');
   expect(JSON.stringify(parsed)).not.toContain('88888888888888');
  });
+ it('aceita PDF MultiCorban textual e mantém bloqueio de crédito novo separado da portabilidade',async()=>{
+  const sample=makePdf([
+ 'Demonstrativo de Empréstimos Consignados',
+ 'Dados do Beneficiário',
+ 'Nome: Pessoa Teste Número do Benefício: 000.000.000-1 CPF: 529.982.247-25',
+ 'Data Nascimento: 29/02/1960',
+ 'Dados Complementares','UF: BA Município: TESTE',
+ 'Dados do Benefício','Espécie: 93 - Pensão por morte',
+ 'Situação: ATIVO DDB: 22/05/2021',
+ 'Possui Representante Legal: Não possui representante legal',
+ 'Bloqueado para Empréstimo: Bloqueado para empréstimo Elegível para Empréstimo: Elegível para empréstimos',
+ 'Margem Consignável',
+ 'Base de Cálculo: R$ 2.160,01 Margem Empréstimo: R$ 28,49 Margem para Cartão: R$ 0,00 Cartão Benefício: R$ 0,00',
+ 'Contratos de Empréstimos',
+ 'Empréstimo CBC/Banco Comp. 1ª Parcela Comp. Última Parcela Data Inclusão Parcelas Valor Parcela Valor Emprestado Taxa Saldo Quitação',
+ 'Situação: Ativo',
+ '0000000000003000824',
+ '41 - Banrisul 01/2026 06/2030 12/12/2025 44 / 54 33,00 1.070,41 2.0553 949,66',
+ '8',
+ 'Situação: Ativo',
+ '383258437-3 623 - PAN 02/2024 01/2031 24/01/2024 51 / 84 26,00 1.084,43 1.9071 843,12',
+ 'Situação: Ativo',
+ '1100236816 121 - Agibank 05/2023 04/2030 10/04/2023 42 / 84 631,25 30.750,11 1.43 19.828,29',
+ 'Situação: Ativo',
+ '626 - Ficsa (C6',
+ '010121945511 03/2023 02/2030 14/02/2023 40 / 84 37,26 1.362,46 2.3443 960,34',
+ 'Consignado)',
+ 'Contratos de Cartão',
+ '52-0887657/22 707 - Daycoval 07/01/2022 Ativo 2.610,00 108,00 RMC',
+ '770677082-8 623 - PAN 15/02/2023 Ativo 2.626,00 108,00 RCC',
+]);
+  const review=await readTelegramInssPdf(new Uint8Array(sample));
+  expect(review.contracts).toHaveLength(4);
+  expect(review.benefitContractCount).toBe(4);
+  expect(review.contracts.map(c=>c.bank)).toEqual(['041','623','121','626']);
+  expect(review.contracts[0]).toMatchObject({
+    numberSuffix:'8248',originalTerm:54,remaining:44,installment:33,balance:949.66,
+  });
+  expect(review.contracts[2]).toMatchObject({installment:631.25,balance:19828.29});
+  expect(review.loanMargin).toBe(28.49);
+  expect(review.loanBlocked).toBe(true);
+  expect(review.benefitStartDate).toBe('');
+  const text=telegramPdfReviewText(review);
+  expect(text).toContain('bloqueado');
+  expect(text).toContain('DIB');
+  expect(text).not.toContain('52998224725');
+  expect(text).not.toContain('0000000001');
+  expect(text).not.toContain('00000000000030008248');
+ });
  it('expõe apenas etapas genéricas, sem vazar erros brutos de PDF ou Telegram',async()=>{
   const secret='CPF fictício e token confidencial';
   for(const code of ['TELEGRAM_DOWNLOAD','PDF_READER','PDF_CONTENT','PDF_TIMEOUT'] as const){

@@ -103,7 +103,8 @@ export function formatTelegramInssPortfolio(
  }
  const marginLines=['💳 NOVO PELA MARGEM',
   'Margem do extrato (valor da parcela): '+money(review.loanMargin)];
- if(!margin)marginLines.push('⚠️ Consulta não concluída');
+ if(review.loanBlocked===true||margin?.status==='BLOCKED')marginLines.push('⚠️ Bloqueio de empréstimo informado no extrato; crédito novo não foi simulado.');
+ else if(!margin)marginLines.push('⚠️ Consulta não concluída');
  else if(margin.status==='OFFERS')
   for(const offer of margin.offers)marginLines.push('🏦 '+short(offer.bank,22)+
    ' | libera '+money(offer.amount)+' | '+offer.term+'x | parcela '+

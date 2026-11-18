@@ -1,5 +1,6 @@
 import { isValidCpf } from './utils';
 import { contractKey, type PortabilityContractDraft } from './multiContractSimulation';
+import {parseMultiCorbanStatement} from './multiCorbanStatement';
 
 export interface InssStatement {
   customer: { cpf: string; name: string; birthDate: string; benefitNumber: string; benefitType: string };
@@ -11,6 +12,7 @@ export interface InssStatement {
   uf: string;
   reference: string;
   legalRepresentative?: boolean;
+  loanBlocked?: boolean;
   contracts: PortabilityContractDraft[];
   issues: string[];
 }
@@ -33,6 +35,12 @@ function isoDate(value: string) {
 }
 
 export function parseInssStatement(lines: string[]): InssStatement {
+  // Keep the existing DG/Dataprev layout unchanged; dispatch only documents
+  // with the explicit MultiCorban demonstrative headers.
+  const normalized=lines.join('\n').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(normalized.includes('demonstrativo de emprestimos consignados')&&
+     normalized.includes('contratos de emprestimos'))
+    return parseMultiCorbanStatement(lines);
   const fields = new Map<string, string>();
   const loans = new Map<string, PortabilityContractDraft>();
   const conflicts = new Set<string>();
