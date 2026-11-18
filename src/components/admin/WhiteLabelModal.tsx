@@ -82,6 +82,10 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
         }
       }
     };
+    reader.onerror = () => {
+      setErrorMsg('Não foi possível ler o arquivo selecionado.');
+      setIsSubmitting(false);
+    };
     reader.readAsDataURL(file);
   };
 
@@ -105,10 +109,8 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
         footerText: footerText.trim() || undefined,
       };
 
-      StorageService.updateWhiteLabel(updated);
-
-      // Persist to PostgreSQL backend
-      await fetch('/api/whitelabel', {
+      // Persist before updating the local preview. Do not report success on HTTP 4xx/5xx.
+      const response = await fetch('/api/whitelabel', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +125,12 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
           supportPhone: supportPhone.trim() || null,
           footerText: footerText.trim() || null,
         }),
-      }).catch(err => console.warn('[WHITELABEL] Erro ao sincronizar com backend:', err));
+      });
+      const responseBody = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(responseBody?.error || 'Não foi possível salvar a identidade visual.');
+      }
+      StorageService.updateConfig({ whiteLabel: updated });
 
       setSavedSuccess(true);
       setErrorMsg(null);
