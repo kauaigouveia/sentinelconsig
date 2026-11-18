@@ -1,0 +1,116 @@
+name: Sentinel Consig - Backup PostgreSQL externo
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC: 00:17, 06:17, 12:17 e 18:17
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinelconsig-production-pg-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: pg_dump 18 + AES-256 + Azure Blob
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Configurar Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Validar os tres segredos obrigatorios
+        env:
+          DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          for key in DATABASE_URL AZURE_STORAGE_CONNECTION_STRING BACKUP_ENCRYPTION_PASSPHRASE; do
+            if [[ -z "${!key}" ]]; then
+              echo "::error::Segredo obrigatorio ausente: $key. O backup nao foi executado."
+              exit 1
+            fi
+          done
+
+      - name: Exportar, criptografar, verificar e enviar
+        env:
+          DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+          AZURE_BACKUP_CONTAINER: sentinel-consig-backups
+        run: |
+          set -euo pipefail
+          umask 077
+          BACKUP_TMP="$(mktemp -d)"
+          trap 'rm -rf "$BACKUP_TMP"' EXIT
+          BACKUP_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+          export BACKUP_FILE="$BACKUP_TMP/sentinelconsig-public-$BACKUP_TIMESTAMP.dump.gpg"
+          export BACKUP_TIMESTAMP
+
+          # Use um cliente PostgreSQL 18 para o Neon 18; nao use o pg_dump antigo da imagem Debian.
+          docker run --rm -e DATABASE_URL -v "$BACKUP_TMP:/work" postgres:18 \
+            sh -eu -c 'pg_dump -d "$DATABASE_URL" --format=custom --no-owner --no-acl --schema=public --file=/work/database.dump && pg_restore --list /work/database.dump >/dev/null'
+          test -s "$BACKUP_TMP/database.dump"
+
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --output "$BACKUP_FILE" "$BACKUP_TMP/database.dump"
+          test -s "$BACKUP_FILE"
+
+          # Verificar que o arquivo cifrado e recuperavel e contem um arquivo pg_dump valido.
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --decrypt --output "$BACKUP_TMP/verify.dump" "$BACKUP_FILE"
+          cmp "$BACKUP_TMP/database.dump" "$BACKUP_TMP/verify.dump"
+          docker run --rm -v "$BACKUP_TMP:/work:ro" postgres:18 \
+            pg_restore --list /work/verify.dump >/dev/null
+          unset BACKUP_ENCRYPTION_PASSPHRASE
+
+          python -m pip install --quiet 'azure-storage-blob==12.23.1'
+          python - <<'PY'
+          import hashlib
+          import os
+          from azure.core.exceptions import ResourceExistsError
+          from azure.storage.blob import BlobServiceClient, ContentSettings
+
+          backup_path = os.environ["BACKUP_FILE"]
+          container_name = os.environ["AZURE_BACKUP_CONTAINER"]
+          timestamp = os.environ["BACKUP_TIMESTAMP"]
+          with open(backup_path, "rb") as f:
+              digest = hashlib.file_digest(f, "sha256").hexdigest()
+          size = os.path.getsize(backup_path)
+          if size <= 0:
+              raise RuntimeError("Backup criptografado vazio")
+
+          service = BlobServiceClient.from_connection_string(
+              os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+          )
+          container = service.get_container_client(container_name)
+          try:
+              container.create_container()
+          except ResourceExistsError:
+              pass
+          if container.get_container_properties().public_access:
+              raise RuntimeError("Container de backup nao e privado")
+
+          blob_name = "postgres/production/" + timestamp[:4] + "/" + timestamp[:6] + "/sentinelconsig-" + timestamp + ".dump.gpg"
+          blob = container.get_blob_client(blob_name)
+          with open(backup_path, "rb") as f:
+              blob.upload_blob(
+                  f,
+                  overwrite=False,
+                  metadata={"sha256": digest, "format": "pgdump18", "encrypted": "aes256"},
+                  content_settings=ContentSettings(content_type="application/octet-stream"),
+              )
+          remote = blob.get_blob_properties()
+          if remote.size != size:
+              raise RuntimeError("Tamanho remoto divergente; verifique a integridade")
+          print("Backup externo criptografado e armazenado:", blob_name)
+          print("SHA256:", digest)
+          print("Bytes:", size)
+          PY
