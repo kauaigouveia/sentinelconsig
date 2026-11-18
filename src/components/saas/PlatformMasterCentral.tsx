@@ -1435,13 +1435,15 @@ export const PlatformMasterCentral: React.FC = () => {
               {!editingTenant && (
                 <div className="p-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
                   <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-[11px] block uppercase tracking-wider">
-                    Usuário Administrador Inicial da Empresa
+                    Responsável Inicial da Empresa (MASTER)
                   </span>
+                  <p className="text-[11px] text-[var(--text-secondary)]">O responsável receberá automaticamente o e-mail de boas-vindas com link, login e senha temporária individual. A troca será obrigatória no primeiro acesso.</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nome do Administrador</label>
+                      <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nome do Administrador *</label>
                       <input
                         type="text"
+                        required
                         value={adminName}
                         onChange={(e) => setAdminName(e.target.value)}
                         placeholder="Ex: Carlos Mendes"
@@ -1449,9 +1451,10 @@ export const PlatformMasterCentral: React.FC = () => {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">E-mail do Administrador</label>
+                      <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">E-mail do Administrador *</label>
                       <input
                         type="email"
+                        required
                         value={adminEmail}
                         onChange={(e) => setAdminEmail(e.target.value)}
                         placeholder="admin@empresa.com.br"

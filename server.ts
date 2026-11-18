@@ -1,6 +1,7 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
+import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
@@ -9177,17 +9178,28 @@ async function auditAndEnsureMasterUser() {
       ];
 
       const initialModules = Array.isArray(enabledModules) ? enabledModules : defaultModules;
-      const cleanAdminEmail = adminEmail && adminName ? String(adminEmail).trim().toLowerCase() : null;
+      const initialOwnerName = typeof adminName === 'string' ? adminName.trim() : '';
+      const initialOwnerEmail = typeof adminEmail === 'string' ? adminEmail.trim().toLowerCase() : '';
+      if (Boolean(initialOwnerName) !== Boolean(initialOwnerEmail)) {
+        return res.status(400).json({ error: 'Para cadastrar o administrador responsável, informe nome e e-mail.' });
+      }
+      if (initialOwnerEmail && (!/^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]+$/.test(initialOwnerEmail) || initialOwnerEmail.length > 254)) {
+        return res.status(400).json({ error: 'E-mail do administrador inválido.' });
+      }
+      const cleanAdminEmail = initialOwnerEmail && initialOwnerName ? initialOwnerEmail : null;
       if (cleanAdminEmail) {
         const existingAdmin = await prisma.user.findUnique({ where: { email: cleanAdminEmail }, select: { deletedAt: true, isMasterProtected: true, role: true } });
         if (existingAdmin && (!existingAdmin.deletedAt || existingAdmin.isMasterProtected || existingAdmin.role === 'PLATFORM_MASTER')) {
           return res.status(400).json({ error: 'O e-mail do administrador pertence a um usuário existente. Informe outro e-mail.' });
         }
       }
-      const initialHashedPassword = cleanAdminEmail ? await hashPassword('Mudar@123') : null;
+      // Senha temporária exclusiva; nunca usar credenciais fixas entre diferentes empresas.
+      const initialTemporaryPassword = cleanAdminEmail ? 'Snt@' + crypto.randomBytes(18).toString('base64url') : null;
+      const initialHashedPassword = initialTemporaryPassword ? await hashPassword(initialTemporaryPassword) : null;
 
       // Criação transacional do Tenant + WhiteLabel padrão
-      const tenant = await prisma.$transaction(async (tx) => {
+      const { tenant, ownerId } = await prisma.$transaction(async (tx) => {
+        let ownerId: string | null = null;
         // Retain deleted records and audit history, releasing only requested unique identifiers.
         const archivedTenants = await tx.tenant.findMany({ where: { deletedAt: { not: null }, OR: [
           { slug }, ...(customDomain ? [{ customDomain }] : []), ...(cleanCnpj ? [{ cnpj: cleanCnpj }] : []),
@@ -9247,10 +9259,10 @@ async function auditAndEnsureMasterUser() {
 
         // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial
         if (cleanAdminEmail && initialHashedPassword) {
-            await tx.user.create({
+            const createdOwner = await tx.user.create({
               data: {
                 tenantId: newTenant.id,
-                name: String(adminName).trim(),
+                name: initialOwnerName,
                 email: cleanAdminEmail,
                 passwordHash: initialHashedPassword,
                 role: 'MASTER',
@@ -9258,9 +9270,10 @@ async function auditAndEnsureMasterUser() {
                 mustChangePassword: true,
               },
             });
+            ownerId = createdOwner.id;
         }
 
-        return newTenant;
+        return { tenant: newTenant, ownerId };
       }, { timeout: 30000, maxWait: 10000 });
 
       // Invalidação de cache de resolução de domínios
@@ -9297,6 +9310,26 @@ async function auditAndEnsureMasterUser() {
         entity: 'tenant',
         entityId: tenant.id,
       }).catch(() => {});
+
+      // Boas-vindas somente ao MASTER inicial confirmado pela transação.
+      // Nunca envia se o tenant foi criado sem responsável; jamais retorna a senha na API.
+      if (ownerId && cleanAdminEmail && initialTemporaryPassword) {
+        dispatchImportWorker(async () => {
+          const result = await sendTenantOwnerWelcome({
+            tenantId: tenant.id,
+            tenantName: tenant.name,
+            tenantSlug: tenant.slug,
+            plan: tenant.plan,
+            ownerId,
+            ownerName: initialOwnerName,
+            ownerEmail: cleanAdminEmail,
+            temporaryPassword: initialTemporaryPassword,
+          });
+          if (result.status === 'failed') {
+            logger.warn({ tenantId: tenant.id, reason: result.reason }, '[EMAIL] Boas-vindas do tenant não enviadas');
+          }
+        }, '[EMAIL] Falha no envio de boas-vindas do tenant');
+      }
 
       return res.status(201).json(tenant);
     } catch (err: any) {
