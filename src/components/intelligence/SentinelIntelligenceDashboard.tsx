@@ -279,7 +279,7 @@ export const SentinelIntelligenceDashboard: React.FC<Props> = ({ onNavigateToVie
                 </span>
               </h1>
               <p className="text-xs text-[var(--text-primary)] mt-0.5">
-                Inteligência que antecipa. Controle que transforma.
+                Inteligência em cada operação.
               </p>
             </div>
           </div>
