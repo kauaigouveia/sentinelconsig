@@ -207,16 +207,8 @@ export const SEED_DATA = {
     { date: '2026-11-20', name: 'Dia da Consciência Negra' },
     { date: '2026-12-25', name: 'Natal' },
   ],
-  users: [
-    {
-      name: 'Kauai Gouveia',
-      email: 'kauaigouveia@gmail.com',
-      password: '120@Jocyane',
-      role: 'MASTER',
-      active: true,
-    },
-  ],
-};
+  // Never commit credentials; initial master bootstrap uses protected environment secrets.
+  users: [],};
 
 export async function main() {
   console.log('--- Iniciando Seed do EVOLVE GESTÃO ---');
