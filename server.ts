@@ -14769,13 +14769,20 @@ async function auditAndEnsureMasterUser() {
       const term = Number(req.body?.term ?? (queryOnly ? 0 : undefined));
       const value = Number(req.body?.value ?? (queryOnly ? 0 : undefined));
       const mode = req.body?.mode ?? (queryOnly ? 'Payment' : undefined);
+      const fgtsSimulationType=req.body?.fgtsSimulationType;
+      const birthDate=String(req.body?.birthDate||'').slice(0,10);
       const eligibility = req.body?.eligibility ?? (queryOnly ? true : undefined);
       if (!isValidCpf(cpf) || !Number.isInteger(term) || term < 0 || term > 120 || (product === 'FGTS' && term < 1) ||
           !['Payment', 'Liquid'].includes(mode) || typeof eligibility !== 'boolean' ||
           (product === 'CLT' && (!name || !/^\d{10,11}$/.test(phone) || (employerDocument && ![8, 14].includes(employerDocument.length)) || (action === 'SIMULATE' && (!Number.isFinite(value) || value <= 0))))) {
         return res.status(400).json({ error: 'Revise CPF, dados do cliente, prazo e valor da simulação.' });
       }
-      const result = await ProductSimulationService.run(prisma, tenantId, product as 'CLT' | 'FGTS', action as 'AUTHORIZE' | 'SIMULATE' | 'REFRESH', { cpf, name, phone, employerDocument, factaRegistration, v8ConsultId, v8PromoterId, term, value, mode, eligibility, bmgActorId: `user:${session.user.id}` });
+      if(product==='FGTS'&&fgtsSimulationType!==undefined&&
+          !['BY_INSTALLMENT_QUANTITY','BY_REQUESTED_AMOUNT','BY_FULL_AVAILABLE_AMOUNT'].includes(fgtsSimulationType))
+        return res.status(400).json({error:'Modalidade FGTS C6 inválida.'});
+      if(product==='FGTS'&&fgtsSimulationType==='BY_REQUESTED_AMOUNT'&&(!Number.isFinite(value)||value<=0))
+        return res.status(400).json({error:'Informe valor solicitado positivo para o C6 FGTS.'});
+      const result = await ProductSimulationService.run(prisma, tenantId, product as 'CLT' | 'FGTS', action as 'AUTHORIZE' | 'SIMULATE' | 'REFRESH', { cpf, name, phone, employerDocument, factaRegistration, v8ConsultId, v8PromoterId, term, value, mode, eligibility, birthDate,fgtsSimulationType,bmgActorId: `user:${session.user.id}` });
       if (product === 'FGTS' && action === 'SIMULATE' && result.rows.some(row => row.state === 'OFFER')) {
         const promoter = await resolveBankPromoter(prisma, tenantId);
         return res.json({ ...result, rows: result.rows.map(row => row.state === 'OFFER' && Number(row.amount) > 0 ? { ...row, selectionReceipt: fgtsOfferReceipt(tenantId, session.user.id, cpf, promoter.id, row) } : row) });
