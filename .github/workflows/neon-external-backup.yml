@@ -1,5 +1,11 @@
-name: Sentinel Consig - Backup PostgreSQL externo
+name: Sentinel Consig - Backup PostgreSQL criptografado
+
 on:
+  # Executa uma vez quando o proprio workflow e atualizado na main.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/neon-external-backup.yml'
   workflow_dispatch:
   schedule:
     # UTC: 00:17, 06:17, 12:17 e 18:17
@@ -14,103 +20,91 @@ concurrency:
 
 jobs:
   backup:
-    name: pg_dump 18 + AES-256 + Azure Blob
+    name: PostgreSQL 18 + AES-256 + GitHub Artifact
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
-      - name: Configurar Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12'
-
-      - name: Validar os tres segredos obrigatorios
+      - name: Conferir configuracao segura
         env:
           DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
           set -euo pipefail
-          for key in DATABASE_URL AZURE_STORAGE_CONNECTION_STRING BACKUP_ENCRYPTION_PASSPHRASE; do
-            if [[ -z "${!key}" ]]; then
-              echo "::error::Segredo obrigatorio ausente: $key. O backup nao foi executado."
-              exit 1
-            fi
-          done
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "::error::Cadastre NEON_BACKUP_DATABASE_URL em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [[ -z "$BACKUP_ENCRYPTION_PASSPHRASE" ]]; then
+            echo "::error::Cadastre BACKUP_ENCRYPTION_PASSPHRASE em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [[ "$DATABASE_URL" != postgresql://* && "$DATABASE_URL" != postgres://* ]]; then
+            echo "::error::NEON_BACKUP_DATABASE_URL nao e uma URL PostgreSQL valida."
+            exit 1
+          fi
+          if [[ "$(printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | wc -c)" -lt 24 ]]; then
+            echo "::error::Use uma senha aleatoria com pelo menos 24 bytes para criptografar o backup."
+            exit 1
+          fi
+          echo "Segredos presentes e com formato minimo valido (valores ocultos)."
 
-      - name: Exportar, criptografar, verificar e enviar
+      - name: Gerar dump e verificar recuperacao criptografada
         env:
           DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
-          AZURE_BACKUP_CONTAINER: sentinel-consig-backups
         run: |
           set -euo pipefail
           umask 077
-          BACKUP_TMP="$(mktemp -d)"
-          trap 'rm -rf "$BACKUP_TMP"' EXIT
-          BACKUP_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-          export BACKUP_FILE="$BACKUP_TMP/sentinelconsig-public-$BACKUP_TIMESTAMP.dump.gpg"
-          export BACKUP_TIMESTAMP
+          WORK_DIR="$(mktemp -d)"
+          ARTIFACT_DIR="$RUNNER_TEMP/sentinelconsig-encrypted-backup"
+          mkdir -p "$ARTIFACT_DIR"
+          chmod 700 "$ARTIFACT_DIR"
+          trap 'rm -rf "$WORK_DIR"' EXIT
 
-          # Use um cliente PostgreSQL 18 para o Neon 18; nao use o pg_dump antigo da imagem Debian.
-          docker run --rm -e DATABASE_URL -v "$BACKUP_TMP:/work" postgres:18 \
-            sh -eu -c 'pg_dump -d "$DATABASE_URL" --format=custom --no-owner --no-acl --schema=public --file=/work/database.dump && pg_restore --list /work/database.dump >/dev/null'
-          test -s "$BACKUP_TMP/database.dump"
+          TIMESTAMP="$(date -u +'%Y%m%dT%H%M%SZ')"
+          PLAIN_FILE="sentinelconsig-public-$TIMESTAMP.dump"
+          ENCRYPTED_FILE="$ARTIFACT_DIR/$PLAIN_FILE.gpg"
 
-          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
-            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
-            --output "$BACKUP_FILE" "$BACKUP_TMP/database.dump"
-          test -s "$BACKUP_FILE"
+          # O schema public contem os dados da aplicacao. Neon Auth e schemas de sistema nao sao incluidos.
+          docker run --rm -e DATABASE_URL -v "$WORK_DIR:/work" postgres:18 \
+            sh -euc 'pg_dump --dbname "$DATABASE_URL" --format=custom --no-owner --no-acl --schema=public --file="/work/backup.dump" && pg_restore --list "/work/backup.dump" >/dev/null'
 
-          # Verificar que o arquivo cifrado e recuperavel e contem um arquivo pg_dump valido.
-          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
-            --passphrase-fd 0 --decrypt --output "$BACKUP_TMP/verify.dump" "$BACKUP_FILE"
-          cmp "$BACKUP_TMP/database.dump" "$BACKUP_TMP/verify.dump"
-          docker run --rm -v "$BACKUP_TMP:/work:ro" postgres:18 \
-            pg_restore --list /work/verify.dump >/dev/null
-          unset BACKUP_ENCRYPTION_PASSPHRASE
+          test -s "$WORK_DIR/backup.dump"
 
-          python -m pip install --quiet 'azure-storage-blob==12.23.1'
-          python - <<'PY'
-          import hashlib
-          import os
-          from azure.core.exceptions import ResourceExistsError
-          from azure.storage.blob import BlobServiceClient, ContentSettings
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" |
+            gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 0 \
+              --symmetric --cipher-algo AES256 --output "$ENCRYPTED_FILE" "$WORK_DIR/backup.dump"
+          test -s "$ENCRYPTED_FILE"
 
-          backup_path = os.environ["BACKUP_FILE"]
-          container_name = os.environ["AZURE_BACKUP_CONTAINER"]
-          timestamp = os.environ["BACKUP_TIMESTAMP"]
-          with open(backup_path, "rb") as f:
-              digest = hashlib.file_digest(f, "sha256").hexdigest()
-          size = os.path.getsize(backup_path)
-          if size <= 0:
-              raise RuntimeError("Backup criptografado vazio")
+          # Verifica que a senha recupera exatamente o dump original.
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" |
+            gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 0 \
+              --decrypt --output "$WORK_DIR/verified.dump" "$ENCRYPTED_FILE"
+          cmp -s "$WORK_DIR/backup.dump" "$WORK_DIR/verified.dump"
 
-          service = BlobServiceClient.from_connection_string(
-              os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+          docker run --rm -v "$WORK_DIR:/work:ro" postgres:18 \
+            pg_restore --list "/work/verified.dump" >/dev/null
+
+          (
+            cd "$ARTIFACT_DIR"
+            sha256sum "$PLAIN_FILE.gpg" > SHA256SUMS.txt
           )
-          container = service.get_container_client(container_name)
-          try:
-              container.create_container()
-          except ResourceExistsError:
-              pass
-          if container.get_container_properties().public_access:
-              raise RuntimeError("Container de backup nao e privado")
+          echo "Dump PostgreSQL 18 criado, criptografado e validado."
+          echo "Tamanho do arquivo criptografado: $(wc -c < "$ENCRYPTED_FILE") bytes."
 
-          blob_name = "postgres/production/" + timestamp[:4] + "/" + timestamp[:6] + "/sentinelconsig-" + timestamp + ".dump.gpg"
-          blob = container.get_blob_client(blob_name)
-          with open(backup_path, "rb") as f:
-              blob.upload_blob(
-                  f,
-                  overwrite=False,
-                  metadata={"sha256": digest, "format": "pgdump18", "encrypted": "aes256"},
-                  content_settings=ContentSettings(content_type="application/octet-stream"),
-              )
-          remote = blob.get_blob_properties()
-          if remote.size != size:
-              raise RuntimeError("Tamanho remoto divergente; verifique a integridade")
-          print("Backup externo criptografado e armazenado:", blob_name)
-          print("SHA256:", digest)
-          print("Bytes:", size)
-          PY
+      - name: Armazenar somente arquivos criptografados por 7 dias
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sentinelconsig-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/sentinelconsig-encrypted-backup/*.gpg
+            ${{ runner.temp }}/sentinelconsig-encrypted-backup/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Apagar os arquivos temporarios do runner
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/sentinelconsig-encrypted-backup"
