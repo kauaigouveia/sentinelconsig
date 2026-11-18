@@ -51,11 +51,11 @@ describe('Atendimento de simulação completo no Telegram',()=>{
   expect(telegramNativePrompt(custom)).toContain('PARCELA');
   expect(telegramNativeSteps(custom)).toHaveLength(3);
  });
- it('FGTS precisa apenas do CPF e quantidade de saques; não exige entrada no portal',()=>{
+ it('FGTS exige CPF, nascimento e quantidade de saques, sem abrir o portal',()=>{
   const state=fill('FGTS');
-  expect(telegramNativeSteps(state)).toHaveLength(2);
+  expect(telegramNativeSteps(state)).toHaveLength(3);
   expect(toTelegramNativeInput(state,'p')).toMatchObject({
-   product:'FGTS',operation:'NEW',cpf:CPF,term:4,value:0,
+   product:'FGTS',operation:'NEW',cpf:CPF,birthDate:'1966-06-15',term:4,value:0,fgtsSimulationType:'BY_INSTALLMENT_QUANTITY',
   });
  });
  it('INSS Novo e refin consultam com NB, espécie, nascimento, UF, margem e prazo',()=>{

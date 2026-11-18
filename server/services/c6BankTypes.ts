@@ -78,6 +78,8 @@ export interface C6TenantConfig {
   typistCode?: string;
   certifiedAgentCpf?: string;
   simulationEnabled?: boolean;
+  fgtsSimulationEnabled?: boolean;
+  fgtsCovenantCode?: string;
   cltEnabled?: boolean;
   username: string;
   password?: string;

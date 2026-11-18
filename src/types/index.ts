@@ -556,6 +556,8 @@ export interface C6ConfigState {
   certifiedAgentCpf?: string;
   promoterCode?: string;
   simulationEnabled?: boolean;
+  fgtsSimulationEnabled?: boolean;
+  fgtsCovenantCode?: string;
   cltEnabled?: boolean;
   username: string;
   baseUrl: string;

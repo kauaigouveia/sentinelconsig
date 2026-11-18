@@ -112,6 +112,8 @@ export const C6BankConfigView: React.FC = () => {
           typistCode: config.typistCode,
           certifiedAgentCpf: config.certifiedAgentCpf,
           simulationEnabled: config.simulationEnabled,
+          fgtsSimulationEnabled: config.fgtsSimulationEnabled,
+          fgtsCovenantCode: config.fgtsCovenantCode,
           cltEnabled: config.cltEnabled,
           password: password ? password : undefined,
           baseUrl: config.baseUrl,
@@ -419,6 +421,9 @@ export const C6BankConfigView: React.FC = () => {
             <label className="block text-sm">Código de promotora C6<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" value={config.promoterCode || ''} onChange={e => setConfig({ ...config, promoterCode: e.target.value })} /></label>
                 <p className="text-sm text-[var(--text-secondary)]">C6 CLT temporariamente suspenso.</p>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.simulationEnabled} onChange={e => setConfig({ ...config, simulationEnabled: e.target.checked })} />Habilitar C6 nas simulações INSS</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.fgtsSimulationEnabled} onChange={e => setConfig({ ...config, fgtsSimulationEnabled: e.target.checked })} />Habilitar simulação FGTS C6 (site e Telegram)</label>
+            <label className="block text-sm">Código do convênio FGTS C6<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" inputMode="numeric" pattern="[0-9]*" maxLength={16} placeholder="Código habilitado para sua promotora" value={config.fgtsCovenantCode || ''} onChange={e => setConfig({ ...config, fgtsCovenantCode: e.target.value })} /></label>
+            <p className="text-xs text-[var(--text-secondary)]">Informe o código FGTS disponibilizado pelo C6 para esta promotora. O código dos exemplos da documentação não é aplicado automaticamente.</p>
             <label className="block text-sm">Código do digitador C6<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" value={config.typistCode || ''} onChange={e => setConfig({ ...config, typistCode: e.target.value })} /></label>
             <label className="block text-sm">CPF do agente certificado<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" value={config.certifiedAgentCpf || ''} onChange={e => setConfig({ ...config, certifiedAgentCpf: e.target.value })} /></label>
             <div className="flex items-center gap-2 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">

@@ -465,6 +465,8 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
           typistCode: c6Config.typistCode,
           certifiedAgentCpf: c6Config.certifiedAgentCpf,
           simulationEnabled: c6Config.simulationEnabled,
+          fgtsSimulationEnabled: c6Config.fgtsSimulationEnabled,
+          fgtsCovenantCode: c6Config.fgtsCovenantCode,
           cltEnabled: c6Config.cltEnabled,
           password: c6Password ? c6Password : undefined,
           baseUrl: c6Config.baseUrl,
@@ -968,6 +970,8 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">C6 CLT temporariamente suspenso.</p>
                 <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={!!c6Config.simulationEnabled} onChange={event => setC6Config({ ...c6Config, simulationEnabled: event.target.checked })} />Habilitar C6 nas simulações INSS</label>
+                <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={!!c6Config.fgtsSimulationEnabled} onChange={event => setC6Config({ ...c6Config, fgtsSimulationEnabled: event.target.checked })} />Habilitar simulações FGTS C6 (site e Telegram)</label>
+                <label className="text-xs font-semibold">Convênio FGTS C6<input className="mt-1 block w-full rounded border bg-transparent p-2" inputMode="numeric" maxLength={16} placeholder="Código FGTS da sua promotora" value={c6Config.fgtsCovenantCode || ''} onChange={event => setC6Config({ ...c6Config, fgtsCovenantCode: event.target.value })}/></label>
                 <p className="text-xs text-[var(--text-secondary)]">Preencha os dados da empresa atual. A simulação requer código de promotora e renda mensal do cliente; digitador e agente certificado serão usados na inclusão de propostas.</p>
 
                 <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">

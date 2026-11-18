@@ -48,6 +48,8 @@ export class C6BankService {
             'c6_bank_typist_code',
             'c6_bank_certified_agent_cpf',
             'c6_bank_simulation_enabled',
+            'c6_bank_fgts_simulation_enabled',
+            'c6_bank_fgts_covenant_code',
             'c6_bank_clt_enabled',
             'c6_bank_password',
             'c6_bank_base_url',
@@ -90,6 +92,8 @@ export class C6BankService {
       typistCode: configMap.get('c6_bank_typist_code') || '',
       certifiedAgentCpf: configMap.get('c6_bank_certified_agent_cpf') || '',
       simulationEnabled: configMap.get('c6_bank_simulation_enabled') === 'true',
+      fgtsSimulationEnabled: configMap.get('c6_bank_fgts_simulation_enabled') === 'true',
+      fgtsCovenantCode: configMap.get('c6_bank_fgts_covenant_code') || '',
       cltEnabled: false, // C6 CLT suspended by company request.
       username: username.trim(),
       password: password.trim(),
@@ -114,6 +118,8 @@ export class C6BankService {
       typistCode?: string;
       certifiedAgentCpf?: string;
       simulationEnabled?: boolean;
+      fgtsSimulationEnabled?: boolean;
+      fgtsCovenantCode?: string;
       cltEnabled?: boolean;
       password?: string;
       baseUrl?: string;
@@ -151,6 +157,13 @@ export class C6BankService {
     if (data.certifiedAgentCpf !== undefined) await upsertConfig('c6_bank_certified_agent_cpf', String(data.certifiedAgentCpf).replace(/\D/g, ''));
     if (typeof data.cltEnabled === 'boolean') await upsertConfig('c6_bank_clt_enabled', 'false');
     if (data.simulationEnabled !== undefined) await upsertConfig('c6_bank_simulation_enabled', data.simulationEnabled ? 'true' : 'false');
+    if (data.fgtsSimulationEnabled !== undefined)
+      await upsertConfig('c6_bank_fgts_simulation_enabled', data.fgtsSimulationEnabled ? 'true' : 'false');
+    if (data.fgtsCovenantCode !== undefined) {
+      const value=String(data.fgtsCovenantCode).trim();
+      if(value && !/^\d{1,16}$/.test(value))throw Error('Código de convênio FGTS C6 inválido.');
+      await upsertConfig('c6_bank_fgts_covenant_code',value);
+    }
     if (data.password !== undefined && data.password.trim() !== '') {
       await upsertConfig('c6_bank_password', data.password.trim(), true);
       // Limpar cache de token após alteração de senha

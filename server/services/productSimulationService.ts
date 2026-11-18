@@ -9,6 +9,7 @@ import { FactaSimulationService } from './factaSimulationService';
 import { BmgBankService } from './bmgBankService.js';
 import { cltResponseReasons } from '../../src/lib/cltRestrictions';
 import { V8CltSimulationService } from './v8CltSimulationService.js';
+import { C6FgtsSimulationService } from './c6FgtsSimulationService.js';
 import { cltOutcome, cltPublicMessage, type CltOutcome } from '../../src/lib/cltSimulationOutcome.js';
 import { logger } from '../logger.js';
 import { cltPaymentLimit } from './cltFinancialPolicy.js';
@@ -18,6 +19,7 @@ import { isJourneyExecution } from './cltJourneyDeadline.js';
 export type ProductSimulationInput = {
   cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string; v8ConsultId?: string; v8PromoterId?: string; v8ConfigId?: string;
   term: number; value: number; mode: 'Payment' | 'Liquid'; eligibility: boolean;
+  birthDate?:string;fgtsSimulationType?:'BY_INSTALLMENT_QUANTITY'|'BY_REQUESTED_AMOUNT'|'BY_FULL_AVAILABLE_AMOUNT';
   bmgActorId?: string;
   autoConditions?: boolean;
   v8BirthDate?: string; v8Gender?: 'male' | 'female'; v8Email?: string;
@@ -208,6 +210,24 @@ export class ProductSimulationService {
       configured = true;
       rows.push(...await FactaSimulationService.product(prisma, tenantId, product, action, factaInput));
     };
+    const c6 = async () => {
+      if(product!=='FGTS'||action!=='SIMULATE')return;
+      let config;
+      try {config=await C6FgtsSimulationService.config(prisma,tenantId);}
+      catch {return;}
+      if(!config.enabled || !config.isConfigured)return;
+      configured=true;
+      if(!config.fgtsSimulationEnabled){
+        rows.push({provider:'C6',institution:'C6 BANK',state:'PENDING',message:'Simulação FGTS C6 não habilitada para esta empresa. O gestor pode ativá-la em Integrações Bancárias.'});
+        return;
+      }
+      if(!config.fgtsCovenantCode){
+        rows.push({provider:'C6',institution:'C6 BANK',state:'PENDING',message:'Convênio FGTS C6 não configurado para esta empresa. Cadastre o código fornecido pelo banco.'});
+        return;
+      }
+      try {rows.push(await C6FgtsSimulationService.simulate(prisma,tenantId,input,config));}
+      catch(error){failure('C6','C6 BANK',error);}
+    };
     const bmg = async () => {
       if (product !== 'CLT' || !input.bmgActorId) return;
       if(action==='REFRESH') {const authorization=await BmgBankService.cltAuthorization(prisma,tenantId,input.bmgActorId,input,!!input.automaticAuthorization&&!input.observeOnly);rows.push({provider:'BMG',institution:'BMG',state:authorization.ready?'DATA':'PENDING',outcome:authorization.status==='APPROVED'&&!authorization.ready?'INELIGIBLE':authorization.ready?'PENDING':'AUTHORIZATION_REQUIRED',data:{authorization},message:authorization.ready?'Autorização aprovada. Elegibilidade confirmada.':authorization.status==='APPROVED'?authorization.reason||'Cliente não elegível no BMG.':authorization.status==='WAITING_OTP'?'Solicitação enviada. Aguardando SMS/OTP do cliente.':'Autorização SMS ausente ou expirada. Use a recuperação no cartão BMG.'});return;}
@@ -241,6 +261,7 @@ export class ProductSimulationService {
       ...(product==='CLT'&&action==='SIMULATE'&&providers?.includes('vctex')?[calculateVctexConditions(prisma,tenantId,input).then(found=>{configured=true;rows.push(...found);}).catch(error=>failure('VCTEX DIGITAL','VCTEX DIGITAL',error)).then(publishRows)]:[]),
       ...(!providers || providers.includes('nossa') ? [nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows)] : []),
       ...(!providers || providers.includes('facta') ? [facta().catch(error => failure('FACTA', product==='CLT'?'FACTA':product, error)).then(publishRows)] : []),
+      ...(!providers || providers.includes('c6') ? [c6().then(publishRows)] : []),
       ...(!providers || providers.includes('bmg') ? [bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows)] : []),
       ...(!providers || providers.includes('v8') ? [v8().catch(() => { rows.push({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'ERROR', outcome: 'TECHNICAL_ERROR', message: 'Não foi possível consultar as conexões V8 desta empresa.' }); return true; }).then(async changed => { if (changed) await publishRows(); })] : []),
     ]);

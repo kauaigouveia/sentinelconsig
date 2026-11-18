@@ -15014,6 +15014,8 @@ async function auditAndEnsureMasterUser() {
         typistCode: config.typistCode,
         certifiedAgentCpf: config.certifiedAgentCpf,
         simulationEnabled: config.simulationEnabled,
+        fgtsSimulationEnabled: config.fgtsSimulationEnabled,
+        fgtsCovenantCode: config.fgtsCovenantCode,
         cltEnabled: config.cltEnabled,
         baseUrl: config.baseUrl,
         autoSyncEnabled: config.autoSyncEnabled,
@@ -15048,6 +15050,8 @@ async function auditAndEnsureMasterUser() {
         typistCode: req.body?.typistCode,
         certifiedAgentCpf: req.body?.certifiedAgentCpf,
         simulationEnabled: req.body?.simulationEnabled,
+        fgtsSimulationEnabled: req.body?.fgtsSimulationEnabled,
+        fgtsCovenantCode: req.body?.fgtsCovenantCode,
         cltEnabled: req.body?.cltEnabled,
         enabled: req.body?.enabled,
         username,
@@ -18149,11 +18153,17 @@ async function auditAndEnsureMasterUser() {
       if ([raw.v8ConsultId, raw.v8PromoterId].some(value => value !== undefined && (typeof value !== 'string' || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value)))) return res.status(400).json({ error: 'Seleção V8 inválida.' });
       if (raw.factaRegistration !== undefined && (typeof raw.factaRegistration !== 'string' || raw.factaRegistration.length > 100 || /[\u0000-\u001f\u007f]/.test(raw.factaRegistration))) return res.status(400).json({ error: 'Matrícula FACTA inválida.' });
       if (action === 'CONTRACTS' && raw.product !== 'INSS') return res.status(400).json({ error: 'Consulta de contratos disponível somente para INSS.' });
-      const input = { illiterate:portabilityReviewMetadata(raw).illiterate,state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:String(raw.sex||'').slice(0,1),originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10),product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, bmgActorId: "partner:" + context.access.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), factaRegistration: raw.factaRegistration as string | undefined, v8ConsultId: raw.v8ConsultId as string | undefined, v8PromoterId: raw.v8PromoterId as string | undefined, eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
+      const input = { illiterate:portabilityReviewMetadata(raw).illiterate,state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:String(raw.sex||'').slice(0,1),originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10),product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), fgtsSimulationType: raw.fgtsSimulationType, rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, bmgActorId: "partner:" + context.access.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), factaRegistration: raw.factaRegistration as string | undefined, v8ConsultId: raw.v8ConsultId as string | undefined, v8PromoterId: raw.v8PromoterId as string | undefined, eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
       if (!isValidCpf(input.cpf) || !['INSS', 'CLT', 'FGTS'].includes(input.product) || !['Payment', 'Liquid'].includes(input.mode) || !Number.isInteger(input.term) || input.term < (input.product === 'CLT' ? 0 : 1) || input.term > 120) return res.status(400).json({ error: 'Informe CPF, produto e prazo válidos.' });
       if (action === 'SIMULATE' && input.product !== 'FGTS' && (!Number.isFinite(input.value) || input.value <= 0)) return res.status(400).json({ error: 'Informe um valor positivo para simular.' });
       if (input.product === 'CLT' && (!input.name || !/^\d{10,11}$/.test(input.phone) || (input.employerDocument && ![8, 14].includes(input.employerDocument.length)))) return res.status(400).json({ error: 'Informe nome, telefone e inscrição do empregador válidos.' });
       if (input.product === 'FGTS' && action !== 'SIMULATE') return res.status(400).json({ error: 'Ação não disponível para FGTS.' });
+      if (input.product === 'FGTS' &&
+          !['BY_INSTALLMENT_QUANTITY','BY_REQUESTED_AMOUNT','BY_FULL_AVAILABLE_AMOUNT',undefined,''].includes(input.fgtsSimulationType))
+        return res.status(400).json({error:'Modalidade de simulação FGTS inválida.'});
+      if (input.product === 'FGTS' && input.fgtsSimulationType==='BY_REQUESTED_AMOUNT' &&
+          (!Number.isFinite(input.value)||input.value<=0))
+        return res.status(400).json({error:'Informe o valor positivo solicitado para FGTS.'});
       if (input.product !== 'INSS') input.operation = 'NEW';
       if (input.product === 'INSS') {
         if (['PORT', 'PORT_REFIN'].includes(input.operation)) input.mode = 'Payment';
@@ -18168,7 +18178,7 @@ async function auditAndEnsureMasterUser() {
         const existing = await prisma.simulationRequest.findUnique({ where: { portalAttemptKey: `${context.tenant.id}:${context.partner.id}:${attemptKey}` } });
         if (existing) {
           const saved = existing.customerData as any;
-          if (['cpf', 'product', 'operation', 'mode', 'term', 'value', 'benefitNumber', 'employerDocument', 'factaRegistration', 'v8ConsultId', 'v8PromoterId'].some(key => saved?.[key] !== (input as any)[key])) return res.status(409).json({ error: 'Identificador já utilizado para outra simulação. Faça uma nova consulta.' });
+          if (['cpf', 'product', 'operation', 'mode', 'term', 'value', 'birthDate', 'fgtsSimulationType', 'benefitNumber', 'employerDocument', 'factaRegistration', 'v8ConsultId', 'v8PromoterId'].some(key => saved?.[key] !== (input as any)[key])) return res.status(409).json({ error: 'Identificador já utilizado para outra simulação. Faça uma nova consulta.' });
           return res.json({ rows: input.product==='INSS'&&['PORT','PORT_REFIN'].includes(input.operation)?publicPortabilityRows(saved?.offers||[]):saved?.offers||[], simulationId: existing.id, message: 'Simulação já registrada.' });
         }
       }

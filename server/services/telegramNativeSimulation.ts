@@ -57,7 +57,7 @@ export function telegramNativeSteps(target:Pick<TelegramNativeDraft,'product'|'o
     const stage=(target as TelegramNativeDraft).cltStage||'CONSULT';
     return stage==='CONSULT'?[CPF,NAME,PHONE]:stage==='CUSTOM'?[MODE,INST,TERM]:[];
   }
-  if(target.product==='FGTS')return [CPF,{field:'term',prompt:'Quantos saques-aniversário deseja antecipar? Informe de 1 a 10.'}];
+  if(target.product==='FGTS')return [CPF,{...BIRTH,prompt:'Data de nascimento do trabalhador (DD/MM/AAAA), obrigatória para simulação C6.'},{field:'term',prompt:'Quantos saques-aniversário deseja antecipar? Informe de 1 a 10.'}];
   const basic=[CPF,BIRTH,BENEFIT,BENEFIT_TYPE,STATE,BENEFIT_START,OPTIONAL_NAME,OPTIONAL_PHONE];
   if(['PORT','PORT_REFIN'].includes(target.operation))return [
     ...basic,
@@ -182,6 +182,10 @@ export function toTelegramNativeInput(draft:TelegramNativeDraft,partnerId:string
     eligibility:true,autoConditions:product==='CLT'&&draft.cltStage==='FULL',automaticAuthorization:false,observeOnly:true,
     partnerId,
   };
+  if(product==='FGTS')Object.assign(input,{
+    birthDate:v.birthDate,
+    fgtsSimulationType:'BY_INSTALLMENT_QUANTITY',
+  });
   if(product==='INSS'){
     Object.assign(input,{
       birthDate:v.birthDate,benefitNumber:v.benefitNumber,benefitType:Number(v.benefitType),

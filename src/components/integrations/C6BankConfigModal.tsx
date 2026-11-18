@@ -103,6 +103,8 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
           password: password ? password : undefined,
           baseUrl: config.baseUrl,
           cltEnabled: config.cltEnabled,
+          fgtsSimulationEnabled: config.fgtsSimulationEnabled,
+          fgtsCovenantCode: config.fgtsCovenantCode,
           autoSyncEnabled: config.autoSyncEnabled,
           syncIntervalMinutes: config.syncIntervalMinutes,
         }),
