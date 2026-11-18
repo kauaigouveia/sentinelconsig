@@ -209,11 +209,13 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   expect(denied.text).toContain('Ainda não há margem positiva');
   expect(s.deps.executeTelegramNativeSimulation).not.toHaveBeenCalled();
  });
- it('permite FGTS diretamente na conversa em apenas duas etapas e respeita cancelamento',async()=>{
+ it('permite FGTS diretamente na conversa com CPF, nascimento e saques e respeita cancelamento',async()=>{
   const s=scenario();
   await s.send('/start');await s.send('💰 FGTS');
   await s.send('💰 Simular FGTS');
-  const year=await s.send('52998224725');
+  const birthday=await s.send('52998224725');
+  expect(birthday.text).toContain('Data de nascimento');
+  const year=await s.send('15/06/1986');
   expect(year.text).toContain('saques-aniversário');
   const review=await s.send('4');
   expect(review.text).toContain('FGTS');
@@ -274,6 +276,7 @@ describe('Menu Telegram real com vínculo de parceiro e proteção multiempresa'
   for(let i=0;i<11;i++){
     await s.send('💰 Simular FGTS');
     await s.send('52998224725');
+    await s.send('15/06/1986');
     await s.send('4');
     const result=await s.send('✅ Confirmar simulação');
     if(i===10)expect(result.text).toContain('Limite de consultas');
