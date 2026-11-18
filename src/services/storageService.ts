@@ -191,14 +191,14 @@ export const INITIAL_TENANTS: Tenant[] = [
     updatedAt: '2026-01-01T00:00:00.000Z',
     whiteLabel: {
       companyName: 'SENTINEL CONSIG',
-      tradeName: 'Inteligência que antecipa. Controle que transforma.',
+      tradeName: 'Inteligência em cada operação.',
       cnpj: '48.912.456/0001-80',
       logoUrl: '',
       primaryColor: '#2563eb',
       accentColor: '#4f46e5',
       supportEmail: 'suporte@creditgestao.com.br',
       supportPhone: '(11) 98765-4321',
-      footerText: 'Sentinel Consig — Inteligência que antecipa. Controle que transforma.',
+      footerText: 'Sentinel Consig — Inteligência em cada operação.',
     },
   },
   {
@@ -1399,7 +1399,7 @@ export class StorageService {
       if (dbWL && typeof dbWL === 'object') {
         const formattedWL = {
           companyName: dbWL.companyName || 'SENTINEL CONSIG',
-          tradeName: dbWL.tradeName || 'Inteligência que antecipa. Controle que transforma.',
+          tradeName: dbWL.tradeName || 'Inteligência em cada operação.',
           cnpj: dbWL.cnpj || '',
           logoUrl: dbWL.logoUrl || '',
           primaryColor: dbWL.primaryColor || '#2563eb',
