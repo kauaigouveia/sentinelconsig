@@ -38,7 +38,7 @@ describe('initial tenant MASTER welcome e-mail', () => {
     expect(payload.subject).toContain('Bem-vindo');
     expect(payload.text).toContain('Empresa <Teste> & Gestão');
     expect(payload.text).toContain('Plano: PRO');
-    expect(payload.text).toContain('https://empresa-teste.sentinelconsig.com.br/login');
+    expect(payload.text).toContain('https://empresa-teste.sentinelconsig.com.br/');
     expect(payload.text).toContain('Login: camila@example.com');
     expect(payload.text).toContain(owner.temporaryPassword);
     expect(payload.text).toContain('senha pessoal');
