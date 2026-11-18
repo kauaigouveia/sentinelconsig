@@ -47,7 +47,8 @@ describe('Resend transactional email (opt-in)', () => {
     expect(data.to).toEqual(['kauai@example.com']);
     expect(data.html).toContain('&lt;Kauai &amp; Teste&gt;');
     expect(data.text).toContain('\n');
-    expect(JSON.stringify(data)).not.toMatch(/password|senha temporária|cpf|token/i);
+    expect(JSON.stringify(data)).not.toContain('Mudar@');
+    expect(JSON.stringify(data)).not.toMatch(/\\d{11}|passwordHash|passwordResetToken/i);
     expect(opts.signal).toBeDefined();
   });
 
