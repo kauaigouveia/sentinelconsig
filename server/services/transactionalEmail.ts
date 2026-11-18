@@ -36,7 +36,7 @@ function escapeHtml(raw: string): string {
 function validEmail(raw: string): boolean {
   // Rejeita CR/LF e espaços para não aceitar endereços com cabeçalhos injetados.
   return raw.length <= 254
-    && /^[^\\s@\\r\\n]+@[^\\s@\\r\\n]+\\.[^\\s@\\r\\n]+$/.test(raw);
+    && /^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]+$/.test(raw);
 }
 
 async function sendTemplate(
@@ -63,7 +63,7 @@ async function sendTemplate(
     ? 'Seu usuário foi cadastrado no Sentinel Consig. Para acessar, utilize as credenciais fornecidas pelo administrador por um canal seguro.'
     : 'A senha da sua conta no Sentinel Consig foi redefinida por um administrador. Se você não reconhece esta ação, contate imediatamente o suporte.';
   const footer = 'Este é um aviso automático de segurança. Nenhuma senha ou token é enviado por este e-mail.';
-  const text = `${greeting}\\n\\n${explanation}\\n\\nAcesse: ${PORTAL_URL}\\n\\n${footer}`;
+  const text = `${greeting}\n\n${explanation}\n\nAcesse: ${PORTAL_URL}\n\n${footer}`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#11212D">
   <h2>Sentinel Consig</h2>
   <p>${escapeHtml(greeting)}</p>
