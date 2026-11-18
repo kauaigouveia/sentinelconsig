@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TURNSTILE_PARTNER_ACTION } from '../../../server/services/partnerTurnstile';
+// This public action identifier must match the server validator.
+const TURNSTILE_PARTNER_ACTION = 'partner_login';
 
 type TurnstileApi = {
   render: (element: HTMLElement, options: Record<string, unknown>) => string;
