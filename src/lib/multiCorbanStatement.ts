@@ -5,7 +5,7 @@ import type {InssStatement} from './inssStatement';
 const fold=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const amount=String.raw`(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}`;
 const loanPattern=new RegExp(
- String.raw`(?:^|\s)(\d{1,3})\s*-\s*[^\n]*?(\d{2}\/\d{4})\s+(\d{2}\/\d{4})\s+(\d{2}\/\d{4})\s+(\d{1,3})\s*\/\s*(\d{1,3})\s+(`+
+ String.raw`(?:^|\s)(\d{1,3})\s*-\s*[^\n]*?(\d{2}\/\d{4})\s+(\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{1,3})\s*\/\s*(\d{1,3})\s+(`+
  amount+String.raw`)\s+(`+amount+String.raw`)\s+[\d.,]+\s+(`+amount+String.raw`)(?:\s|$)`);
 const iso=(value:string):string=>{
  const m=/(\d{2})\/(\d{2})\/(\d{4})/.exec(value);
