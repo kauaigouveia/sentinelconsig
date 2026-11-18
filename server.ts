@@ -1,5 +1,6 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
+import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
@@ -7847,6 +7848,19 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
+      // Notificação automática pós-commit. Nunca contém credenciais ou dados bancários.
+      // O envio é opt-in e só ocorre com o provedor configurado na Vercel.
+      dispatchImportWorker(async () => {
+        const result = await sendAccountCreatedNotice({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        });
+        if (result.status === 'failed') {
+          logger.warn({ userId: user.id, reason: result.reason }, '[EMAIL] Aviso de cadastro não enviado');
+        }
+      }, '[EMAIL] Erro ao processar aviso de cadastro');
+
       const { passwordHash, ...safeCreatedUser } = fullCreatedUser!;
       return res.json(safeCreatedUser);
     } catch (err) {
@@ -8414,6 +8428,20 @@ async function auditAndEnsureMasterUser() {
         },
         req,
       });
+
+      // Notifica a redefinição por canal independente, sem transmitir a senha temporária.
+      // Nova chave por redefinição; retries do mesmo evento permanecem idempotentes.
+      const resetEmailEventId = crypto.randomUUID();
+      dispatchImportWorker(async () => {
+        const result = await sendAdminPasswordResetNotice({
+          id: updated.id,
+          email: updated.email,
+          name: updated.name,
+        }, resetEmailEventId);
+        if (result.status === 'failed') {
+          logger.warn({ userId: updated.id, reason: result.reason }, '[EMAIL] Aviso de redefinição não enviado');
+        }
+      }, '[EMAIL] Erro ao processar aviso de redefinição');
 
       const { passwordHash: _, ...safeUser } = updated;
       return res.json({
