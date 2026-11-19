@@ -1,5 +1,5 @@
 import { normalizeInstitutionCode } from './strParticipants';
-import { evaluatePortabilityPolicy, type PortabilityContext } from './portabilityPolicy';
+import { evaluatePortabilityPolicy, portabilityBankId, type PortabilityContext } from './portabilityPolicy';
 
 // Creditor agreements from the company portability summary, 10/09/2026.
 // Missing or conflicting agreements require review, never automatic approval.
@@ -17,6 +17,11 @@ const rules: Record<string, { blocked: string[]; paid: Record<string, number> }>
 };
 export function portabilityEligibility(destination: string, origin: unknown, paid: unknown, input: PortabilityContext = {}) {
  if(input.product&&input.product!=='INSS'||input.operation&&!['PORT','PORT_REFIN','PORTABILIDADE'].includes(input.operation))return {blocked:false,review:false,status:'NÃO APLICÁVEL',reason:'Política de portabilidade INSS fora do escopo da operação.'};
+ const originId = portabilityBankId(String(origin ?? ''));
+ const destinationId = portabilityBankId(destination);
+ const canonicalDestination = ({c6planilha:'c6', c6spreadsheet:'c6', paranaplanilha:'parana', paranaspreadsheet:'parana'} as Record<string,string>)[destinationId] || destinationId;
+ if (originId && canonicalDestination === originId)
+  return { blocked: true, review: false, status: 'NÃO ELEGÍVEL', reason: 'Não é permitida portabilidade para a mesma instituição financeira de origem.' };
  const current = evaluatePortabilityPolicy(destination, origin, paid, input);
  if (current) return current;
  const key = destination.toLowerCase().replace(/[^a-z0-9]/g, '');
