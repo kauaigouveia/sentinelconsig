@@ -16,7 +16,7 @@ const limiter = rateLimit({
   message: { error: 'Limite de consultas do extrato atingido. Tente novamente mais tarde.' },
 });
 const positive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > 0;
-const validTerm = (v: unknown) => Number.isInteger(v) && Number(v) >= 1 && Number(v) <= 120;
+const validTerm = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 120;
 const safeText = (v: unknown, max = 100) => typeof v === 'string' ? v.trim().slice(0, max) : '';
 
 export function registerInssStatementQuoteRoutes(
