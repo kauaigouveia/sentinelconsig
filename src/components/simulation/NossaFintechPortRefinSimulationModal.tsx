@@ -149,6 +149,39 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     }));
   };
 
+  const calculateAdditionalBanks=async(snapshot:FormSnapshot):Promise<SimulationRow[]>=>{
+    if(!statement)return [];
+    const response=await request('/api/inss/statement/quote',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        confirmedClientAuthorization:true,operation:'PORT_REFIN',onlyAdditionalPortBanks:true,
+        cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
+        benefitNumber:statement.customer.benefitNumber,
+        benefitType:Number(statement.customer.benefitType),birthDate:statement.customer.birthDate,
+        benefitStartDate:statement.benefitStart,illiterate:statement.illiterate,
+        legalRepresentative:statement.legalRepresentative===true,
+        loanBlocked:statement.loanBlocked===true,loanMargin:parseCurrency(statement.loanMargin),
+        income:parseCurrency(statement.income),term:Number(snapshot.numberOfInstallments),
+        contract:{
+          originBank:snapshot.originLenderCode,contractNumber:snapshot.originContractNumber,
+          originalTerm:Number(snapshot.originalTerm),remainingTerm:Number(snapshot.openedInstallmentNumber),
+          debt:parseCurrency(snapshot.lastDueBalance),installment:parseCurrency(snapshot.installmentFaceValue),
+        },
+      }),
+    });
+    const data=await readJsonResponse(response);
+    if(!response.ok)throw Error(data.error||'Consulta complementar HAPPY/BMG não concluída.');
+    const offers=(Array.isArray(data.offers)?data.offers:[])
+      .filter((q:any)=>Number(q.amount)>0&&['HAPPY','BMG'].some(bank=>String(q.provider||'').toUpperCase().includes(bank)));
+    if(!offers.length && Array.isArray(data.notices)&&data.notices.length)
+      throw Error(data.notices.map((m:any)=>String(m).slice(0,150)).join(' · '));
+    return offers.map((q:any)=>({
+      provider:String(q.provider||q.institution),table:{name:String(q.table||'Condição INSS'),cod_tabela:String(q.table||''),amount:q.rate},
+      success:true,requiresReview:q.review===true,term:Number(q.term)||Number(snapshot.numberOfInstallments),
+      troco:Number(q.amount),data:{installment:q.installment,rate:q.rate,contractAmount:null},
+    }));
+  };
+
   const calculateFinanto = async (form:FormSnapshot): Promise<SimulationRow[]> => {
     const agreement = portabilityEligibility('finanto', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)); if (agreement.blocked) throw new Error(agreement.reason);
     const ageError = finantoAgeError(form.birthDate, Number(form.numberOfInstallments),undefined,'PORT_REFIN');
@@ -221,9 +254,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         const contractOrdinal=index+1;
         const label=`Contrato ${index+1} · banco ${contract.originLenderCode} · parcela ${currency(parseCurrency(contract.installmentFaceValue))}`;
         setProgress(`Simulando contrato ${index+1} de ${contracts.length}`);
-        const calls=await Promise.allSettled([calculateNossaFintech(snapshot),calculateFinanto(snapshot),calculateFacta(snapshot),calculateWorkbook('DAYCOVAL',snapshot),calculateWorkbook('C6',snapshot),calculateWorkbook('PARANA',snapshot)]);
+        const calls=await Promise.allSettled([calculateNossaFintech(snapshot),calculateFinanto(snapshot),calculateFacta(snapshot),calculateWorkbook('DAYCOVAL',snapshot),calculateWorkbook('C6',snapshot),calculateWorkbook('PARANA',snapshot),calculateAdditionalBanks(snapshot)]);
         calls.forEach((result,index)=>{
-          const provider=['Nossa Fintech','FINANTO','FACTA','DAYCOVAL','C6','PARANA'][index];
+          const provider=['Nossa Fintech','FINANTO','FACTA','DAYCOVAL','C6','PARANA','HAPPY/BMG'][index];
           if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot,originalInstallment:parseCurrency(snapshot.installmentFaceValue)??undefined,installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`,bankCode:contract.originLenderCode,contractSuffix:originContractSuffix(contract.originContractNumber)}))})));
           else notes.push(`${label} · ${provider}: ${result.reason?.message||'não foi possível simular'}`);
         });
@@ -530,7 +563,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {statement && activeTab==='PORT' && !loading && <details className="mt-3 rounded-lg border border-[var(--field-border)] p-3 text-xs">
         <summary className="cursor-pointer font-semibold">Bancos consultados e situações ({new Set(rows.filter(row=>row.success).map(row=>row.provider)).size} com ofertas)</summary>
         <div className="mt-2 flex flex-wrap gap-2">
-          {['DAYCOVAL','C6','PARANA','FINANTO','FACTA','Nossa Fintech'].map(bank=><span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
+          {['DAYCOVAL','C6','PARANA','FINANTO','FACTA','Nossa Fintech','HAPPY','BMG'].map(bank=><span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
             {bank==='PARANA'?'Paraná Banco':bank} · {rows.some(row=>row.provider===bank&&row.success)?'com condição':'sem oferta calculada'}
           </span>)}
         </div>
