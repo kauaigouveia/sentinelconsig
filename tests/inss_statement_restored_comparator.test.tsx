@@ -48,9 +48,15 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
         {originalInstallment:65.5,newInstallment:65.5,returnRate:1.659},
       ]}],
   }],nextOffset:null};
-  if(url==='/api/inss/statement/quote')result={offers:[{
-    provider:'FACTA',institution:'FACTA',table:'NOVO INSS',amount:1400,installment:36.52,rate:1.85,term:108,source:'API',
-  }],notices:[]};
+  if(url==='/api/inss/statement/quote')result=body?.operation==='PROJECTED_NEW'
+    ? {scenario:'PROJECTED_2027',officialMarginAvailable:false,offers:[{
+      provider:'FACTA',institution:'FACTA',table:'NOVO INSS - cenário futuro',
+      amount:1956.74,installment:42,rate:1.85,term:108,source:'API',
+      scenario:'PROJECTED_2027',nonBinding:true,
+    }],notices:[]}
+    : {offers:[{
+      provider:'FACTA',institution:'FACTA',table:'NOVO INSS',amount:1400,installment:36.52,rate:1.85,term:108,source:'API',
+    }],notices:[]};
   return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
  });
  vi.stubGlobal('fetch',fetchMock);
@@ -77,7 +83,9 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
  expect(screen.getByRole('button',{name:/Aumento projetado/})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:/Aumento projetado/}));
  expect(screen.getByLabelText('Prévia bancária de aumento de margem 2027')).toBeTruthy();
- expect(screen.getByText(/FACTA/)).toBeTruthy();
+ await waitFor(()=>expect(calls.some(x=>x.url==='/api/inss/statement/quote'&&x.body.operation==='PROJECTED_NEW')).toBe(true));
+ await waitFor(()=>expect(screen.getByText(/API · cenário 2027/)).toBeTruthy());
+ expect(screen.getByText(/R\$\s*1\.956,74/)).toBeTruthy();
  fireEvent.click(tabPort);
  expect(tabPort.getAttribute('aria-pressed')).toBe('true');
  const unification=screen.getByRole('button',{name:/Unificações Daycoval/});
