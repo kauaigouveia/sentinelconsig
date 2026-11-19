@@ -90,14 +90,12 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
           <p className="text-sm">Benefício final {statement.customer.benefitNumber.slice(-4)} · Espécie {statement.customer.benefitType}{statement.reference && ' · Competência ' + statement.reference}</p>
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">{[['Margem de empréstimo',statement.loanMargin],['Margem de cartão',statement.cardMargin],['Margem de cartão benefício',statement.benefitCardMargin]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd className="font-semibold">{money(value)}</dd></div>)}</dl>
           <p className="mt-2 text-xs text-[var(--text-secondary)]">As margens de cartão são exibidas para conferência. As simulações abaixo utilizam empréstimos.</p>
-          {projected && <aside className="mt-3 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-sm" aria-label="Aumento de margem INSS projetado">
-            <strong className="block text-[var(--warning-text)]">Prévia separada — aumento projetado de 2027</strong>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <p>Margem atual do extrato: <strong>{projected.currentAvailableMargin == null ? 'não informada' : money(projected.currentAvailableMargin.toFixed(2))}</strong></p>
-              <p>Margem adicional estimada: <strong>R$ 42,00</strong></p>
-            </div>
-            <p className="mt-2 text-xs text-[var(--warning-text)]">Renda identificada: R$ 1.621,00. Projeção do reajuste para R$ 1.741,00. O adicional NÃO compõe a margem atual, não está liberado pela Dataprev e não autoriza proposta.</p>
-            {projected.loanBlocked && <p className="mt-2 font-semibold text-[var(--warning-text)]">Benefício bloqueado para empréstimos no extrato; a prévia não libera a contratação.</p>}
+          {projected && <aside className="mt-3 rounded-lg border border-[var(--warning-border)] px-3 py-2 text-xs text-[var(--warning-text)]" aria-label="Aumento de margem INSS projetado">
+            <strong>Prévia 2027: +R$ 42,00 de parcela, ainda não liberada.</strong>
+            <details className="mt-1"><summary className="cursor-pointer">Ver origem da projeção</summary>
+              <p className="mt-1">Renda identificada R$ 1.621,00, projeção para R$ 1.741,00. O adicional não compõe a margem atual e não é proposta bancária.</p>
+              {projected.loanBlocked && <p>Benefício bloqueado para empréstimos conforme o extrato.</p>}
+            </details>
           </aside>}
         </section>
         <fieldset className="rounded-lg border border-[var(--field-border)] p-3">
