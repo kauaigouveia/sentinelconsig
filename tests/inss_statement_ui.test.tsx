@@ -25,7 +25,7 @@ function open() {
   fireEvent.change(screen.getByLabelText(/Extrato da consulta/),{target:{files:[new File(['fixture'],'teste.pdf')]}});
   return close;
 }
-it('carrega os dois contratos e só calcula após o operador confirmar a comparação', async()=>{
+it('simula ao anexar o extrato e preserva a comparação manual para revisão', async()=>{
   const http=vi.fn(async (url:string,_init?:RequestInit)=>new Response(JSON.stringify(
     url.endsWith('/calculate') ? {offers:[{name:'Tabela sintética',code:'test',term:84,rate:1.5,amount:250}]} : {enabled:false,offers:[]}
   )));
@@ -37,14 +37,17 @@ it('carrega os dois contratos e só calcula após o operador confirmar a compara
   fireEvent.click(compare);
   expect(screen.queryByLabelText('CPF')).toBeNull();
   const calls=()=>http.mock.calls.filter(([url])=>url==='/api/daycoval/calculate');
-  expect(calls()).toHaveLength(0);
-  fireEvent.click(screen.getByRole('button',{name:'Comparar ofertas'}));
   await waitFor(()=>expect(calls()).toHaveLength(2));
+  const automaticCalls=calls().filter(([,init])=>JSON.parse(String(init?.body)).illiterate===undefined);
+  expect(automaticCalls).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button',{name:'Comparar ofertas'}));
+  await waitFor(()=>expect(calls().filter(([,init])=>JSON.parse(String(init?.body)).illiterate==='YES')).toHaveLength(2));
   const nossaCalls = http.mock.calls.filter(([url]) => url === '/api/integrations/nossa-fintech/port-refin/simulate-all');
   expect(nossaCalls).toHaveLength(2);
   for (const [, init] of nossaCalls) expect(JSON.parse(String(init?.body))).not.toHaveProperty('legalRepresentative');
-  expect(calls().every(([,init])=>JSON.parse(String(init?.body)).illiterate==="YES")).toBe(true);
-  expect(calls().map(([,init])=>JSON.parse(String(init?.body)).contracts[0])).toEqual(
+  const manualCalls=calls().filter(([,init])=>JSON.parse(String(init?.body)).illiterate==="YES");
+  expect(manualCalls).toHaveLength(2);
+  expect(manualCalls.map(([,init])=>JSON.parse(String(init?.body)).contracts[0])).toEqual(
     ['001','123'].map(originBank=>({originBank,originalTerm:84,remaining:27,balance:1000.50,installment:25.50})));
 });
 it('descarta o extrato numa troca de empresa durante a leitura', async()=>{
@@ -68,7 +71,7 @@ it('consulta Nossa Fintech para empréstimo novo mesmo sem representante informa
   const compare = await screen.findByRole('button',{name:'Comparar ofertas'});
   await waitFor(()=>expect((compare as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(compare);
-  await waitFor(()=>expect(http.mock.calls.filter(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all')).toHaveLength(1));
-  const call = http.mock.calls.find(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all')!;
+  await waitFor(()=>expect(http.mock.calls.filter(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all').length).toBeGreaterThanOrEqual(2));
+  const call = http.mock.calls.filter(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all').at(-1)!;
   expect(JSON.parse(String(call[1]?.body))).not.toHaveProperty('legalRepresentative');
 });
