@@ -81,6 +81,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   type MarginOffer = { provider:string; institution:string; table:string; amount:number; installment:number|null; term:number|null; rate:number|null; source:'API'|'PLANILHA' };
   const [marginOffers,setMarginOffers]=useState<MarginOffer[]>([]);
   const [marginState,setMarginState]=useState<'idle'|'loading'|'ready'>('idle');
+  const [projectedState,setProjectedState]=useState<'idle'|'loading'|'ready'>('idle');
+  const [projectedApiOffers,setProjectedApiOffers]=useState<MarginOffer[]>([]);
+  const [projectedNote,setProjectedNote]=useState('');
   const [marginNote,setMarginNote]=useState('');
   const [selectedMargin,setSelectedMargin]=useState<number|null>(null);
   const [selectedProjected,setSelectedProjected]=useState<number|null>(null);
@@ -302,6 +305,54 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     void loadStatementMargin();
   },[isOpen,statement,autoRunFromStatement]);
 
+  // Cenário hipotético separado: R$42 enviados às APIs exclusivamente como
+  // parcela de cálculo FUTURA, nunca como margem Dataprev já disponível.
+  useEffect(()=>{
+    if(!isOpen||!statement||!autoRunFromStatement||novoScenario!=='PROJECTED'||projectedState!=='idle')return;
+    const forecast=inssProjectedMargin(statement.income,statement.loanMargin,statement.loanBlocked);
+    if(!forecast||forecast.loanBlocked){setProjectedState('ready');return;}
+    setProjectedState('loading');setProjectedNote('');setProjectedApiOffers([]);setSelectedProjected(null);
+    void (async()=>{
+      try{
+        const response=await request('/api/inss/statement/quote',{
+          method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            confirmedClientAuthorization:true,operation:'PROJECTED_NEW',forecastYear:2027,
+            cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
+            benefitNumber:statement.customer.benefitNumber,
+            benefitType:Number(statement.customer.benefitType),
+            birthDate:statement.customer.birthDate,benefitStartDate:statement.benefitStart,
+            illiterate:statement.illiterate,legalRepresentative:statement.legalRepresentative===true,
+            loanBlocked:statement.loanBlocked===true,loanMargin:parseCurrency(statement.loanMargin),
+            income:parseCurrency(statement.income),term:108,
+          }),
+        });
+        const data=await readJsonResponse(response);
+        if(!response.ok)throw Error(data.error||'Cenário bancário de 2027 indisponível.');
+        if(scope.current!==identity()||transport.current?.signal.aborted)return;
+        if(data.scenario!=='PROJECTED_2027'||data.officialMarginAvailable!==false)
+          throw Error('O servidor não confirmou que esta consulta é apenas uma projeção.');
+        const quotes=(Array.isArray(data.offers)?data.offers:[])
+          .filter((item:any)=>item.scenario==='PROJECTED_2027'&&item.nonBinding===true&&Number(item.amount)>0)
+          .map((item:any)=>({
+            provider:String(item.provider||item.institution||'Banco'),
+            institution:String(item.institution||item.provider||'Banco'),
+            table:String(item.table||'Condição INSS'),amount:Number(item.amount),
+            installment:42,term:Number(item.term)>0?Number(item.term):null,
+            rate:Number(item.rate)>0?Number(item.rate):null,
+            source:item.source==='PLANILHA'?'PLANILHA' as const:'API' as const,
+          }));
+        setProjectedApiOffers(quotes);
+        setProjectedNote((Array.isArray(data.notices)?data.notices:[]).join(' · ').slice(0,900));
+      }catch(error:any){
+        if(!transport.current?.signal.aborted)setProjectedNote(error.message||'O cenário de aumento não foi calculado nas APIs.');
+      }finally{
+        if(scope.current===identity()&&!transport.current?.signal.aborted)setProjectedState('ready');
+      }
+    })();
+  },[isOpen,statement,autoRunFromStatement,novoScenario,projectedState]);
+
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> =>
     portabilityQuoteCondition(row, parseCurrency(row.sourceForm?.installmentFaceValue ?? form.installmentFaceValue));
   const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
@@ -384,12 +435,24 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   };
 
   const forecast=statement?inssProjectedMargin(statement.income,statement.loanMargin,statement.loanBlocked):null;
-  const projectedRows=inssBankProjectedQuotes(marginOffers,Boolean(forecast&&!forecast.loanBlocked));
+  const projectedRows=projectedState!=='ready'?[]:[
+    // Cenários efetivamente calculados pelas APIs têm prioridade para cada banco.
+    ...projectedApiOffers.map(quote=>({
+      ...quote,projectedGross:quote.amount,scenario:'FUTURE_NOT_AVAILABLE' as const,
+      calculation:'API_SCENARIO' as const,
+    })),
+    // Outros bancos: simulação matemática com suas próprias taxas atuais, sem
+    // classificar o resultado como oferta ou consulta do aumento na API.
+    ...inssBankProjectedQuotes(marginOffers,Boolean(forecast&&!forecast.loanBlocked))
+      .filter(quote=>!projectedApiOffers.some(api=>api.provider===quote.provider))
+      .map(quote=>({...quote,calculation:'RATE_REFERENCE' as const})),
+  ];
   const projectedBest=projectedRows.map((quote,index)=>({...quote,index}))
     .filter((quote,index,all)=>all.findIndex(item=>item.provider===quote.provider)===index);
   const chosenMargin=selectedProjected!=null&&projectedRows[selectedProjected]
     ? {...projectedRows[selectedProjected],amount:projectedRows[selectedProjected].projectedGross,
-       installment:42,scenario:'PROJECTED_2027' as const}
+       installment:42,scenario:'PROJECTED_2027' as const,
+       calculatedByApi:projectedRows[selectedProjected].calculation==='API_SCENARIO'}
     : selectedMargin==null?null:marginOffers[selectedMargin]||null;
   const messageForWhatsApp=statement?inssStatementWhatsAppText(statement.customer.name,chosenMargin,selectedRows,(row)=>{
     const quoted=conditionFor(row as SimulationRow);
@@ -516,15 +579,16 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         {forecast && novoScenario==='PROJECTED' && <section className="space-y-3" aria-label="Prévia bancária de aumento de margem 2027">
           <div className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">
             <strong>Cenário futuro: parcela adicional hipotética de R$ 42,00 em 2027</strong>
-            <p className="mt-1">Estimativas individualizadas por banco e tabela usando as taxas e prazos retornados na consulta vigente. Não foi enviada margem não liberada às APIs. Não são ofertas, valores líquidos, aprovação ou promessa de disponibilidade futura. Valor bruto antes de IOF, CET, seguros e restrições comerciais.</p>
+            <p className="mt-1">As APIs habilitadas recebem a parcela de R$ 42,00 identificada como CENÁRIO FUTURO para cálculo, nunca como margem já liberada. Resultados das APIs são simulações hipotéticas; os demais usam taxas vigentes e fórmula Price. Nenhum representa aprovação, contratação ou disponibilidade em 2027.</p>
           </div>
-          {projectedRows.length>0 ? <>
-            <p className="text-xs text-[var(--text-secondary)]">{projectedBest.length} bancos com taxas consultadas · {projectedRows.length} condições estimadas. Selecione somente para compartilhar como prévia.</p>
+          {projectedState==='loading' && <p role="status" className="text-xs">Consultando bancos para simular a parcela futura de R$ 42,00…</p>}
+          {projectedState==='ready' && projectedRows.length>0 ? <>
+            <p className="text-xs text-[var(--text-secondary)]">{projectedApiOffers.length} cenários retornados pelas APIs · {projectedRows.filter(q=>q.calculation==='RATE_REFERENCE').length} estimativas por taxas atuais. Selecione para compartilhar como prévia.</p>
             <div className="grid gap-2 sm:grid-cols-2">{projectedBest.map(quote=><article key={quote.index}
               className={'rounded-lg border p-3 text-xs '+(selectedProjected===quote.index?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--field-border)]')}>
-              <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--warning-text)]">Simulação teórica</span></div>
+              <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--warning-text)]">{quote.calculation==='API_SCENARIO'?'API · cenário 2027':'Price · taxa atual'}</span></div>
               <p className="mt-1 truncate text-[var(--text-secondary)]" title={quote.table}>{quote.table}</p>
-              <p className="mt-2 text-[var(--text-secondary)]">Bruto teórico para parcela de R$ 42,00</p>
+              <p className="mt-2 text-[var(--text-secondary)]">{quote.calculation==='API_SCENARIO'?'Valor calculado pela API no cenário de R$ 42,00':'Bruto teórico pela taxa vigente · parcela R$ 42,00'}</p>
               <strong className="block text-lg">{currency(quote.projectedGross)}</strong>
               <p className="mt-1 text-[var(--text-secondary)]">{quote.term} meses · {formatMonthlyRate(quote.rate)}</p>
               <button type="button" aria-pressed={selectedProjected===quote.index}
@@ -544,7 +608,11 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
                   <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {formatMonthlyRate(quote.rate)} · {quote.term} meses</span>
                 </button>)}</div>
             </details>}
-          </> : <p className="text-xs text-[var(--text-secondary)]">Nenhuma taxa/prazo bancário válido retornado para estimar o aumento. Não serão inventadas ofertas.</p>}
+          </> : projectedState==='ready' ? <p className="text-xs text-[var(--text-secondary)]">Nenhum banco retornou cálculo ou taxa válida para a prévia. Nenhuma oferta foi inventada.</p> : null}
+          {projectedState==='ready' && projectedNote && <details className="rounded-lg border border-[var(--warning-border)] p-3 text-xs">
+            <summary className="cursor-pointer">Pendências das APIs para o aumento de 2027</summary>
+            <p className="mt-2 text-[var(--warning-text)]">{projectedNote}</p>
+          </details>}
           <details className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
             <summary className="cursor-pointer font-semibold">Instituições sem taxa para a prévia</summary>
             <p className="mt-2 text-[var(--text-secondary)]">{['C6','FACTA','FINANTO','Nossa Fintech','HAPPY','BMG']
