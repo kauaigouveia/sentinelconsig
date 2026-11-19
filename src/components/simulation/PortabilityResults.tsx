@@ -40,13 +40,14 @@ const bankName = (provider:string) => ({
 } as Record<string,string>)[provider] || provider;
 
 /** Financial values are estimates from the configured calculation. Selection saves a reviewable quote, not a bank approval. */
-export function PortabilityResults<T extends PortabilityResult>({rows, selected, selectedRows, savedRows, onSelect, conditionFor}:{
+export function PortabilityResults<T extends PortabilityResult>({rows, selected, selectedRows, savedRows, onSelect, conditionFor, showOwnShare=true}:{
   rows:T[];
   selected:T|null;
   selectedRows?:T[];
   savedRows?:T[];
   onSelect:(row:T)=>void;
   conditionFor:(row:T)=>Condition;
+  showOwnShare?:boolean;
 }) {
   const [unified, setUnified] = useState(false);
   const [providerFilter, setProviderFilter] = useState('');
@@ -236,7 +237,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       <span>Página {currentPage+1} de {lastPage+1} · {grouped.length} grupos</span>
       <button type="button" disabled={currentPage===lastPage} onClick={() => setPage(currentPage+1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Próxima</button>
     </nav>}
-    {sharing.length > 0 && <aside className="rounded-xl border border-[var(--success-border)] bg-[var(--bg-surface)] p-4" aria-label="Resumo selecionado para o parceiro">
+    {showOwnShare && sharing.length > 0 && <aside className="rounded-xl border border-[var(--success-border)] bg-[var(--bg-surface)] p-4" aria-label="Resumo selecionado para o parceiro">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="font-semibold">Resumo {sharing.length === 1 ? 'da cotação selecionada' : 'das ' + sharing.length + ' cotações selecionadas'}</h4>
