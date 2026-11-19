@@ -2,6 +2,7 @@ import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuar
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
+import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
@@ -7261,6 +7262,15 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // WHITE LABEL API
   // -------------------------------------------------------------
+  registerTenantLogoRoutes(app, {
+    getAuthSession,
+    tenantExists: async tenantId =>
+      Boolean(await prisma.tenant.findFirst({
+        where: { id: tenantId, deletedAt: null },
+        select: { id: true },
+      })),
+  });
+
   app.get('/api/whitelabel', async (req, res) => {
     try {
       const session = await getAuthSession(req);

@@ -39,10 +39,12 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
 
     // Only accept PNG, JPG/JPEG, WebP
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -66,8 +68,8 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
             body: JSON.stringify({
               fileBase64,
               mimeType: file.type,
-              fileName: file.name,
-              targetTenantId: (currentWl as any).tenantId || StorageService.getCurrentTenantId()
+              fileName: file.name
+              // The API resolves the active tenant from the authenticated session.
             })
           });
           const data = await res.json();
@@ -82,6 +84,10 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
         }
       }
     };
+    reader.onerror = () => {
+      setErrorMsg('Não foi possível ler o arquivo selecionado.');
+      setIsSubmitting(false);
+    };
     reader.readAsDataURL(file);
   };
 
@@ -93,6 +99,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
       return;
     }
 
+    setIsSaving(true);
     try {
       const updated: WhiteLabelConfig = {
         companyName: companyName.trim(),
@@ -105,10 +112,8 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
         footerText: footerText.trim() || undefined,
       };
 
-      StorageService.updateWhiteLabel(updated);
-
-      // Persist to PostgreSQL backend
-      await fetch('/api/whitelabel', {
+      // Persist before updating the local preview. Do not report success on HTTP 4xx/5xx.
+      const response = await fetch('/api/whitelabel', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +128,12 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
           supportPhone: supportPhone.trim() || null,
           footerText: footerText.trim() || null,
         }),
-      }).catch(err => console.warn('[WHITELABEL] Erro ao sincronizar com backend:', err));
+      });
+      const responseBody = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(responseBody?.error || 'Não foi possível salvar a identidade visual.');
+      }
+      StorageService.updateConfig({ whiteLabel: updated });
 
       setSavedSuccess(true);
       setErrorMsg(null);
@@ -137,6 +147,8 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
       }, 1000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao salvar configurações White-Label.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -495,10 +507,11 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
               <button
                 type="button"
                 onClick={handleSave}
+                disabled={isSubmitting || isSaving}
                 className="px-5 py-2 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] text-xs font-bold rounded-lg  cursor-pointer transition-all flex items-center gap-1.5"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Aplicar White-Label</span>
+                <span>{isSaving ? 'Salvando...' : isSubmitting ? 'Enviando logo...' : 'Aplicar White-Label'}</span>
               </button>
             </div>
           </div>
