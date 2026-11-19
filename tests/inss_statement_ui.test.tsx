@@ -7,11 +7,15 @@ import { StorageService } from '../src/services/storageService';
 import { readInssStatement } from '../src/lib/readInssStatement';
 import type { InssStatement } from '../src/lib/inssStatement';
 
-vi.mock('../src/lib/readInssStatement', () => ({ readInssStatement: vi.fn() }));
-const fixture: InssStatement = {
-  customer:{name:'Pessoa sintética',cpf:'00000000191',birthDate:'1960-01-01',benefitNumber:'1234567890',benefitType:'41'},
-  income:'1500.50', loanMargin:'20.00', cardMargin:'', benefitCardMargin:'', reference:'01/2026', uf:'', benefitStart:'', issues:[],
-  contracts:['001','123'].map(bank=>({originLenderCode:bank,originContractNumber:'Teste-'+bank, originalTerm:'84',openedInstallmentNumber:'27',lastDueBalance:'1.000,50',installmentFaceValue:'25,50'}))
+vi.mock('../src/lib/readInssStatement',()=>({readInssStatement:vi.fn()}));
+const fixture:InssStatement={
+  customer:{name:'Pessoa sintética',cpf:'52998224725',birthDate:'1960-01-01',benefitNumber:'1234567890',benefitType:'41'},
+  income:'1621.00',loanMargin:'36.52',cardMargin:'',benefitCardMargin:'',reference:'10/2026',
+  uf:'',benefitStart:'',issues:[],
+  contracts:['626','237','623','341','033','707'].map((bank,index)=>({
+    originLenderCode:bank,originContractNumber:'C-'+index,originalTerm:'84',
+    openedInstallmentNumber:'27',lastDueBalance:'1.000,50',installmentFaceValue:'36,50',
+  })),
 };
 beforeEach(()=>{
   vi.spyOn(StorageService,'getCurrentTenantId').mockReturnValue('tenant-test');
@@ -19,39 +23,50 @@ beforeEach(()=>{
   vi.mocked(readInssStatement).mockResolvedValue(fixture);
 });
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
-function open() {
-  const close = vi.fn();
+function open(){
+  const close=vi.fn();
   render(<InssStatementWorkspace scope="tenant-test:user-test" partners={[]} onClose={close} onSuccess={()=>{}}/>);
   fireEvent.change(screen.getByLabelText(/Extrato da consulta/),{target:{files:[new File(['fixture'],'teste.pdf')]}});
   return close;
 }
-it('simula ao anexar o extrato e preserva a comparação manual para revisão', async()=>{
-  const http=vi.fn(async (url:string,_init?:RequestInit)=>new Response(JSON.stringify(
-    url.endsWith('/calculate') ? {offers:[{name:'Tabela sintética',code:'test',term:84,rate:1.5,amount:250}]} : {enabled:false,offers:[]}
-  )));
+it('exibe um botão apenas, não oferece refinanciamento separado e exige confirmação de autorização',async()=>{
+  const http=vi.fn();
   vi.stubGlobal('fetch',http);
   open();
-  const compare = await screen.findByRole('button',{name:/Comparar portabilidade/});
-  expect((compare as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.click(screen.getByRole('radio',{name:'Sim'}));
-  fireEvent.click(compare);
-  expect(screen.queryByLabelText('CPF')).toBeNull();
-  const calls=()=>http.mock.calls.filter(([url])=>url==='/api/daycoval/calculate');
-  await waitFor(()=>expect(calls()).toHaveLength(2));
-  const automaticCalls=calls().filter(([,init])=>JSON.parse(String(init?.body)).illiterate===undefined);
-  expect(automaticCalls).toHaveLength(2);
-  fireEvent.click(screen.getByRole('button',{name:'Comparar ofertas'}));
-  await waitFor(()=>expect(calls().filter(([,init])=>JSON.parse(String(init?.body)).illiterate==='YES')).toHaveLength(2));
-  const nossaCalls = http.mock.calls.filter(([url]) => url === '/api/integrations/nossa-fintech/port-refin/simulate-all');
-  expect(nossaCalls).toHaveLength(2);
-  for (const [, init] of nossaCalls) expect(JSON.parse(String(init?.body))).not.toHaveProperty('legalRepresentative');
-  const manualCalls=calls().filter(([,init])=>JSON.parse(String(init?.body)).illiterate==="YES");
-  expect(manualCalls).toHaveLength(2);
-  expect(manualCalls.map(([,init])=>JSON.parse(String(init?.body)).contracts[0])).toEqual(
-    ['001','123'].map(originBank=>({originBank,originalTerm:84,remaining:27,balance:1000.50,installment:25.50})));
+  const action=await screen.findByRole('button',{name:/Simular margem e portabilidades/});
+  expect((action as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText(/Contratos detectados no extrato: 6/)).toBeTruthy();
+  expect(screen.queryByRole('button',{name:/Consultar refinanciamento|Portabilidade individual|Prévia NOVO|Simular novo pela margem atual|Comparar portabilidade/})).toBeNull();
+  expect(http).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('radio',{name:'Não'}));
+  expect((action as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox',{name:/Confirmo que o cliente autorizou/}));
+  expect((action as HTMLButtonElement).disabled).toBe(false);
 });
-it('descarta o extrato numa troca de empresa durante a leitura', async()=>{
-  let finish!: (value:InssStatement)=>void;
+
+it('consulta NOVO + seis contratos em APIs via um único clique e mostra fontes',async()=>{
+  const http=vi.fn(async (_url:string,_init?:RequestInit)=>new Response(JSON.stringify({
+    offers:[{provider:'FACTA',institution:'FACTA',table:'Tabela banco',amount:2222,installment:36.52,rate:1.85,term:108,source:'API',review:false}],
+    notices:[],
+  }),{status:200}));
+  vi.stubGlobal('fetch',http);
+  open();
+  const action=await screen.findByRole('button',{name:/Simular margem e portabilidades/});
+  fireEvent.click(screen.getByRole('radio',{name:'Não'}));
+  fireEvent.click(screen.getByRole('checkbox',{name:/Confirmo que o cliente autorizou/}));
+  fireEvent.click(action);
+  await waitFor(()=>expect(http.mock.calls).toHaveLength(7));
+  await waitFor(()=>expect(screen.getByRole('status',{name:''}).textContent).toContain('7 de 7'));
+  const operations=http.mock.calls.map(([,init])=>JSON.parse(String(init?.body)));
+  expect(operations.filter(row=>row.operation==='NEW')).toHaveLength(1);
+  expect(operations.filter(row=>row.operation==='PORT_REFIN')).toHaveLength(6);
+  expect(operations.some(row=>row.loanMargin===42)).toBe(false);
+  expect(screen.getByText(/Bruto teórico/)).toBeTruthy();
+  expect(screen.getAllByText('API bancária',{exact:false}).length).toBeGreaterThan(0);
+});
+
+it('descarta leitura e simulação ao trocar de empresa',async()=>{
+  let finish!:(value:InssStatement)=>void;
   vi.mocked(readInssStatement).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
   const close=open();
   await waitFor(()=>expect(finish).toBeTypeOf('function'));
@@ -60,18 +75,4 @@ it('descarta o extrato numa troca de empresa durante a leitura', async()=>{
   finish(fixture);
   expect(close).toHaveBeenCalledOnce();
   expect(screen.queryByText('Pessoa sintética')).toBeNull();
-});
-
-it('consulta Nossa Fintech para empréstimo novo mesmo sem representante informado no PDF', async()=>{
-  const http = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({items:[],offers:[],enabled:false})));
-  vi.stubGlobal('fetch', http);
-  open();
-  fireEvent.click(await screen.findByRole('radio',{name:'Não'}));
-  fireEvent.click(screen.getByRole('button',{name:'Simular novo pela margem'}));
-  const compare = await screen.findByRole('button',{name:'Comparar ofertas'});
-  await waitFor(()=>expect((compare as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(compare);
-  await waitFor(()=>expect(http.mock.calls.filter(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all').length).toBeGreaterThanOrEqual(2));
-  const call = http.mock.calls.filter(([url])=>url==='/api/integrations/nossa-fintech/inss/novo/simulate-all').at(-1)!;
-  expect(JSON.parse(String(call[1]?.body))).not.toHaveProperty('legalRepresentative');
 });
