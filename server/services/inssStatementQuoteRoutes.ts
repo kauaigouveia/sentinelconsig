@@ -76,6 +76,7 @@ export function registerInssStatementQuoteRoutes(
       operation: projectedScenario ? 'NEW' : raw.operation,
       projectedScenario: projectedScenario ? 'FORECAST_2027' : undefined,
       nonBindingQuoteOnly: true,
+      onlyAdditionalPortBanks: raw.operation==='PORT_REFIN' && raw.onlyAdditionalPortBanks===true,
       cpf,
       name: safeText(raw.name, 200),
       phone: '',
