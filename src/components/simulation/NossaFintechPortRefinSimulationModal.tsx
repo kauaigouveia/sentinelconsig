@@ -506,7 +506,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         </details>
         {shareStatus && <p role="status" className="text-xs text-[var(--success-text)]">{shareStatus}</p>}
       </section>}
-      {(selectedRows.length > 0 || savedRows.length > 0 || saveMessage) && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] p-4" aria-label="Salvar cotações selecionadas">
+      {(selectedRows.length > 0 || savedRows.length > 0 || saveMessage) && <details open={!statement} className="mt-4 rounded-xl border border-[var(--border-default)] p-3">
+        <summary className={statement?'cursor-pointer text-xs font-semibold':'hidden'}>Salvar cotações no sistema (opcional)</summary>
+        <section className="mt-2 space-y-3" aria-label="Salvar cotações selecionadas">
         <h3 className="font-semibold">Cotações dos contratos</h3>
         <p className="text-sm text-[var(--text-secondary)]">Selecione uma condição por contrato. É possível salvar contratos distintos do mesmo cliente e parceiro de uma só vez.</p>
         <p className="text-sm font-semibold">{selectedRows.length} {selectedRows.length === 1 ? 'cotação selecionada' : 'cotações selecionadas'}{savedRows.length ? ' · ' + savedRows.length + ' salva(s) nesta comparação' : ''}</p>
@@ -517,7 +519,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           {onContinue && selectedRows.length === 1 && selected && !conditionFor(selected).reviewRequired && <button type="button" disabled={loading} onClick={()=>{if(!partnerId){setError('Selecione o parceiro responsável.');return;}onContinue({condition:conditionFor(selected),values:draftValues(),calculation:selected.provider==='FINANTO'?selected.data:undefined});}} className="rounded-lg border border-[var(--field-border)] px-4 py-2 text-sm">Seguir para digitação</button>}
         </div>}
         {saveMessage && <p role="status" className="text-sm text-[var(--success-text)]">{saveMessage}</p>}
-      </section>}
+        </section>
+      </details>}
       {rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.contractLabel} · {row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
       <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />
       </div>
