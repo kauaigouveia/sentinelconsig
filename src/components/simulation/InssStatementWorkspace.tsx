@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { InssStatement, ReviewedInssStatement } from '../../lib/inssStatement';
 import { MAX_SIMULATION_CONTRACTS } from '../../lib/multiContractSimulation';
+import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { StorageService } from '../../services/storageService';
 import { NossaFintechPortRefinSimulationModal } from './NossaFintechPortRefinSimulationModal';
 import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
@@ -14,7 +15,7 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
   const [statement, setStatement] = useState<InssStatement>();
   const [illiterate, setIlliterate] = useState<ReviewedInssStatement['illiterate']>();
   const [selected, setSelected] = useState<number[]>([]);
-  const [flow, setFlow] = useState<'multi' | '1' | '2' | '3'>();
+  const [flow, setFlow] = useState<'multi' | '1' | '2' | '3' | 'increase'>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const activeRead = useRef<AbortController | null>(null);
@@ -55,11 +56,13 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
   }
   if (!withinScope()) return null;
   const chosen = statement?.contracts.filter((_, i) => selected.includes(i)) ?? [];
+  const projected = statement ? inssProjectedMargin(statement.income, statement.loanMargin, statement.loanBlocked) : null;
   if (flow && statement && illiterate) {
     const reviewed: ReviewedInssStatement = { ...statement, contracts: chosen, illiterate,
       benefitContractCount: statement.issues.length ? '' : String(statement.contracts.length) };
     const props = { statement: reviewed, partners, happyEnabled, isOpen: true, onClose, onSuccess, onBack: () => setFlow(undefined) };
     if (flow === 'multi') return <NossaFintechPortRefinSimulationModal {...props} onContinue={onContinue}/>;
+    if (flow === 'increase') return <FinantoInssSimulationModal {...props} operationCode="1" projectedOnly/>;
     return <FinantoInssSimulationModal {...props} operationCode={flow}/>;
   }
 
@@ -85,6 +88,15 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
           <p className="text-sm">Benefício final {statement.customer.benefitNumber.slice(-4)} · Espécie {statement.customer.benefitType}{statement.reference && ' · Competência ' + statement.reference}</p>
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">{[['Margem de empréstimo',statement.loanMargin],['Margem de cartão',statement.cardMargin],['Margem de cartão benefício',statement.benefitCardMargin]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd className="font-semibold">{money(value)}</dd></div>)}</dl>
           <p className="mt-2 text-xs text-[var(--text-secondary)]">As margens de cartão são exibidas para conferência. As simulações abaixo utilizam empréstimos.</p>
+          {projected && <aside className="mt-3 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-sm" aria-label="Aumento de margem INSS projetado">
+            <strong className="block text-[var(--warning-text)]">Prévia separada — aumento projetado de 2027</strong>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <p>Margem atual do extrato: <strong>{projected.currentAvailableMargin == null ? 'não informada' : money(projected.currentAvailableMargin.toFixed(2))}</strong></p>
+              <p>Margem adicional estimada: <strong>R$ 42,00</strong></p>
+            </div>
+            <p className="mt-2 text-xs text-[var(--warning-text)]">Renda identificada: R$ 1.621,00. Projeção do reajuste para R$ 1.741,00. O adicional NÃO compõe a margem atual, não está liberado pela Dataprev e não autoriza proposta.</p>
+            {projected.loanBlocked && <p className="mt-2 font-semibold text-[var(--warning-text)]">Benefício bloqueado para empréstimos no extrato; a prévia não libera a contratação.</p>}
+          </aside>}
         </section>
         <fieldset className="rounded-lg border border-[var(--field-border)] p-3">
           <legend className="px-1 font-semibold">O cliente é analfabeto?</legend>
@@ -108,7 +120,8 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
           <button className={button} disabled={!illiterate || !chosen.length} onClick={() => setFlow('multi')}>Comparar portabilidade + refinanciamento ({chosen.length})</button>
           <button className={button} disabled={!illiterate || chosen.length !== 1} onClick={() => setFlow('2')}>Portabilidade individual</button>
           <button className={button} disabled={!illiterate || !chosen.length} onClick={() => setFlow('3')}>Consultar refinanciamento</button>
-          <button className={button} disabled={!illiterate || Number(statement.loanMargin) <= 0} onClick={() => setFlow('1')}>Simular novo pela margem</button>
+          <button className={button} disabled={!illiterate || Number(statement.loanMargin.replace(/\./g, '').replace(',', '.')) <= 0} onClick={() => setFlow('1')}>Simular novo pela margem atual</button>
+          {projected && <button className={button} disabled={!illiterate || projected.loanBlocked} onClick={() => setFlow('increase')}>Prévia NOVO · aumento R$ 42,00 (2027)</button>}
         </div>
       </>}
     </div>
