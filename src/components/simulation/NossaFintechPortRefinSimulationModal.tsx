@@ -1,7 +1,7 @@
 import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {PortabilityResults} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
-import {originContractSuffix,buildPortRefinBreakdown,portabilityBreakdownText,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
+import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { estimateProjectedInssLoan, inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
