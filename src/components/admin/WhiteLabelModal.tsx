@@ -295,7 +295,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
 
             <div>
               <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
-                Subtítulo / Nome Fantasia
+                Nome fantasia ou subtítulo da empresa (opcional)
               </label>
               <input
                 type="text"
@@ -406,13 +406,16 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
           {/* Footer text */}
           <div>
             <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
-              Texto de Rodapé da Aplicação
+              Texto institucional da empresa (opcional)
             </label>
+            <p className="mb-1 text-[10px] text-[var(--text-secondary)]">
+              Mensagem personalizável; a versão do Sentinel Consig é gerenciada separadamente.
+            </p>
             <input
               type="text"
               value={footerText}
               onChange={e => setFooterText(e.target.value)}
-              placeholder="Ex: Alpha Crédito © 2026 - Todos os direitos reservados."
+              placeholder="Ex.: © 2026 Sua Empresa — Todos os direitos reservados."
               className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
             />
           </div>
