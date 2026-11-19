@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { InssStatement, ReviewedInssStatement } from '../../lib/inssStatement';
-import { inssProjectedMargin, estimateProjectedInssLoan } from '../../lib/inssProjectedMargin';
-import { emptyStatementQuotes, simulateInssStatementComplete, type StatementAutoQuotes } from '../../lib/inssStatementAutoQuotes';
+import { MAX_SIMULATION_CONTRACTS } from '../../lib/multiContractSimulation';
+import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { parseCurrency } from '../../lib/utils';
 import { StorageService } from '../../services/storageService';
 import { NossaFintechPortRefinSimulationModal } from './NossaFintechPortRefinSimulationModal';
@@ -9,108 +9,69 @@ import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
 
 type Props = Pick<React.ComponentProps<typeof NossaFintechPortRefinSimulationModal>, 'onClose' | 'happyEnabled' | 'onContinue'> &
   Pick<React.ComponentProps<typeof FinantoInssSimulationModal>, 'partners' | 'onSuccess'> & { scope: string };
+const button = 'rounded-lg border border-[var(--field-border)] px-3 py-2 text-sm disabled:opacity-50';
+const money = (value: string) => value ? Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informada';
 
-const button = 'rounded-lg border border-[var(--field-border)] px-4 py-2.5 text-sm font-semibold disabled:opacity-50';
-const amount = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const money = (value: string) => {
-  const number = parseCurrency(value);
-  return number == null ? 'Não informada' : amount(number);
-};
-const quoteSource = (source: string) => source === 'API' ? 'API bancária' : 'Estimativa por planilha';
-
-export default function InssStatementWorkspace({ scope, onClose }: Props) {
+export default function InssStatementWorkspace({ scope, partners, happyEnabled, onClose, onSuccess, onContinue }: Props) {
   const [statement, setStatement] = useState<InssStatement>();
   const [illiterate, setIlliterate] = useState<ReviewedInssStatement['illiterate']>();
+  const [selected, setSelected] = useState<number[]>([]);
+  const [flow, setFlow] = useState<'multi'>();
   const [clientAuthorized, setClientAuthorized] = useState(false);
-  const [reading, setReading] = useState(false);
-  const [simulating, setSimulating] = useState(false);
-  const [progress, setProgress] = useState<{completed:number;total:number}|null>(null);
-  const [quotes, setQuotes] = useState<StatementAutoQuotes>(() => emptyStatementQuotes());
+  const [contractCount, setContractCount] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const readController = useRef<AbortController | null>(null);
-  const quoteController = useRef<AbortController | null>(null);
+  const activeRead = useRef<AbortController | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const withinScope = () => scope === StorageService.getCurrentTenantId() + ':' + (StorageService.getActiveUser()?.id || '');
-
   useEffect(() => {
-    const check = () => {
-      if (!withinScope()) { readController.current?.abort(); quoteController.current?.abort(); onClose(); }
-    };
+    const check = () => { if (!withinScope()) { activeRead.current?.abort(); onClose(); } };
     window.addEventListener('storage', check);
     window.addEventListener('credit_gestao_storage_update', check);
     return () => {
-      readController.current?.abort();
-      quoteController.current?.abort();
       window.removeEventListener('storage', check);
       window.removeEventListener('credit_gestao_storage_update', check);
     };
   }, [scope, onClose]);
+  useEffect(() => () => activeRead.current?.abort(), []);
+  useEffect(() => { if (!flow) closeButton.current?.focus(); }, [flow]);
 
   async function read(file: File) {
-    readController.current?.abort();
-    quoteController.current?.abort();
+    activeRead.current?.abort();
     const controller = new AbortController();
-    readController.current = controller;
-    setReading(true);
-    setSimulating(false);
-    setStatement(undefined);
-    setIlliterate(undefined);
-    setClientAuthorized(false);
-    setProgress(null);
-    setQuotes(emptyStatementQuotes());
-    setError('');
+    activeRead.current = controller;
+    setLoading(true); setError(''); setStatement(undefined); setSelected([]); setIlliterate(undefined); setClientAuthorized(false); setContractCount(0);
     try {
       const { readInssStatement } = await import('../../lib/readInssStatement');
-      const parsed = await readInssStatement(file, controller.signal);
-      if (!controller.signal.aborted && withinScope()) setStatement(parsed);
+      const result = await readInssStatement(file, controller.signal);
+      if (controller.signal.aborted || !withinScope()) return;
+      setStatement(result);
+      setContractCount(result.contracts.length);
+      setSelected(result.contracts.slice(0, MAX_SIMULATION_CONTRACTS).map((_, i) => i));
     } catch (reason) {
       if (!controller.signal.aborted && withinScope()) {
-        const message = reason instanceof Error ? reason.message : '';
-        setError(/^(Use um extrato|Selecione um|Confira CPF|O PDF contém|Formato de extrato|Página fora)/.test(message)
-          ? message : 'Não foi possível ler o PDF. Use um extrato textual, íntegro e sem senha.');
+        const msg = reason instanceof Error ? reason.message : '';
+        setError(/^(Use um extrato|Selecione um|Confira CPF|O PDF contém|Formato de extrato|Página fora)/.test(msg) ? msg : 'Não foi possível ler o PDF. Use um extrato textual, íntegro e sem senha.');
       }
     } finally {
-      if (!controller.signal.aborted) setReading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
-
-  async function runAll() {
-    if (!statement || !illiterate || !clientAuthorized || simulating || !withinScope()) return;
-    quoteController.current?.abort();
-    const controller = new AbortController();
-    quoteController.current = controller;
-    const reviewed: ReviewedInssStatement = {
-      ...statement, illiterate, benefitContractCount: statement.issues.length ? '' : String(statement.contracts.length),
-    };
-    setSimulating(true);
-    setError('');
-    setQuotes(emptyStatementQuotes());
-    setProgress(null);
-    try {
-      const result = await simulateInssStatementComplete(reviewed, controller.signal, fetch, next => {
-        if (controller.signal.aborted || !withinScope()) return;
-        setProgress({ completed: next.completed, total: next.total });
-        setQuotes(next.quotes);
-      });
-      if (!controller.signal.aborted && withinScope()) setQuotes(result);
-    } catch (reason) {
-      if (!controller.signal.aborted && withinScope())
-        setError(reason instanceof Error ? reason.message : 'Falha ao executar a comparação dos bancos.');
-    } finally {
-      if (!controller.signal.aborted) setSimulating(false);
-    }
-  }
-
   if (!withinScope()) return null;
+  const chosen = statement?.contracts.filter((_, i) => selected.includes(i)) ?? [];
   const projected = statement ? inssProjectedMargin(statement.income, statement.loanMargin, statement.loanBlocked) : null;
-  const canSimulate = !!statement && !!illiterate && clientAuthorized && !reading && !simulating && statement.contracts.length <= 40;
-  const hasFinished = progress !== null && progress.completed === progress.total && !simulating;
+  if (flow && statement && illiterate) {
+    const reviewed: ReviewedInssStatement = { ...statement, contracts: chosen, illiterate,
+      benefitContractCount: contractCount >= 1 && contractCount <= 13 ? String(contractCount) : '' };
+    const props = { statement: reviewed, partners, happyEnabled, isOpen: true, onClose, onSuccess, onBack: () => setFlow(undefined) };
+    return <NossaFintechPortRefinSimulationModal {...props} onContinue={onContinue} autoRunFromStatement/>;
+  }
 
   return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--scrim)] p-3">
-    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="statement-title" className="max-h-[92dvh] w-full max-w-5xl space-y-4 overflow-auto rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-5 text-[var(--text-primary)]"
+    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="statement-title" className="max-h-[92dvh] w-full max-w-4xl space-y-4 overflow-auto rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-5 text-[var(--text-primary)]"
       onKeyDown={event => {
-        if (event.key === 'Escape') { event.stopPropagation(); readController.current?.abort(); quoteController.current?.abort(); onClose(); }
+        if (event.key === 'Escape') { event.stopPropagation(); onClose(); }
         if (event.key !== 'Tab') return;
         const elements = dialog.current?.querySelectorAll<HTMLElement>('button:enabled,input:enabled');
         if (!elements?.length) return;
@@ -118,104 +79,69 @@ export default function InssStatementWorkspace({ scope, onClose }: Props) {
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
         if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }}>
-      <header className="flex items-center justify-between gap-3">
-        <div><h2 id="statement-title" className="text-xl font-semibold">Simulação completa por extrato INSS</h2>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">Uma única comparação da margem atual e de todos os contratos de empréstimo identificados.</p>
-        </div>
-        <button ref={closeButton} className={button} onClick={() => { readController.current?.abort(); quoteController.current?.abort(); onClose(); }}>Fechar</button>
-      </header>
+      <header className="flex items-center justify-between gap-3"><h2 id="statement-title" className="text-xl font-semibold">Simulação por extrato INSS</h2><button ref={closeButton} className={button} onClick={onClose}>Fechar</button></header>
       <label className="block text-sm font-semibold">Extrato da consulta em PDF
-        <input type="file" accept=".pdf,application/pdf" className="mt-2 block max-w-full" onChange={e => {
-          const file = e.target.files?.[0]; e.target.value = ''; if (file) void read(file);
-        }}/>
+        <input type="file" accept=".pdf,application/pdf" className="mt-2 block max-w-full" onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void read(file); }}/>
       </label>
-      <p className="text-xs text-[var(--text-secondary)]">O PDF é lido neste navegador. As instituições são consultadas somente depois de sua confirmação no botão abaixo.</p>
-      {reading && <p role="status">Lendo extrato…</p>}
-      {error && <p role="alert" className="rounded-lg border border-[var(--danger-border)] p-3 text-sm text-[var(--danger-text)]">{error}</p>}
-
+      <p className="text-xs text-[var(--text-secondary)]">Confira a margem e selecione os empréstimos. Uma única consulta compara os bancos, as unificações Daycoval e a margem disponível.</p>
+      {loading && <p role="status">Lendo extrato…</p>}{error && <p role="alert">{error}</p>}
       {statement && <>
-        <section className="space-y-2">
-          <h3 className="font-semibold">{statement.customer.name || 'Benefício INSS'}</h3>
+        <section><h3 className="font-semibold">{statement.customer.name || 'Benefício INSS'}</h3>
           <p className="text-sm">Benefício final {statement.customer.benefitNumber.slice(-4)} · Espécie {statement.customer.benefitType}{statement.reference && ' · Competência ' + statement.reference}</p>
-          <dl className="grid gap-2 text-sm sm:grid-cols-3">
-            {([['Margem de empréstimo',statement.loanMargin],['Margem de cartão',statement.cardMargin],['Margem de cartão benefício',statement.benefitCardMargin]] as const).map(([name,value]) =>
-              <div key={name} className="rounded-lg border border-[var(--field-border)] p-3"><dt className="text-xs text-[var(--text-secondary)]">{name}</dt><dd className="font-bold">{money(value)}</dd></div>)}
-          </dl>
-        </section>
-        <section className="space-y-2">
-          <h3 className="font-semibold">Contratos detectados no extrato: {statement.contracts.length}</h3>
-          {statement.issues.length > 0 && <div role="status" className="text-xs text-[var(--warning-text)]">{[...new Set(statement.issues)].map(issue=><p key={issue}>{issue}</p>)}</div>}
-          <div className="grid max-h-56 gap-2 overflow-auto sm:grid-cols-2">
-            {statement.contracts.map((c,i) => <div key={i} className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
-              <strong>Contrato {i+1} · Banco {c.originLenderCode} · final {c.originContractNumber.slice(-4)}</strong>
-              <div className="mt-1 text-[var(--text-secondary)]">Parcela {money(c.installmentFaceValue)} · Saldo {money(c.lastDueBalance)} · {c.openedInstallmentNumber}/{c.originalTerm} parcelas restantes</div>
-            </div>)}
-          </div>
-          <p className="text-xs text-[var(--text-secondary)]">Todos os contratos válidos serão consultados, sem escolher apenas três nem descartar contratos silenciosamente. Cartões não são portabilidades de empréstimo.</p>
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">{[['Margem de empréstimo',statement.loanMargin],['Margem de cartão',statement.cardMargin],['Margem de cartão benefício',statement.benefitCardMargin]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd className="font-semibold">{money(value)}</dd></div>)}</dl>
+          <p className="mt-2 text-xs text-[var(--text-secondary)]">As margens de cartão são exibidas para conferência. As simulações abaixo utilizam empréstimos.</p>
+          {projected && <aside className="mt-3 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-sm" aria-label="Aumento de margem INSS projetado">
+            <strong className="block text-[var(--warning-text)]">Prévia separada — aumento projetado de 2027</strong>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <p>Margem atual do extrato: <strong>{projected.currentAvailableMargin == null ? 'não informada' : money(projected.currentAvailableMargin.toFixed(2))}</strong></p>
+              <p>Margem adicional estimada: <strong>R$ 42,00</strong></p>
+            </div>
+            <p className="mt-2 text-xs text-[var(--warning-text)]">Renda identificada: R$ 1.621,00. Projeção do reajuste para R$ 1.741,00. O adicional NÃO compõe a margem atual, não está liberado pela Dataprev e não autoriza proposta.</p>
+            {projected.loanBlocked && <p className="mt-2 font-semibold text-[var(--warning-text)]">Benefício bloqueado para empréstimos no extrato; a prévia não libera a contratação.</p>}
+          </aside>}
         </section>
         <fieldset className="rounded-lg border border-[var(--field-border)] p-3">
           <legend className="px-1 font-semibold">O cliente é analfabeto?</legend>
-          <div className="flex gap-6 text-sm">{(['YES','NO'] as const).map(value=>
+          <div className="flex gap-6">{(['YES','NO'] as const).map(value =>
             <label key={value} className="inline-flex items-center gap-2">
-              <input type="radio" name="statement-illiterate" checked={illiterate===value} onChange={()=>setIlliterate(value)}/>
-              {value==='YES'?'Sim':'Não'}
+              <input type="radio" name="statement-illiterate" required checked={illiterate === value} onChange={() => setIlliterate(value)} />
+              {value === 'YES' ? 'Sim' : 'Não'}
             </label>)}</div>
         </fieldset>
-        <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" className="mt-1" checked={clientAuthorized} onChange={e=>setClientAuthorized(e.target.checked)}/>
-          <span>Confirmo que o cliente autorizou a consulta das condições nas instituições bancárias configuradas.</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">Empréstimos do extrato ({statement.contracts.length})</h3>
+          <div className="flex gap-2 text-xs">
+            <button type="button" className={button} onClick={()=>setSelected(statement.contracts.slice(0, MAX_SIMULATION_CONTRACTS).map((_,i)=>i))}>Selecionar todos</button>
+            <button type="button" className={button} onClick={()=>setSelected([])}>Limpar seleção</button>
+          </div>
+        </div>
+        {statement.issues.length > 0 && <div role="status" className="text-sm">{[...new Set(statement.issues)].map(issue => <p key={issue}>{issue}</p>)}</div>}
+        {statement.contracts.length > MAX_SIMULATION_CONTRACTS && <p>Escolha até {MAX_SIMULATION_CONTRACTS} contratos por comparação.</p>}
+        <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
+        {statement.contracts.map((c,i) => <label key={i} className={'flex items-center gap-3 rounded-lg border p-3 text-xs '+(selected.includes(i) ? 'border-[var(--action)] bg-[var(--bg-surface-elevated)]' : 'border-[var(--field-border)]')}>
+          <input type="checkbox" checked={selected.includes(i)} disabled={!selected.includes(i) && selected.length >= MAX_SIMULATION_CONTRACTS}
+            onChange={e => setSelected(e.target.checked ? [...selected, i] : selected.filter(index => index !== i))}/>
+          <span>Banco {c.originLenderCode} · Contrato final {c.originContractNumber.slice(-4)}<br/>
+          Parcela {money(c.installmentFaceValue)} · Saldo {money(c.lastDueBalance)} · {c.openedInstallmentNumber} de {c.originalTerm} restantes</span>
+        </label>)}
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <label className="font-medium">Total de contratos no benefício (Paraná)
+            <input type="number" min="1" max="13" value={contractCount || ''} onChange={event=>setContractCount(Number(event.target.value)||0)}
+              className="ml-2 w-16 rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-2 py-1.5"/>
+          </label>
+          <span className="text-[var(--text-secondary)]">Confirme o total mesmo se simular apenas alguns contratos.</span>
+        </div>
+        <label className="flex items-start gap-2 rounded-lg border border-[var(--field-border)] p-3 text-xs">
+          <input type="checkbox" className="mt-0.5" checked={clientAuthorized} onChange={e=>setClientAuthorized(e.target.checked)}/>
+          Confirmo que o cliente autorizou esta consulta às instituições bancárias.
         </label>
-        <button type="button" className="w-full rounded-xl bg-[var(--action)] px-5 py-3 text-sm font-bold text-[var(--action-ink)] disabled:opacity-50" disabled={!canSimulate} onClick={()=>void runAll()}>
-          {simulating ? 'Consultando bancos…' : `Simular margem e portabilidades — ${statement.contracts.length} contratos`}
+        <button type="button" className="w-full rounded-xl bg-[var(--action)] px-5 py-3 text-sm font-bold text-[var(--action-ink)] disabled:opacity-50"
+          disabled={!illiterate || !clientAuthorized || !chosen.length}
+          onClick={() => setFlow('multi')}>
+          Simular margem e portabilidades ({chosen.length} {chosen.length===1?'contrato':'contratos'})
         </button>
-        {statement.contracts.length > 40 && <p role="alert" className="text-sm text-[var(--warning-text)]">O limite de segurança deste fluxo é 40 contratos. Nenhum contrato será ignorado parcialmente.</p>}
-        {progress && <p role="status" className="text-sm">Consultas concluídas: {progress.completed} de {progress.total}. {simulating ? 'As demais continuam em processamento.' : 'Comparação finalizada.'}</p>}
-        {(progress || quotes.marginQuotes.length > 0 || quotes.portabilityQuotes.length > 0) && <section className="space-y-4" aria-label="Resultado da simulação completa">
-          <h3 className="text-lg font-semibold">Resultado consolidado</h3>
-          <div className="rounded-xl border border-[var(--field-border)] p-4">
-            <h4 className="font-bold">NOVO — margem atual de {money(statement.loanMargin)}</h4>
-            {statement.loanBlocked && <p className="mt-2 text-sm text-[var(--warning-text)]">Benefício bloqueado no extrato. Nenhuma margem futura foi enviada às instituições.</p>}
-            <div className="mt-3 space-y-2">{quotes.marginQuotes.map((q,i)=>
-              <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--field-border)] p-3 text-sm">
-                <div><strong>{q.institution}</strong><p className="text-xs text-[var(--text-secondary)]">{q.table} · {quoteSource(q.source)}{q.term ? ` · ${q.term} meses` : ''}{q.rate ? ` · ${q.rate.toLocaleString('pt-BR',{maximumFractionDigits:4})}% a.m.` : ''}</p></div>
-                <div className="font-bold">{amount(q.amount)}</div>
-              </div>)}</div>
-            {hasFinished && !quotes.marginQuotes.length && <p className="mt-3 text-sm">Nenhuma oferta positiva de empréstimo novo retornada pelas integrações habilitadas.</p>}
-          </div>
-          {projected && <section className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-4 text-sm" aria-label="Prévia de aumento de margem 2027">
-            <h4 className="font-bold text-[var(--warning-text)]">Aumento projetado de 2027 · R$ 42,00 (separado)</h4>
-            <p className="mt-2 text-xs text-[var(--warning-text)]">Margem ainda não liberada pela Dataprev. Não foi enviada como margem vigente às APIs. Valores teóricos com taxas atuais retornadas pelos bancos, antes de IOF, CET e seguros.</p>
-            {projected.loanBlocked && <p className="mt-2 text-xs font-semibold">Benefício bloqueado; prévia apenas informativa.</p>}
-            <div className="mt-3 space-y-2">{quotes.projectedQuotes.map((q,i)=>
-              <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--warning-border)] p-3">
-                <span>{q.institution} · {q.monthlyRate.toLocaleString('pt-BR',{maximumFractionDigits:4})}% a.m. · {q.term} meses</span>
-                <strong>Bruto teórico: {amount(q.gross)}</strong>
-              </div>)}</div>
-            {hasFinished && !quotes.projectedQuotes.length && <div className="mt-2 rounded-lg border border-[var(--warning-border)] p-3 text-xs">
-              <span>Prévia matemática de referência (sem API): R$ 42,00 · 1,85% a.m. · 108 meses</span>
-              <strong className="ml-2">Bruto teórico: {amount(estimateProjectedInssLoan(1.85,108) ?? 0)}</strong>
-            </div>}
-          </section>}
-          <div className="space-y-3">
-            <h4 className="font-bold">Portabilidades — todos os contratos do extrato</h4>
-            {statement.contracts.map((contract,index)=>{
-              const found=quotes.portabilityQuotes.filter(q=>q.contractIndex===index);
-              return <section key={index} className="rounded-xl border border-[var(--field-border)] p-3">
-                <h5 className="font-semibold">Contrato {index+1} · Banco {contract.originLenderCode} · final {contract.originContractNumber.slice(-4)}</h5>
-                {found.length ? <div className="mt-2 space-y-2">{found.map((q,i)=>
-                  <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--field-border)] p-3 text-sm">
-                    <div><strong>{q.institution}</strong><div className="text-xs text-[var(--text-secondary)]">{q.table} · {quoteSource(q.source)}{q.term ? ` · ${q.term} meses` : ''}{q.rate ? ` · ${q.rate.toLocaleString('pt-BR',{maximumFractionDigits:4})}% a.m.` : ''}</div></div>
-                    <strong>Troco estimado: {amount(q.amount)}</strong>
-                  </div>)}</div> : <p className="mt-2 text-xs text-[var(--text-secondary)]">{hasFinished ? 'Nenhuma cotação elegível retornada para este contrato.' : 'Aguardando consulta bancária…'}</p>}
-              </section>;
-            })}
-          </div>
-          {quotes.notes.length > 0 && <details className="rounded-xl border border-[var(--field-border)] p-3 text-sm">
-            <summary className="cursor-pointer font-semibold">Pendências e retornos dos bancos ({quotes.notes.length})</summary>
-            <div className="mt-2 max-h-56 space-y-2 overflow-auto text-xs text-[var(--text-secondary)]">{quotes.notes.map((note,i)=><p key={i}>{note}</p>)}</div>
-          </details>}
-          <p className="text-xs text-[var(--text-secondary)]">API bancária indica cálculo retornado pela integração, não aprovação de crédito. Planilhas são identificadas como estimativas. A operação de portabilidade pode incluir refinanciamento associado conforme modalidade bancária; não há botão de refinanciamento isolado.</p>
-        </section>}
+        <p className="text-xs text-[var(--text-secondary)]">As portabilidades e unificações Daycoval usam os contratos selecionados; margem atual e prévia de R$ 42,00 são mostradas separadamente. Cotação não equivale à aprovação bancária.</p>
       </>}
     </div>
   </div>;
