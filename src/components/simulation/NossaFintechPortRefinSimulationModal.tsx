@@ -4,6 +4,7 @@ import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
 import {originContractSuffix,buildPortRefinBreakdown,portabilityBreakdownText,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { estimateProjectedInssLoan, inssProjectedMargin } from '../../lib/inssProjectedMargin';
+import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
 import { selectablePortRefinRates, type RatePolicy } from '../../lib/portRefinRates';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
@@ -268,6 +269,53 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     finally { setLoading(false);running.current=false;setProgress(''); }
   };
 
+  const loadStatementMargin = async () => {
+    if(!statement) return;
+    const margin=parseCurrency(statement.loanMargin);
+    setMarginState('loading');setMarginOffers([]);setMarginNote('');
+    if(statement.loanBlocked || margin==null || margin<=0){
+      setMarginState('ready');
+      setMarginNote(statement.loanBlocked?'Benefício bloqueado para empréstimos conforme extrato.':'Sem margem atual positiva para NOVO.');
+      return;
+    }
+    try {
+      const result=await request('/api/inss/statement/quote',{
+        method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
+        body:JSON.stringify({
+          confirmedClientAuthorization:true,operation:'NEW',
+          cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
+          benefitNumber:statement.customer.benefitNumber,
+          benefitType:Number(statement.customer.benefitType),birthDate:statement.customer.birthDate,
+          benefitStartDate:statement.benefitStart,illiterate:statement.illiterate,
+          legalRepresentative:statement.legalRepresentative===true,loanBlocked:false,
+          loanMargin:margin,income:parseCurrency(statement.income),term:108,
+        }),
+      });
+      const data=await readJsonResponse(result);
+      if(!result.ok)throw Error(data.error||'Falha na consulta da margem atual.');
+      if(scope.current!==identity()||transport.current?.signal.aborted)return;
+      const next=(Array.isArray(data.offers)?data.offers:[]).filter((item:any)=>
+        typeof item.amount==='number'&&Number.isFinite(item.amount)&&item.amount>0)
+        .map((item:any)=>({
+          provider:String(item.provider||''),institution:String(item.institution||item.provider||'Instituição'),
+          table:String(item.table||'Tabela INSS'),amount:Number(item.amount),
+          installment:Number(item.installment)>0?Number(item.installment):null,
+          term:Number(item.term)>0?Number(item.term):null,rate:Number(item.rate)>0?Number(item.rate):null,
+          source:item.source==='PLANILHA'?'PLANILHA' as const:'API' as const,
+        }));
+      next.sort((a:any,b:any)=>b.amount-a.amount);
+      setMarginOffers(next);setMarginNote((Array.isArray(data.notices)?data.notices:[]).join(' · ').slice(0,700));
+    }catch(error:any){if(!transport.current?.signal.aborted)setMarginNote(error.message||'Não foi possível consultar NOVO pela margem atual.');}
+    finally{if(scope.current===identity()&&!transport.current?.signal.aborted)setMarginState('ready');}
+  };
+  useEffect(()=>{
+    if(!isOpen || !statement || !autoRunFromStatement || autoStarted.current)return;
+    autoStarted.current=true;
+    setStep(2);
+    void calculate({preventDefault:()=>{}} as React.FormEvent);
+    void loadStatementMargin();
+  },[isOpen,statement,autoRunFromStatement]);
+
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> =>
     portabilityQuoteCondition(row, parseCurrency(row.sourceForm?.installmentFaceValue ?? form.installmentFaceValue));
   const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
@@ -349,6 +397,24 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     }
   };
 
+  const chosenMargin=selectedMargin==null?null:marginOffers[selectedMargin]||null;
+  const messageForWhatsApp=statement?inssStatementWhatsAppText(statement.customer.name,chosenMargin,selectedRows,(row)=>{
+    const quoted=conditionFor(row as SimulationRow);
+    return {installment:quoted.installment,rate:quoted.rate};
+  }):'';
+  const marginBest=marginOffers.map((quote,index)=>({...quote,index}))
+    .filter((quote,index,all)=>all.findIndex(item=>item.institution===quote.institution)===index);
+  const marginOther=marginOffers.map((quote,index)=>({...quote,index}))
+    .filter(quote=>!marginBest.some(best=>best.index===quote.index));
+  const forecast=statement?inssProjectedMargin(statement.income,statement.loanMargin,statement.loanBlocked):null;
+  const copyToWhatsApp=async()=>{
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Área de transferência indisponível.');
+      await navigator.clipboard.writeText(messageForWhatsApp);
+      setShareStatus('Resumo copiado! Cole na conversa do WhatsApp.');
+    }catch{setShareStatus('Selecione e copie manualmente o texto do resumo abaixo.');}
+  };
+  if(!isOpen)return null;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
       <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">INSS · Portabilidade + Refinanciamento</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
