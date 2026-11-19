@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { InssStatement, ReviewedInssStatement } from '../../lib/inssStatement';
 import { MAX_SIMULATION_CONTRACTS } from '../../lib/multiContractSimulation';
 import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
+import { parseCurrency } from '../../lib/utils';
 import { StorageService } from '../../services/storageService';
 import { NossaFintechPortRefinSimulationModal } from './NossaFintechPortRefinSimulationModal';
 import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
@@ -120,7 +121,7 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
           <button className={button} disabled={!illiterate || !chosen.length} onClick={() => setFlow('multi')}>Comparar portabilidade + refinanciamento ({chosen.length})</button>
           <button className={button} disabled={!illiterate || chosen.length !== 1} onClick={() => setFlow('2')}>Portabilidade individual</button>
           <button className={button} disabled={!illiterate || !chosen.length} onClick={() => setFlow('3')}>Consultar refinanciamento</button>
-          <button className={button} disabled={!illiterate || Number(statement.loanMargin.replace(/\./g, '').replace(',', '.')) <= 0} onClick={() => setFlow('1')}>Simular novo pela margem atual</button>
+          <button className={button} disabled={!illiterate || !(Number(parseCurrency(statement.loanMargin)) > 0) || statement.loanBlocked === true} onClick={() => setFlow('1')}>Simular novo pela margem atual</button>
           {projected && <button className={button} disabled={!illiterate || projected.loanBlocked} onClick={() => setFlow('increase')}>Prévia NOVO · aumento R$ 42,00 (2027)</button>}
         </div>
       </>}
