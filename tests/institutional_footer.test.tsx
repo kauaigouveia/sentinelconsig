@@ -15,21 +15,22 @@ beforeEach(() => { localStorage.clear(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Rodapé institucional autenticado', () => {
-  it('shows real revision, build date and current authenticated context', () => {
+  it('shows semantic version with revision only in tooltip and current authenticated context', () => {
     render(footer());
     expect(screen.getByText('© 2026 Sentinel Consig.')).toBeTruthy();
-    expect(screen.getByText('Build aaaaaaaa')).toBeTruthy();
-    expect(screen.getByTitle('Revisão ' + sha)).toBeTruthy();
+    expect(screen.getByText('Versão 1.0.0')).toBeTruthy();
+    expect(screen.getByTitle('Versão 1.0.0 · Revisão ' + sha.slice(0, 8))).toBeTruthy();
     expect(screen.getByText('Empresa sintética A')).toBeTruthy();
     expect(screen.getByText('Operadora sintética')).toBeTruthy();
-    expect(screen.getByTitle(/Build:/).getAttribute('datetime')).toBe(metadata.builtAt);
+    expect(document.querySelector('.institutional-footer-build-date')).toBeNull();
   });
-  it('does not invent a version or date when metadata is absent or invalid', () => {
+  it('still shows product version even when technical build metadata is absent or invalid', () => {
     const { rerender } = render(footer('Empresa A', 'Pessoa A', { revision: null as any, builtAt: null as any }));
-    expect(screen.queryByText(/Build /)).toBeNull();
+    expect(screen.getByText('Versão 1.0.0')).toBeTruthy();
     expect(document.querySelector('.institutional-footer-build-date')).toBeNull();
     rerender(footer('Empresa A', 'Pessoa A', { revision: '0.0.0', builtAt: 'invalid' }));
-    expect(screen.queryByText(/Build /)).toBeNull();
+    expect(screen.getByTitle('Versão 1.0.0')).toBeTruthy();
+    expect(screen.getByText('Versão 1.0.0')).toBeTruthy();
     expect(document.querySelector('.institutional-footer-build-date')).toBeNull();
   });
   it('reflects company and user changes without loading them again', () => {

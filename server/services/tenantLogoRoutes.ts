@@ -23,6 +23,43 @@ export interface TenantLogoRouteDependencies {
 
 type ImageMime = keyof typeof ACCEPTED_MIMES;
 
+type UploadStage = 'session' | 'tenant' | 'parse' | 'azure_upload';
+
+/**
+ * Report safe diagnostic categories only. Never serialize Azure errors,
+ * connection strings, SAS tokens, request URLs or private blob contents.
+ */
+export function classifyLogoUploadFailure(error: unknown): {
+  category: string;
+  status: number | null;
+  providerCode: string | null;
+} {
+  const e = error && typeof error === 'object' ? error as {
+    code?: unknown;
+    statusCode?: unknown;
+    details?: { errorCode?: unknown };
+    cause?: { code?: unknown };
+    message?: unknown;
+  } : {};
+  const status = typeof e.statusCode === 'number' && e.statusCode >= 400 && e.statusCode <= 599
+    ? e.statusCode : null;
+  const rawCode = [e.details?.errorCode, e.code, e.cause?.code]
+    .find(v => typeof v === 'string' && /^[A-Za-z0-9_-]{2,64}$/.test(v)) as string | undefined;
+  const providerCode = rawCode ?? null;
+  let category = 'unknown';
+  if (providerCode && /Authentication|Authorization|InvalidAccount|AccountKey/i.test(providerCode) || status === 401 || status === 403)
+    category = 'credentials_or_permissions';
+  else if (providerCode && /ContainerNotFound|BlobNotFound/i.test(providerCode) || status === 404)
+    category = 'storage_resource_missing';
+  else if (providerCode && /ENOTFOUND|EAI_AGAIN|ECONN|ETIMEDOUT|REQUEST_SEND_ERROR|AbortError|Timeout/i.test(providerCode))
+    category = 'network';
+  else if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504)
+    category = 'storage_service_unavailable';
+  else if (typeof e.message === 'string' && e.message.includes('AZURE_STORAGE_CONNECTION_STRING is missing'))
+    category = 'missing_configuration';
+  return { category, status, providerCode };
+}
+
 export function parseTenantLogoUpload(body: unknown):
   | { ok: true; data: Buffer; mime: ImageMime; extension: string }
   | { ok: false; reason: string } {
@@ -77,6 +114,8 @@ export function registerTenantLogoRoutes(app: Express, deps: TenantLogoRouteDepe
 
   app.post('/api/upload/logo', uploadLimit, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
+    let stage: UploadStage = 'session';
+    const started = Date.now();
     try {
       const session = await deps.getAuthSession(req);
       if (!session?.user) return res.status(401).json({ error: 'Entre na plataforma para enviar a logomarca.' });
@@ -94,21 +133,37 @@ export function registerTenantLogoRoutes(app: Express, deps: TenantLogoRouteDepe
       if (!tenantId || !SAFE_TENANT_ID.test(tenantId))
         return res.status(400).json({ error: 'Empresa ativa não identificada.' });
 
+      stage = 'tenant';
       if (!(await deps.tenantExists(tenantId)))
         return res.status(404).json({ error: 'Empresa não encontrada ou inativa.' });
 
+      stage = 'parse';
       const parsed = parseTenantLogoUpload(req.body);
       if (!parsed.ok) return res.status(400).json({ error: parsed.reason });
 
       // Do not trust client-side filenames; use a random, unique stored name.
       const { blobPath } = buildLogoBlobPath(tenantId, `${crypto.randomUUID()}.${parsed.extension}`);
       const storedName = blobPath.slice(blobPath.lastIndexOf('/') + 1);
+      stage = 'azure_upload';
       await (deps.upload ?? uploadBlob)(blobPath, parsed.data, parsed.mime);
       const logoUrl = `/api/public/logos/${tenantId}/${storedName}`;
       return res.status(201).json({ logoUrl });
     } catch (err) {
-      logger.error({ errorCode: 'WHITE_LABEL_LOGO_UPLOAD_FAILED' }, '[WHITELABEL] Upload failed');
-      return res.status(503).json({ error: 'Não foi possível armazenar a logomarca. Tente novamente.' });
+      const diagnosis = classifyLogoUploadFailure(err);
+      logger.error({
+        errorCode: 'WHITE_LABEL_LOGO_UPLOAD_FAILED',
+        stage,
+        storageCategory: diagnosis.category,
+        storageStatus: diagnosis.status,
+        storageCode: diagnosis.providerCode,
+        durationMs: Date.now() - started,
+      }, '[WHITELABEL] Upload failed');
+      const responseStatus = stage === 'azure_upload' ? 503 : 500;
+      return res.status(responseStatus).json({
+        error: stage === 'azure_upload'
+          ? 'Não foi possível conectar ao armazenamento da logomarca. Contate o administrador.'
+          : 'Erro interno ao preparar o upload. Contate o administrador.',
+      });
     }
   });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { parseTenantLogoUpload, registerTenantLogoRoutes } from '../server/services/tenantLogoRoutes';
+import { classifyLogoUploadFailure, parseTenantLogoUpload, registerTenantLogoRoutes } from '../server/services/tenantLogoRoutes';
 
 const PNG = (() => {
   const buffer = Buffer.alloc(33);
@@ -32,6 +32,16 @@ function fixture(user: null | { role: string; tenantId?: string | null; effectiv
 }
 
 describe('White-Label tenant logo upload and public serving', () => {
+  it('classifies storage failures without logging keys or raw provider messages', () => {
+    expect(classifyLogoUploadFailure({ statusCode: 403, code: 'AuthorizationPermissionMismatch', message: 'secret-key' }))
+      .toEqual({ category: 'credentials_or_permissions', status: 403, providerCode: 'AuthorizationPermissionMismatch' });
+    expect(classifyLogoUploadFailure({ statusCode: 404, details: { errorCode: 'ContainerNotFound' } }).category)
+      .toBe('storage_resource_missing');
+    expect(classifyLogoUploadFailure({ code: 'ETIMEDOUT', message: 'Authorization: secret-key' }).category)
+      .toBe('network');
+    expect(JSON.stringify(classifyLogoUploadFailure({ message: 'Authorization: secret-key' })))
+      .not.toContain('secret-key');
+  });
   it('rejects uploads from visitors and unauthorized operators', async () => {
     const unauthed = fixture(null);
     const res = await request(unauthed.app).post('/api/upload/logo').send(UPLOAD);

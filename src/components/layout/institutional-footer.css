@@ -23,7 +23,7 @@
 }
 .institutional-footer-identity { flex-shrink: 0; }
 .institutional-footer-brand { color: var(--text-primary); white-space: nowrap; font-weight: 600; }
-.institutional-footer-build, .institutional-footer-build-date, .institutional-footer-clock { white-space: nowrap; }
+.institutional-footer-version, .institutional-footer-clock { white-space: nowrap; }
 .institutional-footer-user, .institutional-footer-company { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
 .institutional-footer-company { font-weight: 600; }
 .institutional-footer-clock { font-variant-numeric: tabular-nums; }
@@ -44,15 +44,15 @@
 .institutional-footer-theme:hover { border-color: var(--border-default); color:var(--link); background: var(--bg-surface-elevated); }
 .institutional-footer-theme:focus-visible { outline: 2px solid var(--primary-main); outline-offset: 2px; }
 @media (max-width: 1100px) {
-  .institutional-footer-build-date, .institutional-footer-user { display: none; }
+  .institutional-footer-user { display: none; }
 }
 @container (max-width: 660px) {
-  .institutional-footer-build, .institutional-footer-build-date, .institutional-footer-user, .institutional-footer-date { display: none; }
+  .institutional-footer-user, .institutional-footer-date { display: none; }
   .institutional-footer-company { max-width: 90px; }
 }
 @media (max-width: 640px) {
   .sentinel-institutional-footer { height: 34px; min-height: 34px; padding: 0 8px; gap: 8px; font-size: 9px; }
-  .institutional-footer-build, .institutional-footer-date { display: none; }
+  .institutional-footer-date { display: none; }
   .institutional-footer-context { gap: 7px; }
   .institutional-footer-company { max-width: 90px; }
 }

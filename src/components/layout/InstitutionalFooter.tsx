@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { publicBuildMetadata, PublicBuildMetadata } from '../../lib/buildMetadata';
+import { version as appVersion } from '../../../package.json';
 import './institutional-footer.css';
 
 interface InstitutionalFooterProps {
@@ -22,19 +23,15 @@ export function InstitutionalFooter({ userName, companyName, build = publicBuild
     return () => window.clearInterval(interval);
   }, []);
   const revision = build.revision?.match(/^([a-f0-9]{40})(-dirty)?$/i);
-  const builtAt = build.builtAt ? new Date(build.builtAt) : null;
-  const validBuildDate = builtAt && Number.isFinite(builtAt.getTime());
+  const technicalRevision = revision ? revision[1].slice(0, 8) : null;
   const themeLabel = isDark ? 'Ativar tema claro' : 'Ativar tema escuro';
 
   return <footer className="sentinel-institutional-footer" aria-label="Informações institucionais">
     <div className="institutional-footer-identity">
       <span className="institutional-footer-brand">© 2026 Sentinel Consig.</span>
-      {revision && <span className="institutional-footer-build" title={`Revisão ${build.revision}`}>
-        Build {revision[1].slice(0, 8)}{revision[2] ? ' · local' : ''}
-      </span>}
-      {validBuildDate && <time className="institutional-footer-build-date" dateTime={builtAt.toISOString()} title={`Build: ${builtAt.toLocaleString('pt-BR')}`}>
-        {calendar.format(builtAt)}
-      </time>}
+      <span className="institutional-footer-version" title={technicalRevision ? `Versão ${appVersion} · Revisão ${technicalRevision}` : `Versão ${appVersion}`}>
+        Versão {appVersion}
+      </span>
     </div>
     <div className="institutional-footer-context">
       <span className="institutional-footer-user" title={userName}>{userName}</span>
