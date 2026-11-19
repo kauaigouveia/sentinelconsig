@@ -3,7 +3,7 @@ import { parseCurrency } from './utils';
 /**
  * Cenário comercial informativo baseado no PLOA 2027, não na margem averbável.
  * A previsão do salário mínimo de R$ 1.741 ainda pode mudar.
- * Jamais somar este valor à margem atual ou enviá-lo à simulação bancária como margem disponível.
+ * Jamais somar este valor à margem atual ou declará-lo disponível. Em cálculo bancário de cenário futuro, identificar a operação como hipotética.
  */
 export const INSS_PROJECTED_2027 = Object.freeze({
   sourceWage: 1621.00,
