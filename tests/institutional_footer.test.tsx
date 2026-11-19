@@ -15,22 +15,23 @@ beforeEach(() => { localStorage.clear(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Rodapé institucional autenticado', () => {
-  it('shows semantic version with revision only in tooltip and current authenticated context', () => {
+  it('exibe copyright, versão sem build, data real e contexto da sessão', () => {
     render(footer());
-    expect(screen.getByText('© 2026 Sentinel Consig.')).toBeTruthy();
-    expect(screen.getByText('Versão 1.0.0')).toBeTruthy();
+    expect(screen.getByText('© 2026')).toBeTruthy();
+    expect(screen.getByText('Sentinel Consig.')).toBeTruthy();
+    expect(screen.getByText('versão: 1.0.0')).toBeTruthy();
     expect(screen.getByTitle('Versão 1.0.0 · Revisão ' + sha.slice(0, 8))).toBeTruthy();
     expect(screen.getByText('Empresa sintética A')).toBeTruthy();
     expect(screen.getByText('Operadora sintética')).toBeTruthy();
-    expect(document.querySelector('.institutional-footer-build-date')).toBeNull();
+    expect(document.querySelector('.institutional-footer-build-date')?.textContent).toMatch(/^de \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/);
   });
   it('still shows product version even when technical build metadata is absent or invalid', () => {
     const { rerender } = render(footer('Empresa A', 'Pessoa A', { revision: null as any, builtAt: null as any }));
-    expect(screen.getByText('Versão 1.0.0')).toBeTruthy();
+    expect(screen.getByText('versão: 1.0.0')).toBeTruthy();
     expect(document.querySelector('.institutional-footer-build-date')).toBeNull();
     rerender(footer('Empresa A', 'Pessoa A', { revision: '0.0.0', builtAt: 'invalid' }));
     expect(screen.getByTitle('Versão 1.0.0')).toBeTruthy();
-    expect(screen.getByText('Versão 1.0.0')).toBeTruthy();
+    expect(screen.getByText('versão: 1.0.0')).toBeTruthy();
     expect(document.querySelector('.institutional-footer-build-date')).toBeNull();
   });
   it('reflects company and user changes without loading them again', () => {
@@ -72,6 +73,8 @@ describe('Rodapé institucional autenticado', () => {
     const css = readFileSync('src/components/layout/institutional-footer.css', 'utf8');
     expect(css).not.toMatch(/position:\s*(?:fixed|absolute)|z-index/);
     expect(css).toContain('max-width: 640px');
+    expect(css).toContain('border-left: 18px solid #1aa4b5');
+    expect(css).toContain('background: #f9fafb');
   });
 });
 
