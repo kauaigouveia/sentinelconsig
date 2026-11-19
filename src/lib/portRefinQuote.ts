@@ -32,7 +32,7 @@ export function portabilityQuoteCondition(row: QuoteRow, fallbackInstallment?: n
     : row.provider;
   const installment = row.data?.installment ?? row.data?.refinancing?.installmentValue ?? fallbackInstallment;
   const rate = row.provider === 'FINANTO' ? row.table?.amount
-    : ['FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) ? row.data?.rate ?? null
+    : ['FACTA','DAYCOVAL','C6','PARANA','BMG','HAPPY'].includes(row.provider) ? row.data?.rate ?? null
     : nossaFintechTableRate(row.table || {});
   const parsedRate = typeof rate === 'number' ? rate : Number(String(rate ?? '').replace(',', '.'));
   const breakdown=row.provider==='DAYCOVAL' ? buildPortRefinBreakdown(row.installmentChanges,installment) : undefined;
