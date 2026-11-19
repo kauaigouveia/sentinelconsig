@@ -1,5 +1,4 @@
-/* Barra institucional inspirada no layout claro e compacto de referência.
- * Contraste fixo e independente do tema principal do sistema. */
+/* Barra institucional compacta, com cores adaptadas ao tema ativo. */
 .sentinel-institutional-footer {
   container-type: inline-size;
   display: flex;
@@ -83,6 +82,41 @@
   outline: 2px solid #1689a8;
   outline-offset: 1px;
 }
+
+/* Tema escuro do Sentinel. O ThemeProvider alterna a classe .dark no html;
+ * as cores da barra acompanham essa classe sem alterar espaçamento ou estrutura. */
+.dark .sentinel-institutional-footer {
+  background: #11212d;
+  border-top-color: #253745;
+  border-bottom-color: #253745;
+  border-right-color: #253745;
+  color: #9ba8ab;
+}
+.dark .institutional-footer-copyright,
+.dark .institutional-footer-version,
+.dark .institutional-footer-build-date,
+.dark .institutional-footer-user,
+.dark .institutional-footer-company,
+.dark .institutional-footer-clock {
+  color: #9ba8ab;
+}
+.dark .institutional-footer-brand {
+  color: #71dbe5;
+}
+.dark .institutional-footer-user svg,
+.dark .institutional-footer-company svg,
+.dark .institutional-footer-clock svg {
+  color: #9ba8ab;
+}
+.dark .institutional-footer-theme {
+  color: #ccd0cf;
+}
+.dark .institutional-footer-theme:hover {
+  background: #253745;
+  color: #71dbe5;
+  border-color: #4a5c6a;
+}
+
 @container (max-width: 980px) {
   .institutional-footer-build-date { display: none; }
 }
