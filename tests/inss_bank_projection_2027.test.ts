@@ -18,5 +18,10 @@ it('projeta bruto a 42 por cada banco com taxa vigente e não inventa valores',(
  expect(future).toContain('PRÉVIA 2027');
  expect(future).toContain('não liberado');
  expect(future).not.toContain('Valor estimado a liberar:');
- expect(future).toContain('sem consulta de margem futura aos bancos');
+ expect(future).toContain('simulações em cenário hipotético sem averbabilidade');
+ const api=inssStatementWhatsAppText('Pessoa',{
+  ...offers[0],amount:1900,installment:42,scenario:'PROJECTED_2027',calculatedByApi:true
+ },[],()=>({}));
+ expect(api).toContain('Valor hipotético calculado pela API');
+ expect(api).not.toContain('Bruto teórico pela fórmula Price');
 });
