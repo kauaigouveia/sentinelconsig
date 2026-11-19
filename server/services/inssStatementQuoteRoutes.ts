@@ -7,9 +7,11 @@ import { hasPermission } from '../../src/lib/permissions.js';
 import type { Role } from '../../src/types/index.js';
 import { PartnerSimulationService } from './partnerSimulationService.js';
 import { paidFromTerms, portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
+import { inssProjectedMargin, INSS_PROJECTED_2027 } from '../../src/lib/inssProjectedMargin.js';
 
-// Consulta cotação: nunca registra proposta, pede autorização bancária ou simula
-// o reajuste futuro como margem efetivamente disponível.
+// Consulta de condições, sem registro de proposta ou contratação.
+ // PROJECTED_NEW é um cenário explicitamente hipotético de cálculo das APIs
+ // (parcela adicional), jamais é representado como margem averbável/vigente.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 40,
   standardHeaders: true, legacyHeaders: false,
@@ -34,7 +36,7 @@ export function registerInssStatementQuoteRoutes(
     const raw = req.body || {};
     if (raw.confirmedClientAuthorization !== true)
       return res.status(400).json({ error: 'Confirme a autorização do cliente antes de consultar as instituições.' });
-    if (!['NEW', 'PORT_REFIN'].includes(raw.operation) ||
+    if (!['NEW', 'PORT_REFIN', 'PROJECTED_NEW'].includes(raw.operation) ||
         !['YES', 'NO'].includes(raw.illiterate) ||
         typeof raw.loanBlocked !== 'boolean' ||
         typeof raw.legalRepresentative !== 'boolean')
@@ -54,6 +56,10 @@ export function registerInssStatementQuoteRoutes(
     if (raw.loanBlocked) return res.json({ offers: [], notices: ['Benefício bloqueado para empréstimos no extrato.'] });
     if (raw.operation === 'NEW' && !positive(margin))
       return res.json({ offers: [], notices: ['Margem atual insuficiente para empréstimo novo.'] });
+    const projectedScenario=raw.operation==='PROJECTED_NEW';
+    const projection=projectedScenario?inssProjectedMargin(income,margin,raw.loanBlocked):null;
+    if(projectedScenario&&(!projection||projection.loanBlocked||raw.forecastYear!==INSS_PROJECTED_2027.forecastYear))
+      return res.status(422).json({error:'Cenário futuro não aplicável: confira renda do extrato, bloqueio e ano da projeção.'});
 
     const contract = raw.operation === 'PORT_REFIN' ? raw.contract : null;
     if (raw.operation === 'PORT_REFIN' && (
@@ -67,7 +73,9 @@ export function registerInssStatementQuoteRoutes(
 
     const input = {
       product: 'INSS',
-      operation: raw.operation,
+      operation: projectedScenario ? 'NEW' : raw.operation,
+      projectedScenario: projectedScenario ? 'FORECAST_2027' : undefined,
+      nonBindingQuoteOnly: true,
       cpf,
       name: safeText(raw.name, 200),
       phone: '',
@@ -76,7 +84,9 @@ export function registerInssStatementQuoteRoutes(
       benefitType,
       mode: 'Payment',
       term,
-      value: raw.operation === 'NEW' ? margin : contract.installment,
+      // O valor hipotético de R$42 é solicitado somente como cálculo de parcela,
+      // identificado como FUTURO: não altera a margem atual declarada.
+      value: projectedScenario ? INSS_PROJECTED_2027.addedInstallment : raw.operation === 'NEW' ? margin : contract.installment,
       income: income || undefined,
       legalRepresentative: raw.legalRepresentative,
       illiterate: raw.illiterate === 'YES',
@@ -114,14 +124,19 @@ export function registerInssStatementQuoteRoutes(
           rate: positive(Number(row.rate)) ? Number(row.rate) : null,
           term: validTerm(Number(row.term)) ? Number(row.term) : null,
           source: row.quoteKind === 'ESTIMATE' ? 'PLANILHA' : 'API',
-          review: !!row.policyReview || row.quoteKind === 'ESTIMATE',
+          review: projectedScenario || !!row.policyReview || row.quoteKind === 'ESTIMATE',
+          ...(projectedScenario ? {scenario:'PROJECTED_2027',nonBinding:true,notAvailableMargin:true}:{}),
         }));
       const notices = (Array.isArray(result.rows) ? result.rows : [])
         .filter((row: any) => ['PENDING','ERROR'].includes(row?.state) && typeof row.message === 'string')
         .slice(0, 25)
         .map((row: any) => `${safeText(row.institution || row.provider, 40)}: ${safeText(row.message, 220)}`);
       if (!offers.length && typeof result.message === 'string' && result.message.trim()) notices.push(safeText(result.message, 220));
-      return res.json({ offers, notices, operation: raw.operation, contractNumberSuffix: contract ? String(contract.contractNumber).slice(-4) : undefined });
+      return res.json({ offers, notices, operation: raw.operation, ...(projectedScenario ? {
+        scenario:'PROJECTED_2027',installment:INSS_PROJECTED_2027.addedInstallment,
+        officialMarginAvailable:false,
+        warning:'Cálculo hipotético de parcela futura. Não é margem Dataprev liberada, proposta ou aprovação.'
+      }:{}), contractNumberSuffix: contract ? String(contract.contractNumber).slice(-4) : undefined });
     } catch {
       return res.status(502).json({ error: 'Não foi possível concluir a consulta bancária. Verifique a conexão e tente novamente.' });
     }
