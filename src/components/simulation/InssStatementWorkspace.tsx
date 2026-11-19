@@ -53,6 +53,7 @@ export default function InssStatementWorkspace({ scope, onClose }: Props) {
     const controller = new AbortController();
     readController.current = controller;
     setReading(true);
+    setSimulating(false);
     setStatement(undefined);
     setIlliterate(undefined);
     setClientAuthorized(false);
