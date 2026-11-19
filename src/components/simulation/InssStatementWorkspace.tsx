@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { InssStatement, ReviewedInssStatement } from '../../lib/inssStatement';
 import { MAX_SIMULATION_CONTRACTS } from '../../lib/multiContractSimulation';
 import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
+import { simulateInssStatementOnUpload, type StatementAutoQuotes } from '../../lib/inssStatementAutoQuotes';
 import { parseCurrency } from '../../lib/utils';
 import { StorageService } from '../../services/storageService';
 import { NossaFintechPortRefinSimulationModal } from './NossaFintechPortRefinSimulationModal';
@@ -11,6 +12,7 @@ type Props = Pick<React.ComponentProps<typeof NossaFintechPortRefinSimulationMod
   Pick<React.ComponentProps<typeof FinantoInssSimulationModal>, 'partners' | 'onSuccess'> & { scope: string };
 const button = 'rounded-lg border border-[var(--field-border)] px-3 py-2 text-sm disabled:opacity-50';
 const money = (value: string) => value ? Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informada';
+const amount = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function InssStatementWorkspace({ scope, partners, happyEnabled, onClose, onSuccess, onContinue }: Props) {
   const [statement, setStatement] = useState<InssStatement>();
@@ -18,6 +20,8 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
   const [selected, setSelected] = useState<number[]>([]);
   const [flow, setFlow] = useState<'multi' | '1' | '2' | '3' | 'increase'>();
   const [loading, setLoading] = useState(false);
+  const [automaticQuotes, setAutomaticQuotes] = useState<StatementAutoQuotes>();
+  const [automaticStatus, setAutomaticStatus] = useState<'idle' | 'loading' | 'ready'>('idle');
   const [error, setError] = useState('');
   const activeRead = useRef<AbortController | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -39,13 +43,25 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
     activeRead.current?.abort();
     const controller = new AbortController();
     activeRead.current = controller;
-    setLoading(true); setError(''); setStatement(undefined); setSelected([]); setIlliterate(undefined);
+    setLoading(true); setError(''); setStatement(undefined); setSelected([]); setIlliterate(undefined); setAutomaticQuotes(undefined); setAutomaticStatus('idle');
     try {
       const { readInssStatement } = await import('../../lib/readInssStatement');
       const result = await readInssStatement(file, controller.signal);
       if (controller.signal.aborted || !withinScope()) return;
       setStatement(result);
       setSelected(result.contracts.length <= MAX_SIMULATION_CONTRACTS ? result.contracts.map((_, i) => i) : []);
+      setAutomaticStatus('loading');
+      void simulateInssStatementOnUpload(result, controller.signal)
+        .then(quotes => {
+          if (controller.signal.aborted || !withinScope()) return;
+          setAutomaticQuotes(quotes);
+          setAutomaticStatus('ready');
+        })
+        .catch(() => {
+          if (controller.signal.aborted || !withinScope()) return;
+          setAutomaticQuotes({ marginQuotes: [], portabilityQuotes: [], notes: ['Não foi possível concluir as simulações automáticas.'] });
+          setAutomaticStatus('ready');
+        });
     } catch (reason) {
       if (!controller.signal.aborted && withinScope()) {
         const msg = reason instanceof Error ? reason.message : '';
@@ -82,7 +98,7 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
       <label className="block text-sm font-semibold">Extrato da consulta em PDF
         <input type="file" accept=".pdf,application/pdf" className="mt-2 block max-w-full" onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void read(file); }}/>
       </label>
-      <p className="text-sm text-[var(--text-secondary)]">O arquivo é lido neste navegador. Confira os dados e escolha o que simular.</p>
+      <p className="text-sm text-[var(--text-secondary)]">O PDF é lido neste navegador. Após a leitura, o sistema calcula a margem e as portabilidades por planilha, sem criar proposta ou contratar.</p>
       {loading && <p role="status">Lendo extrato…</p>}{error && <p role="alert">{error}</p>}
       {statement && <>
         <section><h3 className="font-semibold">{statement.customer.name || 'Benefício INSS'}</h3>
@@ -98,6 +114,44 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
             <p className="mt-2 text-xs text-[var(--warning-text)]">Renda identificada: R$ 1.621,00. Projeção do reajuste para R$ 1.741,00. O adicional NÃO compõe a margem atual, não está liberado pela Dataprev e não autoriza proposta.</p>
             {projected.loanBlocked && <p className="mt-2 font-semibold text-[var(--warning-text)]">Benefício bloqueado para empréstimos no extrato; a prévia não libera a contratação.</p>}
           </aside>}
+        </section>
+        <section className="space-y-3 rounded-xl border border-[var(--field-border)] p-4" aria-label="Simulações automáticas do extrato">
+          <h3 className="font-semibold">Simulações automáticas do extrato</h3>
+          {automaticStatus === 'loading' && <p role="status" className="text-sm">Simulando margem NOVO e portabilidades elegíveis dos contratos do extrato…</p>}
+          <div className="space-y-2 text-sm">
+            <h4 className="font-semibold">NOVO — margem atual: {money(statement.loanMargin)}</h4>
+            {statement.loanBlocked && <p>Benefício bloqueado para novos empréstimos no extrato.</p>}
+            {automaticStatus === 'ready' && !automaticQuotes?.marginQuotes.length && <p>Sem cotação de NOVO disponível para a margem atual.</p>}
+            {automaticQuotes?.marginQuotes.length ? <details open className="rounded-lg border border-[var(--field-border)] p-3">
+              <summary className="cursor-pointer font-semibold">Cotações pela margem atual ({automaticQuotes.marginQuotes.length})</summary>
+              <div className="mt-2 max-h-52 space-y-2 overflow-auto">
+                {automaticQuotes.marginQuotes.map((quote, i) => <div key={i} className="flex flex-wrap justify-between gap-2 border-b border-[var(--field-border)] pb-1">
+                  <span>{quote.table}</span><strong>Valor a liberar estimado: {amount(quote.amount)}</strong>
+                </div>)}
+              </div>
+            </details> : null}
+          </div>
+          <div className="space-y-2 text-sm">
+            <h4 className="font-semibold">Portabilidades dos contratos ({statement.contracts.length})</h4>
+            {automaticStatus === 'ready' && !automaticQuotes?.portabilityQuotes.length && <p>Nenhuma cotação de portabilidade elegível foi encontrada nas planilhas configuradas.</p>}
+            {automaticQuotes?.portabilityQuotes.length ? <details open className="rounded-lg border border-[var(--field-border)] p-3">
+              <summary className="cursor-pointer font-semibold">Cotações de portabilidade ({automaticQuotes.portabilityQuotes.length})</summary>
+              <div className="mt-2 max-h-72 space-y-2 overflow-auto">
+                {[...automaticQuotes.portabilityQuotes].sort((a,b) => a.contractIndex-b.contractIndex || a.destination.localeCompare(b.destination) || b.amount-a.amount).map((quote,i) =>
+                  <div key={i} className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--field-border)] pb-2">
+                    <div><strong>Contrato {quote.contractIndex+1} · Banco {quote.originBank} → {quote.destination}</strong>
+                      <div className="text-xs text-[var(--text-secondary)]">{quote.table} · {quote.term} meses{quote.rate != null ? ' · ' + quote.rate.toLocaleString('pt-BR',{maximumFractionDigits:4}) + '% a.m.' : ''}</div>
+                    </div>
+                    <strong>Troco estimado: {amount(quote.amount)}</strong>
+                  </div>)}
+              </div>
+            </details> : null}
+          </div>
+          {automaticQuotes?.notes.length ? <details className="text-xs text-[var(--text-secondary)]">
+            <summary className="cursor-pointer">Instituições sem cálculo ({automaticQuotes.notes.length})</summary>
+            <div className="mt-2 space-y-1">{automaticQuotes.notes.map((note,i)=><p key={i}>{note}</p>)}</div>
+          </details> : null}
+          <p className="text-xs text-[var(--text-secondary)]">Resultados de planilhas são estimativas sujeitas à vigência, conferência comercial e validação do banco. Não são propostas aprovadas.</p>
         </section>
         <fieldset className="rounded-lg border border-[var(--field-border)] p-3">
           <legend className="px-1 font-semibold">O cliente é analfabeto?</legend>
