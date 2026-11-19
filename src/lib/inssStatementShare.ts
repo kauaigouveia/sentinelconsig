@@ -7,6 +7,7 @@ export type SharedMarginQuote={
   installment:number|null; term:number|null; rate:number|null;
   source:'API'|'PLANILHA';
   scenario?:'PROJECTED_2027';
+  calculatedByApi?:boolean;
 };
 export type SharedPortQuote={
   provider:string; contractLabel?:string; unified?:boolean;
@@ -31,12 +32,16 @@ export function inssStatementWhatsAppText(
     selectedMargin.scenario==='PROJECTED_2027'?'*NOVO · PRÉVIA 2027 (SEM MARGEM LIBERADA)*':'*NOVO · MARGEM ATUAL*',
     'Banco: '+selectedMargin.institution,
     'Tabela: '+selectedMargin.table,
-    (selectedMargin.scenario==='PROJECTED_2027'?'Valor bruto teórico, não liberado: ':'Valor estimado a liberar: ')+currency(selectedMargin.amount),
+    (selectedMargin.scenario==='PROJECTED_2027'
+      ? selectedMargin.calculatedByApi?'Valor hipotético calculado pela API, não liberado: ':'Bruto teórico pela fórmula Price, não liberado: '
+      : 'Valor estimado a liberar: ')+currency(selectedMargin.amount),
     'Parcela: '+currency(selectedMargin.installment),
     'Prazo: '+(selectedMargin.term?selectedMargin.term+' meses':'Não informado'),
     'Taxa: '+formatMonthlyRate(selectedMargin.rate),
     selectedMargin.scenario==='PROJECTED_2027'
-      ? 'Fonte: taxa/prazo da cotação bancária vigente, reaplicados na fórmula Price; NÃO é cotação futura, aprovação ou valor líquido.'
+      ? (selectedMargin.calculatedByApi
+          ? 'Fonte: API bancária em modo de simulação hipotética; não é aprovação, margem liberada ou contratação.'
+          : 'Fonte: taxa/prazo vigentes, reaplicados na fórmula Price; NÃO é cotação futura, aprovação ou valor líquido.')
       : selectedMargin.source==='PLANILHA'?'Fonte: planilha (estimativa)':'Fonte: consulta bancária',
   );
   for(const [index,row]of selectedPort.entries()){
@@ -59,7 +64,7 @@ export function inssStatementWhatsAppText(
     }
   }
   parts.push('','*Importante:* Valores para conferência, sujeitos às regras vigentes, autorização e aprovação bancária. '+(selectedMargin?.scenario==='PROJECTED_2027'
-    ? 'A parcela futura de R$ 42,00 AINDA NÃO está liberada; projeção teórica, sem consulta de margem futura aos bancos.'
+    ? 'A parcela futura de R$ 42,00 AINDA NÃO está liberada; simulações em cenário hipotético sem averbabilidade.'
     : 'A margem projetada de 2027 não foi incluída.'));
   return parts.filter(Boolean).join('\n');
 }
