@@ -1,3 +1,5 @@
+/* Barra institucional inspirada no layout claro e compacto de referência.
+ * Contraste fixo e independente do tema principal do sistema. */
 .sentinel-institutional-footer {
   container-type: inline-size;
   display: flex;
@@ -5,57 +7,110 @@
   justify-content: space-between;
   flex-shrink: 0;
   gap: 16px;
-  height: 36px;
-  min-height: 36px;
-  padding: 0 20px;
-  border-top: 1px solid var(--border-default);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: 10px;
-  line-height: 1.3;
+  height: 40px;
+  min-height: 40px;
+  min-width: 0;
+  padding: 0 9px 0 10px;
+  border-top: 1px solid #dce2e8;
+  border-bottom: 1px solid #dce2e8;
+  border-left: 18px solid #1aa4b5;
+  border-right: 3px solid #273746;
+  background: #f9fafb;
+  color: #8190a0;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.25;
 }
+
 .institutional-footer-identity,
 .institutional-footer-context {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 12px;
+  gap: 4px;
+  white-space: nowrap;
 }
-.institutional-footer-identity { flex-shrink: 0; }
-.institutional-footer-brand { color: var(--text-primary); white-space: nowrap; font-weight: 600; }
-.institutional-footer-version, .institutional-footer-clock { white-space: nowrap; }
-.institutional-footer-user, .institutional-footer-company { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
-.institutional-footer-company { font-weight: 600; }
+
+.institutional-footer-identity { flex: 0 1 auto; overflow: hidden; }
+.institutional-footer-context { flex: 0 0 auto; gap: 13px; margin-left: auto; }
+.institutional-footer-copyright { color: #7e8b9c; flex-shrink: 0; }
+.institutional-footer-brand { color: #167da5; font-weight: 600; flex-shrink: 0; }
+.institutional-footer-version { padding-left: 2px; color: #6c7c90; flex-shrink: 0; }
+.institutional-footer-build-date { color: #8190a0; overflow: hidden; text-overflow: ellipsis; }
+.institutional-footer-user,
+.institutional-footer-company,
+.institutional-footer-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  white-space: nowrap;
+  color: #77889a;
+}
+.institutional-footer-user span,
+.institutional-footer-company span {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.institutional-footer-user svg,
+.institutional-footer-company svg,
+.institutional-footer-clock svg { flex: 0 0 auto; color: #8794a3; }
 .institutional-footer-clock { font-variant-numeric: tabular-nums; }
+.institutional-footer-short-time { display: none; }
 .institutional-footer-theme {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 35px;
+  height: 35px;
   padding: 0;
+  margin: 0 -3px 0 2px;
   border: 1px solid transparent;
-  border-radius: 7px;
-  color: var(--text-secondary);
+  border-radius: 5px;
+  color: #718599;
   background: transparent;
   cursor: pointer;
 }
-.institutional-footer-theme:hover { border-color: var(--border-default); color:var(--link); background: var(--bg-surface-elevated); }
-.institutional-footer-theme:focus-visible { outline: 2px solid var(--primary-main); outline-offset: 2px; }
-@media (max-width: 1100px) {
-  .institutional-footer-user { display: none; }
+.institutional-footer-theme:hover {
+  border-color: #dce2e8;
+  color: #167da5;
+  background: #edf3f7;
 }
-@container (max-width: 660px) {
-  .institutional-footer-user, .institutional-footer-date { display: none; }
-  .institutional-footer-company { max-width: 90px; }
+.institutional-footer-theme:focus-visible {
+  outline: 2px solid #1689a8;
+  outline-offset: 1px;
+}
+@container (max-width: 980px) {
+  .institutional-footer-build-date { display: none; }
+}
+@container (max-width: 740px) {
+  .institutional-footer-company { display: none; }
+  .institutional-footer-context { gap: 8px; }
+}
+@container (max-width: 560px) {
+  .institutional-footer-date { display: none; }
+  .institutional-footer-short-time { display: inline; }
 }
 @media (max-width: 640px) {
-  .sentinel-institutional-footer { height: 34px; min-height: 34px; padding: 0 8px; gap: 8px; font-size: 9px; }
-  .institutional-footer-date { display: none; }
-  .institutional-footer-context { gap: 7px; }
-  .institutional-footer-company { max-width: 90px; }
+  .sentinel-institutional-footer {
+    height: 38px;
+    min-height: 38px;
+    gap: 8px;
+    padding: 0 6px 0 7px;
+    border-left-width: 7px;
+    font-size: 10px;
+  }
+  .institutional-footer-context { gap: 6px; }
+  .institutional-footer-theme { width: 30px; height: 30px; }
+  .institutional-footer-theme svg { width: 21px; height: 21px; }
 }
-@media (max-width: 359px) {
-  .institutional-footer-company { display: none; }
+@container (max-width: 395px) {
+  .institutional-footer-user { display: none; }
+  .institutional-footer-clock svg { display: none; }
+}
+@container (max-width: 310px) {
+  .institutional-footer-clock { display: none; }
 }
