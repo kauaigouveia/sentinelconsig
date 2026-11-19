@@ -3,7 +3,7 @@ import {PortabilityResults} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
 import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
-import { estimateProjectedInssLoan, inssProjectedMargin } from '../../lib/inssProjectedMargin';
+import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
 import { inssBankProjectedQuotes } from '../../lib/inssBankProjectedQuotes';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
@@ -474,13 +474,23 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       </details>}
       {statement && activeTab==='NEW' && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 sm:p-4" aria-label="Simulação NOVO pela margem atual">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><h3 className="text-sm font-bold">NOVO · Margem atual {currency(parseCurrency(statement.loanMargin))}</h3>
-            <p className="text-xs text-[var(--text-secondary)]">Ofertas do banco consultado. Selecione uma condição para compartilhar.</p></div>
-          <span className="text-xs text-[var(--text-secondary)]">{marginState==='loading'?'Consultando…':marginOffers.length+' condições · '+marginBest.length+' instituições'}</span>
+          <div><h3 className="text-sm font-bold">NOVO · Simulações por banco</h3>
+            <p className="text-xs text-[var(--text-secondary)]">Condições da margem atual e prévia do aumento, com origem identificada.</p></div>
+          <span className="text-xs text-[var(--text-secondary)]">{marginState==='loading'?'Consultando bancos…':marginOffers.length+' condições · '+marginBest.length+' bancos'}</span>
+        </div>
+        <div role="group" aria-label="Cenário do empréstimo NOVO" className="grid gap-2 sm:grid-cols-2">
+          <button type="button" aria-pressed={novoScenario==='CURRENT'} onClick={()=>setNovoScenario('CURRENT')}
+            className={'rounded-lg border px-3 py-2.5 text-left text-xs font-semibold '+(novoScenario==='CURRENT'?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--field-border)]')}>
+            Margem disponível · {currency(parseCurrency(statement.loanMargin))}
+          </button>
+          <button type="button" aria-pressed={novoScenario==='PROJECTED'} disabled={!forecast} onClick={()=>setNovoScenario('PROJECTED')}
+            className={'rounded-lg border px-3 py-2.5 text-left text-xs font-semibold disabled:opacity-50 '+(novoScenario==='PROJECTED'?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--field-border)]')}>
+            Aumento projetado · +R$ 42,00 (2027)
+          </button>
         </div>
         {marginState==='loading' && <p role="status" className="text-xs">Consultando a margem disponível nos bancos…</p>}
-        {marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma oferta NOVO retornada para a margem atual.</p>}
-        {marginBest.length>0 && <div className="grid gap-2 sm:grid-cols-2">{marginBest.map(quote=>
+        {marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma cotação bancária disponível para a margem atual. Verifique as integrações habilitadas e as pendências.</p>}
+        {novoScenario==='CURRENT' && marginBest.length>0 && <div className="grid gap-2 sm:grid-cols-2">{marginBest.map(quote=>
           <div key={quote.index} className={'rounded-lg border p-3 text-xs '+(selectedMargin===quote.index?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--border-default)]')}>
             <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--text-secondary)]">{quote.source==='API'?'API':'Planilha'}</span></div>
             <p className="mt-1 truncate text-[var(--text-secondary)]" title={quote.table}>{quote.table}</p>
@@ -488,25 +498,60 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             <strong className="text-lg text-[var(--success-text)]">{currency(quote.amount)}</strong>
             <p className="mt-1 text-[var(--text-secondary)]">Parcela {currency(quote.installment)} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)}</p>
             <button type="button" aria-pressed={selectedMargin===quote.index} className="mt-2 rounded-lg border border-[var(--field-border)] px-3 py-1.5 font-semibold"
-              onClick={()=>{setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}>
+              onClick={()=>{setSelectedProjected(null);setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}>
               {selectedMargin===quote.index?'✓ NOVO selecionado':'Selecionar NOVO'}
             </button>
           </div>)}</div>}
-        {marginOther.length>0 && <details className="rounded-lg border border-[var(--border-default)] p-3 text-xs">
+        {novoScenario==='CURRENT' && marginOther.length>0 && <details className="rounded-lg border border-[var(--border-default)] p-3 text-xs">
           <summary className="cursor-pointer font-semibold">Outras {marginOther.length} condições de NOVO</summary>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">{marginOther.map(quote=>
             <button type="button" key={quote.index} aria-pressed={selectedMargin===quote.index}
-              onClick={()=>{setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}
+              onClick={()=>{setSelectedProjected(null);setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}
               className={'rounded-lg border p-3 text-left '+(selectedMargin===quote.index?'border-[var(--action)]':'border-[var(--border-default)]')}>
               <strong>{quote.institution} · {currency(quote.amount)}</strong>
               <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)} · {selectedMargin===quote.index?'Selecionada':'Selecionar'}</span>
             </button>)}</div>
         </details>}
         {marginNote && <details className="text-xs text-[var(--text-secondary)]"><summary className="cursor-pointer">Pendências do NOVO</summary><p className="mt-2">{marginNote}</p></details>}
-        {forecast && <div className="rounded-lg border border-[var(--warning-border)] p-3 text-xs text-[var(--warning-text)]">
-          <strong>Prévia 2027 · +R$ 42,00 de parcela, ainda não liberados</strong>
-          <p className="mt-1">Valor bruto teórico {currency(estimateProjectedInssLoan(1.85,108))} a 1,85% a.m. / 108 meses, antes de IOF e custos. Não é cotação bancária nem compõe a margem atual.</p>
-        </div>}
+        {forecast && novoScenario==='PROJECTED' && <section className="space-y-3" aria-label="Prévia bancária de aumento de margem 2027">
+          <div className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">
+            <strong>Cenário futuro: parcela adicional hipotética de R$ 42,00 em 2027</strong>
+            <p className="mt-1">Estimativas individualizadas por banco e tabela usando as taxas e prazos retornados na consulta vigente. Não foi enviada margem não liberada às APIs. Não são ofertas, valores líquidos, aprovação ou promessa de disponibilidade futura. Valor bruto antes de IOF, CET, seguros e restrições comerciais.</p>
+          </div>
+          {projectedRows.length>0 ? <>
+            <p className="text-xs text-[var(--text-secondary)]">{projectedBest.length} bancos com taxas consultadas · {projectedRows.length} condições estimadas. Selecione somente para compartilhar como prévia.</p>
+            <div className="grid gap-2 sm:grid-cols-2">{projectedBest.map(quote=><article key={quote.index}
+              className={'rounded-lg border p-3 text-xs '+(selectedProjected===quote.index?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--field-border)]')}>
+              <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--warning-text)]">Simulação teórica</span></div>
+              <p className="mt-1 truncate text-[var(--text-secondary)]" title={quote.table}>{quote.table}</p>
+              <p className="mt-2 text-[var(--text-secondary)]">Bruto teórico para parcela de R$ 42,00</p>
+              <strong className="block text-lg">{currency(quote.projectedGross)}</strong>
+              <p className="mt-1 text-[var(--text-secondary)]">{quote.term} meses · {formatMonthlyRate(quote.rate)}</p>
+              <button type="button" aria-pressed={selectedProjected===quote.index}
+                onClick={()=>{setSelectedMargin(null);setSelectedProjected(old=>old===quote.index?null:quote.index);setShareStatus('');}}
+                className="mt-2 rounded-lg border border-[var(--field-border)] px-3 py-1.5 font-semibold">
+                {selectedProjected===quote.index?'✓ Prévia selecionada':'Selecionar prévia'}
+              </button>
+            </article>)}</div>
+            {projectedRows.length>projectedBest.length && <details className="rounded-lg border border-[var(--field-border)] p-3">
+              <summary className="cursor-pointer text-xs font-semibold">Outras {projectedRows.length-projectedBest.length} condições de taxas bancárias</summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">{projectedRows.map((quote,index)=>({...quote,index}))
+                .filter(quote=>!projectedBest.some(best=>best.index===quote.index))
+                .map(quote=><button key={quote.index} type="button" aria-pressed={selectedProjected===quote.index}
+                  onClick={()=>{setSelectedMargin(null);setSelectedProjected(old=>old===quote.index?null:quote.index);setShareStatus('');}}
+                  className={'rounded-lg border p-3 text-left text-xs '+(selectedProjected===quote.index?'border-[var(--action)]':'border-[var(--field-border)]')}>
+                  <strong>{quote.institution}: {currency(quote.projectedGross)}</strong>
+                  <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {formatMonthlyRate(quote.rate)} · {quote.term} meses</span>
+                </button>)}</div>
+            </details>}
+          </> : <p className="text-xs text-[var(--text-secondary)]">Nenhuma taxa/prazo bancário válido retornado para estimar o aumento. Não serão inventadas ofertas.</p>}
+          <details className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
+            <summary className="cursor-pointer font-semibold">Instituições sem taxa para a prévia</summary>
+            <p className="mt-2 text-[var(--text-secondary)]">{['C6','FACTA','FINANTO','Nossa Fintech','HAPPY','BMG']
+              .filter(bank=>!projectedRows.some(quote=>quote.provider.toUpperCase().includes(bank.toUpperCase())))
+              .join(' · ')||'Nenhuma entre as integrações NOVO conhecidas.'}</p>
+          </details>
+        </section>}
       </section>}
       {(!statement||activeTab==='PORT')&&rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
       {(!statement||activeTab==='PORT')&&providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
