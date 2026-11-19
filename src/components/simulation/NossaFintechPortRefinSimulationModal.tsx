@@ -5,6 +5,7 @@ import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portR
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { estimateProjectedInssLoan, inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
+import { inssBankProjectedQuotes } from '../../lib/inssBankProjectedQuotes';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -82,6 +83,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [marginState,setMarginState]=useState<'idle'|'loading'|'ready'>('idle');
   const [marginNote,setMarginNote]=useState('');
   const [selectedMargin,setSelectedMargin]=useState<number|null>(null);
+  const [selectedProjected,setSelectedProjected]=useState<number|null>(null);
+  const [activeTab,setActiveTab]=useState<'PORT'|'NEW'>('PORT');
+  const [novoScenario,setNovoScenario]=useState<'CURRENT'|'PROJECTED'>('CURRENT');
   const [shareStatus,setShareStatus]=useState('');
 
   useEffect(()=>{if(!isOpen)transport.current?.abort();else if(!running.current)scope.current=identity();},[isOpen]);
@@ -379,16 +383,22 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     }
   };
 
-  const chosenMargin=selectedMargin==null?null:marginOffers[selectedMargin]||null;
+  const forecast=statement?inssProjectedMargin(statement.income,statement.loanMargin,statement.loanBlocked):null;
+  const projectedRows=inssBankProjectedQuotes(marginOffers,Boolean(forecast&&!forecast.loanBlocked));
+  const projectedBest=projectedRows.map((quote,index)=>({...quote,index}))
+    .filter((quote,index,all)=>all.findIndex(item=>item.provider===quote.provider)===index);
+  const chosenMargin=selectedProjected!=null&&projectedRows[selectedProjected]
+    ? {...projectedRows[selectedProjected],amount:projectedRows[selectedProjected].projectedGross,
+       installment:42,scenario:'PROJECTED_2027' as const}
+    : selectedMargin==null?null:marginOffers[selectedMargin]||null;
   const messageForWhatsApp=statement?inssStatementWhatsAppText(statement.customer.name,chosenMargin,selectedRows,(row)=>{
     const quoted=conditionFor(row as SimulationRow);
     return {installment:quoted.installment,rate:quoted.rate};
   }):'';
   const marginBest=marginOffers.map((quote,index)=>({...quote,index}))
-    .filter((quote,index,all)=>all.findIndex(item=>item.institution===quote.institution)===index);
+    .filter((quote,index,all)=>all.findIndex(item=>item.provider===quote.provider)===index);
   const marginOther=marginOffers.map((quote,index)=>({...quote,index}))
     .filter(quote=>!marginBest.some(best=>best.index===quote.index));
-  const forecast=statement?inssProjectedMargin(statement.income,statement.loanMargin,statement.loanBlocked):null;
   const copyToWhatsApp=async()=>{
     try{
       if(!navigator.clipboard?.writeText)throw Error('Área de transferência indisponível.');
@@ -399,7 +409,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   if(!isOpen)return null;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
-      <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">INSS · Portabilidade + Refinanciamento</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
+      <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{statement?'INSS · Simulação completa por extrato':'INSS · Portabilidade + Refinanciamento'}</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
       {!statement && <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>}{step===2 && <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>}<div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
         {!statement && <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className={labelClass}>CPF<input required value={form.cpf} onChange={e => update('cpf', formatCpf(e.target.value))} className={inputClass} /></label>
@@ -437,25 +447,32 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         {error && <div role="alert" className="rounded-lg bg-[var(--danger-bg)] p-3 text-sm text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]"><AlertCircle className="mr-2 inline h-4 w-4" />{error}</div>}
         {!statement && <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/>}<button type="submit" disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-[var(--action)] px-4 py-2.5 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-90"><Activity className="h-4 w-4" />{loading ? <><LoaderCircle className="h-4 w-4 animate-spin" />Calculando…</> : 'Comparar ofertas'}</button>
       </fieldset></form>
-      {step===2 && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label={statement ? "Voltar à comparação" : "Voltar ao contrato"}/>}
+      {step===2&&!statement && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar ao contrato"/>}
       {step===2 && error && <p role="alert" className="my-3 rounded-lg bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)]">{error}</p>}
-      <div hidden={step!==2}>{loading && <p role="status" className="my-4 rounded-xl bg-[var(--info-bg)] p-5 text-sm">{progress||'Consultando as condições disponíveis…'}</p>}
+      <div hidden={step!==2}>
+      {statement && <nav aria-label="Modalidade da simulação" className="sticky top-0 z-10 grid grid-cols-2 gap-2 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-2">
+        <button type="button" aria-pressed={activeTab==='PORT'} onClick={()=>setActiveTab('PORT')}
+          className={'rounded-lg px-3 py-3 text-sm font-bold '+(activeTab==='PORT'?'bg-[var(--action)] text-[var(--action-ink)]':'border border-[var(--field-border)] text-[var(--text-secondary)]')}>
+          PORTABILIDADE ({rows.filter(row=>row.success&&!row.skipped).length}) {selectedRows.length>0?' · '+selectedRows.length+' selecionadas':''}
+        </button>
+        <button type="button" aria-pressed={activeTab==='NEW'} onClick={()=>setActiveTab('NEW')}
+          className={'rounded-lg px-3 py-3 text-sm font-bold '+(activeTab==='NEW'?'bg-[var(--action)] text-[var(--action-ink)]':'border border-[var(--field-border)] text-[var(--text-secondary)]')}>
+          NOVO ({marginOffers.length}) {chosenMargin?' · 1 selecionada':''}
+        </button>
+      </nav>}
+      {loading && <p role="status" className="my-4 rounded-xl bg-[var(--info-bg)] p-4 text-sm">{progress||'Consultando as condições disponíveis…'}</p>}
 
-      {happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
-      {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
-      {statement && step===2 && <section aria-label="Bancos consultados" className="mt-3 grid gap-2 sm:grid-cols-3">
-        {(['DAYCOVAL','C6','PARANA'] as const).map(bank=>{
-          const found=rows.filter(row=>row.provider===bank&&row.success&&!row.skipped);
-          const unified=bank==='DAYCOVAL'?found.filter(row=>row.unified).length:0;
-          const note=providerNotes.find(note=>note.includes(' · '+bank+':') || note.startsWith(bank+':'));
-          return <div key={bank} className="rounded-lg border border-[var(--border-default)] p-3 text-xs">
-            <strong>{bank==='PARANA'?'Paraná Banco':bank==='C6'?'C6 Portabilidade':'Daycoval'}</strong>
-            <p className="mt-1 text-[var(--text-secondary)]">{loading?'Em consulta…':found.length?found.length+' condições calculadas'+(unified?' · '+unified+' unificações':''):'Nenhuma cotação retornada'}</p>
-            {!loading&&!found.length&&note&&<p className="mt-1 text-[var(--warning-text)]">{note.slice(0,180)}</p>}
-          </div>;
-        })}
-      </section>}
-      {statement && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 sm:p-4" aria-label="Simulação NOVO pela margem atual">
+      {(!statement||activeTab==='PORT')&&happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
+      {(!statement||activeTab==='PORT')&&happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
+      {statement && activeTab==='PORT' && !loading && <details className="mt-3 rounded-lg border border-[var(--field-border)] p-3 text-xs">
+        <summary className="cursor-pointer font-semibold">Bancos consultados e situações ({new Set(rows.filter(row=>row.success).map(row=>row.provider)).size} com ofertas)</summary>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {['DAYCOVAL','C6','PARANA','FINANTO','FACTA','Nossa Fintech'].map(bank=><span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
+            {bank==='PARANA'?'Paraná Banco':bank} · {rows.some(row=>row.provider===bank&&row.success)?'com condição':'sem oferta calculada'}
+          </span>)}
+        </div>
+      </details>}
+      {statement && activeTab==='NEW' && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 sm:p-4" aria-label="Simulação NOVO pela margem atual">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><h3 className="text-sm font-bold">NOVO · Margem atual {currency(parseCurrency(statement.loanMargin))}</h3>
             <p className="text-xs text-[var(--text-secondary)]">Ofertas do banco consultado. Selecione uma condição para compartilhar.</p></div>
@@ -491,9 +508,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <p className="mt-1">Valor bruto teórico {currency(estimateProjectedInssLoan(1.85,108))} a 1,85% a.m. / 108 meses, antes de IOF e custos. Não é cotação bancária nem compõe a margem atual.</p>
         </div>}
       </section>}
-      {rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
-      {providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
-      {rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows} conditionFor={conditionFor} onSelect={toggleQuote} showOwnShare={!statement}/>}
+      {(!statement||activeTab==='PORT')&&rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
+      {(!statement||activeTab==='PORT')&&providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
+      {(!statement||activeTab==='PORT')&&rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows} conditionFor={conditionFor} onSelect={toggleQuote} showOwnShare={!statement}/>}
       {statement && messageForWhatsApp && <section className="mt-4 space-y-2 rounded-xl border border-[var(--success-border)] p-4" aria-label="Copiar seleções para WhatsApp">
         <h3 className="font-semibold">Compartilhar condições selecionadas</h3>
         <p className="text-xs text-[var(--text-secondary)]">{selectedRows.length} portabilidade(s) e {chosenMargin?1:0} NOVO selecionado. Apenas as condições escolhidas entram no resumo.</p>
@@ -521,8 +538,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         {saveMessage && <p role="status" className="text-sm text-[var(--success-text)]">{saveMessage}</p>}
         </section>
       </details>}
-      {rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.contractLabel} · {row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
-      <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />
+      {(!statement||activeTab==='PORT')&&rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.contractLabel} · {row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
+      {(!statement||activeTab==='PORT')&&<BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />}
       </div>
       </div>
     </div>
