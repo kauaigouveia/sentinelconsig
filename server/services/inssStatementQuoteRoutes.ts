@@ -6,6 +6,7 @@ import { ageAt } from '../../src/lib/inssEligibility.js';
 import { hasPermission } from '../../src/lib/permissions.js';
 import type { Role } from '../../src/types/index.js';
 import { PartnerSimulationService } from './partnerSimulationService.js';
+import { paidFromTerms, portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
 
 // Consulta cotação: nunca registra proposta, pede autorização bancária ou simula
 // o reajuste futuro como margem efetivamente disponível.
@@ -79,7 +80,7 @@ export function registerInssStatementQuoteRoutes(
       income: income || undefined,
       legalRepresentative: raw.legalRepresentative,
       illiterate: raw.illiterate === 'YES',
-      negativeMarginAmount: margin,
+      negativeMarginAmount: typeof margin === 'number' && margin < 0 ? margin : undefined,
       benefitStartDate: safeText(raw.benefitStartDate, 10),
       originalBank: contract?.originBank,
       originalContract: contract?.contractNumber,
@@ -95,7 +96,14 @@ export function registerInssStatementQuoteRoutes(
     try {
       const result = await PartnerSimulationService.run(prisma, tenantId, input, 'SIMULATE');
       const offers = (Array.isArray(result.rows) ? result.rows : [])
-        .filter((row: any) => row?.state === 'OFFER' && positive(Number(row.amount)))
+        .filter((row: any) => {
+          if (row?.state !== 'OFFER' || !positive(Number(row.amount))) return false;
+          if (!contract) return true;
+          const paid = paidFromTerms(contract.originalTerm, contract.remainingTerm);
+          const check = { product: 'INSS', operation: 'PORT_REFIN' };
+          return !portabilityEligibility(String(row.provider || ''), contract.originBank, paid, check).blocked &&
+            !portabilityEligibility(String(row.institution || ''), contract.originBank, paid, check).blocked;
+        })
         .slice(0, 150)
         .map((row: any) => ({
           provider: safeText(row.provider || row.institution, 65) || 'Instituição não identificada',
