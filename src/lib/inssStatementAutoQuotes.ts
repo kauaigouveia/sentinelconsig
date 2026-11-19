@@ -1,141 +1,162 @@
-import type { InssStatement } from './inssStatement';
-import { getNossaFintechNovoAmount } from './nossaFintech';
-import { paidFromTerms, portabilityEligibility } from './portabilityEligibility';
+import type { ReviewedInssStatement } from './inssStatement';
+import { estimateProjectedInssLoan, inssProjectedMargin } from './inssProjectedMargin';
 import { parseCurrency } from './utils';
 
-/**
- * Cotações informativas disparadas pelo anexo do extrato.
- * O NOVO consulta apenas as tabelas sem CPF; a PORT consulta as planilhas locais
- * já configuradas pela empresa. Não cria proposta, autoriza cliente ou contrata.
- */
-export type StatementPortQuote = {
-  contractIndex: number;
-  originBank: string;
-  destination: 'DAYCOVAL' | 'C6' | 'PARANA';
-  table: string;
-  amount: number;
-  term: number;
-  installment: number | null;
-  rate: number | null;
+export type StatementQuoteSource = 'API' | 'PLANILHA';
+export type StatementMarginQuote = {
+  provider: string; institution: string; table: string;
+  amount: number; installment: number | null; rate: number | null;
+  term: number | null; source: StatementQuoteSource; review: boolean;
 };
-export type StatementMarginQuote = { table: string; amount: number };
+export type StatementPortQuote = StatementMarginQuote & {
+  contractIndex: number; originBank: string; contractSuffix: string; destination: string;
+};
+export type StatementProjectedQuote = {
+  provider: string; institution: string; monthlyRate: number; term: number; gross: number;
+};
 export type StatementAutoQuotes = {
   marginQuotes: StatementMarginQuote[];
   portabilityQuotes: StatementPortQuote[];
+  projectedQuotes: StatementProjectedQuote[];
   notes: string[];
 };
-type Destination = StatementPortQuote['destination'];
-const targets: { bank: Destination; policy: string; route: string }[] = [
-  { bank: 'DAYCOVAL', policy: 'daycoval', route: '/api/daycoval/calculate' },
-  { bank: 'C6', policy: 'c6', route: '/api/c6-spreadsheet/calculate' },
-  { bank: 'PARANA', policy: 'parana', route: '/api/parana-spreadsheet/calculate' },
-];
+export type StatementProgress = {
+  completed: number; total: number;
+  quotes: StatementAutoQuotes;
+};
+export const emptyStatementQuotes = (): StatementAutoQuotes =>
+  ({ marginQuotes: [], portabilityQuotes: [], projectedQuotes: [], notes: [] });
 
-export async function simulateInssStatementOnUpload(
-  statement: InssStatement,
+const positive = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+const formatNote = (value: unknown) => String(value || 'Consulta indisponível.').slice(0,250);
+const maxSupportedContracts = 40;
+
+export async function simulateInssStatementComplete(
+  statement: ReviewedInssStatement,
   signal: AbortSignal,
   request: typeof fetch = fetch,
+  onProgress?: (progress: StatementProgress) => void,
 ): Promise<StatementAutoQuotes> {
-  const result: StatementAutoQuotes = { marginQuotes: [], portabilityQuotes: [], notes: [] };
+  const result = emptyStatementQuotes();
   if (signal.aborted) return result;
-  const notes = new Set<string>();
-  const post = (url: string, body: unknown) => request(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal,
-  });
+  if (statement.contracts.length > maxSupportedContracts)
+    throw new Error(`Este extrato contém mais de ${maxSupportedContracts} contratos. Não foi feita uma simulação parcial.`);
 
   const margin = parseCurrency(statement.loanMargin);
-  const marginTask = (async () => {
-    if (statement.loanBlocked || margin == null || !Number.isFinite(margin) || margin <= 0 || signal.aborted) return;
-    try {
-      const response = await post('/api/integrations/nossa-fintech/inss/novo/simulate-all', {
-        numberOfInstallments: 108,
-        mode: 'INSTALLMENT',
-        value: margin,
-        legalRepresentative: statement.legalRepresentative,
-        birthDate: statement.customer.birthDate,
-        benefitType: Number(statement.customer.benefitType),
-      });
-      const body = await response.json();
-      if (!response.ok || body.success === false) throw Error(body.error || body.data?.message || 'Consulta de margem indisponível.');
-      if (signal.aborted) return;
-      result.marginQuotes = (Array.isArray(body.data?.results) ? body.data.results : [])
-        .filter((row: any) => row?.success === true)
-        .map((row: any) => ({
-          table: String(row.table?.name || row.table?.nome || row.table?.cod_tabela || 'Tabela INSS'),
-          amount: getNossaFintechNovoAmount(row.data),
-        }))
-        .filter((quote: any): quote is StatementMarginQuote => Number.isFinite(quote.amount) && quote.amount > 0);
-    } catch (error) {
-      if (!signal.aborted) notes.add('Margem NOVO: ' + (error instanceof Error ? error.message : 'Falha de simulação.'));
-    }
-  })();
+  const income = parseCurrency(statement.income);
+  const base = {
+    confirmedClientAuthorization: true,
+    cpf: statement.customer.cpf,
+    name: statement.customer.name,
+    benefitNumber: statement.customer.benefitNumber,
+    benefitType: Number(statement.customer.benefitType),
+    birthDate: statement.customer.birthDate,
+    benefitStartDate: statement.benefitStart,
+    illiterate: statement.illiterate,
+    legalRepresentative: statement.legalRepresentative === true,
+    loanBlocked: statement.loanBlocked === true,
+    loanMargin: margin,
+    income: positive(income) ? income : null,
+    term: 108,
+  };
 
-  type Task = { contractIndex: number; originBank: string; destination: Destination; route: string; body: unknown };
+  type Task = { operation: 'NEW' | 'PORT_REFIN'; contractIndex?: number; body: Record<string,unknown> };
   const tasks: Task[] = [];
-  statement.contracts.forEach((contract, contractIndex) => {
-    const paid = paidFromTerms(contract.originalTerm, contract.openedInstallmentNumber);
-    for (const target of targets) {
-      const policy = portabilityEligibility(target.policy, contract.originLenderCode, paid, {
-        product: 'INSS', operation: 'PORT_REFIN',
-      });
-      // Nunca consultar banco de destino igual à instituição credora da origem.
-      if (policy.blocked) continue;
-      tasks.push({
-        contractIndex,
-        originBank: contract.originLenderCode,
-        destination: target.bank,
-        route: target.route,
-        body: {
-          birthDate: statement.customer.birthDate,
-          benefitType: Number(statement.customer.benefitType),
-          term: 108,
-          benefitContractCount: statement.issues.length ? undefined : statement.contracts.length,
-          negativeMarginAmount: margin ?? undefined,
-          contracts: [{
-            originBank: contract.originLenderCode,
-            originalTerm: Number(contract.originalTerm),
-            remaining: Number(contract.openedInstallmentNumber),
-            balance: parseCurrency(contract.lastDueBalance),
-            installment: parseCurrency(contract.installmentFaceValue),
-          }],
-        },
-      });
+  if (positive(margin) && !statement.loanBlocked) tasks.push({ operation: 'NEW', body: { ...base, operation: 'NEW' } });
+  for (const [contractIndex, contract] of statement.contracts.entries()) {
+    const originalTerm = Number(contract.originalTerm);
+    const remainingTerm = Number(contract.openedInstallmentNumber);
+    const debt = parseCurrency(contract.lastDueBalance);
+    const installment = parseCurrency(contract.installmentFaceValue);
+    if (!Number.isInteger(originalTerm) || !Number.isInteger(remainingTerm) ||
+        remainingTerm <= 0 || remainingTerm > originalTerm ||
+        !positive(debt) || !positive(installment) || !/^\d{1,3}$/.test(contract.originLenderCode)) {
+      result.notes.push(`Contrato ${contractIndex + 1}: dados incompletos; confira o extrato.`);
+      continue;
     }
-  });
+    tasks.push({
+      operation: 'PORT_REFIN',
+      contractIndex,
+      body: { ...base, operation: 'PORT_REFIN', contract: {
+        originBank: contract.originLenderCode,
+        contractNumber: contract.originContractNumber,
+        originalTerm, remainingTerm, debt, installment,
+      } },
+    });
+  }
+
   let next = 0;
+  let completed = 0;
+  const snapshot = () => ({
+    ...result,
+    marginQuotes: [...result.marginQuotes],
+    portabilityQuotes: [...result.portabilityQuotes],
+    projectedQuotes: [...result.projectedQuotes],
+    notes: [...result.notes],
+  });
   const worker = async () => {
     while (next < tasks.length && !signal.aborted) {
       const task = tasks[next++];
       try {
-        const response = await post(task.route, task.body);
-        const body = await response.json();
-        if (!response.ok) throw Error(body.error || 'Planilha não disponível.');
+        const response = await request('/api/inss/statement/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          signal,
+          body: JSON.stringify(task.body),
+        });
+        const data = await response.json();
+        if (!response.ok) throw Error(data.error || `Consulta indisponível (HTTP ${response.status}).`);
         if (signal.aborted) break;
-        for (const offer of Array.isArray(body.offers) ? body.offers : []) {
-          const amount = Number(offer.amount);
-          if (offer.eligible === false || offer.success === false || !Number.isFinite(amount) || amount <= 0) continue;
-          const installment = Number(offer.installment);
-          const rate = Number(offer.rate);
-          result.portabilityQuotes.push({
-            contractIndex: task.contractIndex,
-            originBank: task.originBank,
-            destination: task.destination,
-            table: String(offer.name || offer.code || 'Tabela INSS'),
-            amount,
-            term: Number(offer.term) || 108,
-            installment: Number.isFinite(installment) && installment > 0 ? installment : null,
-            rate: Number.isFinite(rate) && rate > 0 ? rate : null,
-          });
+        const offers: StatementMarginQuote[] = (Array.isArray(data.offers) ? data.offers : [])
+          .filter((offer: any) => positive(offer?.amount) && ['API','PLANILHA'].includes(offer?.source))
+          .map((offer: any) => ({
+            provider: String(offer.provider || ''),
+            institution: String(offer.institution || offer.provider || ''),
+            table: String(offer.table || 'Condição INSS'),
+            amount: offer.amount,
+            installment: positive(offer.installment) ? offer.installment : null,
+            rate: positive(offer.rate) ? offer.rate : null,
+            term: Number.isInteger(offer.term) && offer.term > 0 ? offer.term : null,
+            source: offer.source as StatementQuoteSource,
+            review: offer.review === true,
+          }));
+
+        if (task.operation === 'NEW') {
+          result.marginQuotes.push(...offers);
+          const forecast = inssProjectedMargin(statement.income, statement.loanMargin, statement.loanBlocked);
+          if (forecast && !forecast.loanBlocked) for (const quote of offers) {
+            if (!positive(quote.rate) || !quote.term) continue;
+            const gross = estimateProjectedInssLoan(quote.rate, quote.term);
+            if (gross !== null) result.projectedQuotes.push({
+              provider: quote.provider, institution: quote.institution,
+              monthlyRate: quote.rate, term: quote.term, gross,
+            });
+          }
+        } else {
+          const contractIndex = task.contractIndex!;
+          const contract = statement.contracts[contractIndex];
+          result.portabilityQuotes.push(...offers.map(quote => ({
+            ...quote, contractIndex, originBank: contract.originLenderCode,
+            contractSuffix: contract.originContractNumber.slice(-4),
+            destination: quote.institution,
+          })));
         }
+        for (const note of Array.isArray(data.notices) ? data.notices : [])
+          result.notes.push(`${task.operation === 'NEW' ? 'NOVO' : 'Contrato ' + (task.contractIndex! + 1)}: ${formatNote(note)}`);
+        if (!offers.length && !(data.notices?.length))
+          result.notes.push(task.operation === 'NEW' ? 'NOVO: nenhum banco retornou oferta.' : `Contrato ${task.contractIndex! + 1}: nenhuma oferta retornada.`);
       } catch (error) {
-        if (!signal.aborted) notes.add(task.destination + ': ' + (error instanceof Error ? error.message : 'Falha de simulação.'));
+        if (!signal.aborted)
+          result.notes.push(`${task.operation === 'NEW' ? 'NOVO' : 'Contrato ' + (task.contractIndex! + 1)}: ${formatNote(error instanceof Error ? error.message : error)}`);
+      } finally {
+        completed++;
+        if (!signal.aborted) onProgress?.({ completed, total: tasks.length, quotes: snapshot() });
       }
     }
   };
-  await Promise.all([marginTask, ...Array.from({ length: Math.min(tasks.length, 3) }, () => worker())]);
-  if (!signal.aborted) result.notes = [...notes];
-  return result;
+  await Promise.all(Array.from({ length: Math.min(tasks.length, 2) }, () => worker()));
+  if (signal.aborted) return emptyStatementQuotes();
+  return snapshot();
 }
