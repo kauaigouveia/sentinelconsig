@@ -623,7 +623,23 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       </section>}
       {(!statement||activeTab==='PORT')&&rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
       {(!statement||activeTab==='PORT')&&providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
-      {(!statement||activeTab==='PORT')&&rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows} conditionFor={conditionFor} onSelect={toggleQuote} showOwnShare={!statement}/>}
+      {/* Mantém montado o comparador para preservar aba de unificações, filtros,
+          página e seleções quando o operador alterna para NOVO. */}
+      {rows.some(row => !row.skipped) && <div className={statement&&activeTab==='NEW'?'hidden':''}>
+        <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows}
+          conditionFor={conditionFor} onSelect={toggleQuote} showOwnShare={!statement}/>
+      </div>}
+      {statement && (selectedRows.length>0||chosenMargin) && <section aria-label="Cotações selecionadas preservadas" className="mt-3 rounded-xl border border-[var(--success-border)] p-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <strong className="mr-1">Selecionadas ({selectedRows.length+(chosenMargin?1:0)})</strong>
+          {selectedRows.map((row,index)=><span key={index} className="rounded-full border border-[var(--success-border)] px-2 py-1">
+            {row.provider}: {row.contractLabel||'Contrato'}{row.unified?' · unificação':''}
+          </span>)}
+          {chosenMargin && <span className="rounded-full border border-[var(--success-border)] px-2 py-1">
+            NOVO: {chosenMargin.institution}{chosenMargin.scenario==='PROJECTED_2027'?' · prévia 2027':''}
+          </span>}
+        </div>
+      </section>}
       {statement && messageForWhatsApp && <section className="mt-4 space-y-2 rounded-xl border border-[var(--success-border)] p-4" aria-label="Copiar seleções para WhatsApp">
         <h3 className="font-semibold">Compartilhar condições selecionadas</h3>
         <p className="text-xs text-[var(--text-secondary)]">{selectedRows.length} portabilidade(s) e {chosenMargin?1:0} NOVO selecionado. Apenas as condições escolhidas entram no resumo.</p>
