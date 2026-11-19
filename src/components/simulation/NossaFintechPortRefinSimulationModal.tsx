@@ -556,6 +556,17 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           NOVO ({marginOffers.length}) {chosenMargin?' · 1 selecionada':''}
         </button>
       </nav>}
+      {statement && (selectedRows.length>0||chosenMargin) && <section aria-label="Cotações selecionadas preservadas" className="mt-3 rounded-xl border border-[var(--success-border)] p-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <strong className="mr-1">Selecionadas ({selectedRows.length+(chosenMargin?1:0)})</strong>
+          {selectedRows.map((row,index)=><span key={index} className="rounded-full border border-[var(--success-border)] px-2 py-1">
+            {row.provider}: {row.contractLabel||'Contrato'}{row.unified?' · unificação':''} · troco {currency(row.troco)}
+          </span>)}
+          {chosenMargin && <span className="rounded-full border border-[var(--success-border)] px-2 py-1">
+            NOVO: {chosenMargin.institution}{chosenMargin.scenario==='PROJECTED_2027'?' · prévia 2027':''}
+          </span>}
+        </div>
+      </section>}
       {loading && <p role="status" className="my-4 rounded-xl bg-[var(--info-bg)] p-4 text-sm">{progress||'Consultando as condições disponíveis…'}</p>}
 
       {(!statement||activeTab==='PORT')&&happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
@@ -671,17 +682,6 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows}
           conditionFor={conditionFor} onSelect={toggleQuote} showOwnShare={!statement}/>
       </div>}
-      {statement && (selectedRows.length>0||chosenMargin) && <section aria-label="Cotações selecionadas preservadas" className="mt-3 rounded-xl border border-[var(--success-border)] p-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <strong className="mr-1">Selecionadas ({selectedRows.length+(chosenMargin?1:0)})</strong>
-          {selectedRows.map((row,index)=><span key={index} className="rounded-full border border-[var(--success-border)] px-2 py-1">
-            {row.provider}: {row.contractLabel||'Contrato'}{row.unified?' · unificação':''}
-          </span>)}
-          {chosenMargin && <span className="rounded-full border border-[var(--success-border)] px-2 py-1">
-            NOVO: {chosenMargin.institution}{chosenMargin.scenario==='PROJECTED_2027'?' · prévia 2027':''}
-          </span>}
-        </div>
-      </section>}
       {statement && messageForWhatsApp && <section className="mt-4 space-y-2 rounded-xl border border-[var(--success-border)] p-4" aria-label="Copiar seleções para WhatsApp">
         <h3 className="font-semibold">Compartilhar condições selecionadas</h3>
         <p className="text-xs text-[var(--text-secondary)]">{selectedRows.length} portabilidade(s) e {chosenMargin?1:0} NOVO selecionado. Apenas as condições escolhidas entram no resumo.</p>
