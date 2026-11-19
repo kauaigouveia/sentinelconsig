@@ -1,0 +1,79 @@
+// @vitest-environment jsdom
+import React from 'react';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {NossaFintechPortRefinSimulationModal} from '../src/components/simulation/NossaFintechPortRefinSimulationModal';
+import {StorageService} from '../src/services/storageService';
+import type {ReviewedInssStatement} from '../src/lib/inssStatement';
+
+const fixture:ReviewedInssStatement={
+ customer:{cpf:'52998224725',name:'Pessoa sintética',birthDate:'1960-01-01',benefitNumber:'1234567890',benefitType:'41'},
+ income:'1621.00',loanMargin:'36.52',cardMargin:'',benefitCardMargin:'',reference:'10/2026',
+ uf:'',benefitStart:'',issues:[],illiterate:'NO',benefitContractCount:'2',
+ contracts:['623','237'].map((bank,index)=>({
+  originLenderCode:bank,originContractNumber:'TEST-'+index,originalTerm:'84',
+  openedInstallmentNumber:'27',lastDueBalance:'1500.00',installmentFaceValue:'65.50',
+ })),
+};
+beforeEach(()=>{
+ vi.spyOn(StorageService,'getCurrentTenantId').mockReturnValue('tenant-test');
+ vi.spyOn(StorageService,'getActiveUser').mockReturnValue({id:'user-test'} as ReturnType<typeof StorageService.getActiveUser>);
+});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
+
+it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e compartilhamento',async()=>{
+ const calls:Array<{url:string;body:any}>=[];
+ const fetchMock=vi.fn(async(url:string,init?:RequestInit)=>{
+  const body=init?.body?JSON.parse(String(init.body)):null;
+  calls.push({url,body});
+  let result:any={offers:[]};
+  if(url==='/api/integrations/finanto/config')result={isConfigured:false,enabled:false};
+  if(url==='/api/integrations/nossa-fintech/port-refin/simulate-all')
+    result={success:true,data:{results:[],excludedTables:[{table:{name:'Sem tabela'},reason:'não elegível'}]}};
+  if(url==='/api/integrations/facta/inss/simulate')result={offers:[]};
+  if(url==='/api/daycoval/calculate')result={offers:[{
+    name:'800584 - RFN INSS 4',code:'800584',amount:950,installment:65.5,term:108,rate:1.74,
+    installmentChanges:[{originalInstallment:65.5,newInstallment:63.2,returnRate:1.492}],
+  }]};
+  if(url==='/api/c6-spreadsheet/calculate')result={offers:[{
+    name:'C6 Planilha Port',code:'C6-PORT',amount:550,installment:65.5,term:108,rate:1.85,
+  }]};
+  if(url==='/api/parana-spreadsheet/calculate')result={offers:[{
+    name:'Paraná Port',code:'PR-108',amount:660,installment:65.5,term:108,rate:1.83,
+  }]};
+  if(url==='/api/daycoval/calculate-groups')result={groups:[{
+    indices:[0,1],offers:[{name:'RFN INSS 4',code:'D4',amount:1600,installment:131,term:108,rate:1.75,
+      installmentChanges:[
+        {originalInstallment:65.5,newInstallment:63.2,returnRate:1.492},
+        {originalInstallment:65.5,newInstallment:65.5,returnRate:1.659},
+      ]}],
+  }],nextOffset:null};
+  if(url==='/api/inss/statement/quote')result={offers:[{
+    provider:'FACTA',institution:'FACTA',table:'NOVO INSS',amount:1400,installment:36.52,rate:1.85,term:108,source:'API',
+  }],notices:[]};
+  return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
+ });
+ vi.stubGlobal('fetch',fetchMock);
+ render(<NossaFintechPortRefinSimulationModal isOpen statement={fixture} autoRunFromStatement
+   onClose={()=>{}} onBack={()=>{}} partners={[]} onSuccess={()=>{}}/>);
+ await waitFor(()=>expect(calls.some(x=>x.url==='/api/daycoval/calculate-groups')).toBe(true),{timeout:10000});
+ await waitFor(()=>expect(calls.some(x=>x.url==='/api/inss/statement/quote')).toBe(true));
+ expect(calls.filter(x=>x.url==='/api/c6-spreadsheet/calculate')).toHaveLength(2);
+ expect(calls.filter(x=>x.url==='/api/parana-spreadsheet/calculate')).toHaveLength(2);
+ for(const call of calls.filter(x=>x.url==='/api/parana-spreadsheet/calculate')){
+  expect(call.body.benefitContractCount).toBe(2);
+  expect(call.body.refinanceRate).toBeUndefined(); // Banco calcula todas as taxas da planilha
+ }
+ for(const call of calls.filter(x=>x.url==='/api/c6-spreadsheet/calculate'))expect(call.body.term).toBe(108);
+ const group=calls.find(x=>x.url==='/api/daycoval/calculate-groups')!;
+ expect(group.body.contracts).toHaveLength(2);
+ await waitFor(()=>expect(screen.getByText(/NOVO · Margem atual/)).toBeTruthy());
+ expect(screen.getByText('C6 Portabilidade')).toBeTruthy();
+ expect(screen.getByText('Paraná Banco')).toBeTruthy();
+ const unification=screen.getByRole('button',{name:/Unificações Daycoval/});
+ fireEvent.click(unification);
+ await waitFor(()=>expect(screen.getAllByText(/Unificação Daycoval/).length).toBeGreaterThan(0));
+ const selectable=screen.getAllByRole('button',{name:'Selecionar cotação'});
+ fireEvent.click(selectable[0]);
+ expect(screen.getByRole('button',{name:'Copiar para WhatsApp'})).toBeTruthy();
+});
