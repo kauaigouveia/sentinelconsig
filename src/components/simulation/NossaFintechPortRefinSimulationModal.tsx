@@ -608,7 +608,16 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
               <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)} · {selectedMargin===quote.index?'Selecionada':'Selecionar'}</span>
             </button>)}</div>
         </details>}
-        {marginNote && <details className="text-xs text-[var(--text-secondary)]"><summary className="cursor-pointer">Pendências do NOVO</summary><p className="mt-2">{marginNote}</p></details>}
+        {marginState==='ready' && <details className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
+          <summary className="cursor-pointer font-semibold">Status das integrações de NOVO</summary>
+          <div className="mt-2 flex flex-wrap gap-2">{['C6','FACTA','Nossa Fintech','FINANTO','HAPPY','BMG'].map(bank=>{
+            const found=marginOffers.some(quote=>quote.provider.toUpperCase().includes(bank.toUpperCase()));
+            return <span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
+              {bank}: {found?'cotação retornada':'sem oferta ou integração indisponível'}
+            </span>;
+          })}</div>
+          {marginNote && <p className="mt-3 text-[var(--warning-text)]">{marginNote}</p>}
+        </details>}
         {forecast && novoScenario==='PROJECTED' && <section className="space-y-3" aria-label="Prévia bancária de aumento de margem 2027">
           <div className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">
             <strong>Cenário futuro: parcela adicional hipotética de R$ 42,00 em 2027</strong>
