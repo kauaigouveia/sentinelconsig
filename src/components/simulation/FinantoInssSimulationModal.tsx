@@ -119,15 +119,6 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [birthDate, setBirthDate] = useState(statement?.customer.birthDate ?? '');
   const [income, setIncome] = useState(statement?.income ?? '');
   const [simulationScenario, setSimulationScenario] = useState<'CURRENT' | 'PROJECTED'>(projectedOnly ? 'PROJECTED' : 'CURRENT');
-  useEffect(() => {
-    if (simulationScenario === 'PROJECTED' && (!inssProjectedMargin(income, statement?.loanMargin, statement?.loanBlocked) || statement?.loanBlocked)) {
-      setSimulationScenario('CURRENT');
-      setSelectedCondition(undefined);
-      setQuotes([]);
-      setCalculation(null);
-      setStep(1);
-    }
-  }, [income, statement?.loanMargin, statement?.loanBlocked, simulationScenario]);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
@@ -165,6 +156,15 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
 
+  useEffect(() => {
+    if (simulationScenario === 'PROJECTED' && (!inssProjectedMargin(income, statement?.loanMargin, statement?.loanBlocked) || statement?.loanBlocked)) {
+      setSimulationScenario('CURRENT');
+      setSelectedCondition(undefined);
+      setQuotes([]);
+      setCalculation(null);
+      setStep(1);
+    }
+  }, [income, statement?.loanMargin, statement?.loanBlocked, simulationScenario]);
   useEffect(()=>{setPortabilityContext(statement ? {illiterate:statement.illiterate,negativeMarginAmount:statement.loanMargin,benefitStartDate:statement.benefitStart} : {});},[cpf,statement]);
   useEffect(() => {
     const cep = zipCode.replace(/\D/g, '');
