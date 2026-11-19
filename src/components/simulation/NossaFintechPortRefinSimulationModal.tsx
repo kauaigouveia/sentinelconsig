@@ -1,7 +1,10 @@
 import type { ReviewedInssStatement } from '../../lib/inssStatement';
 import {PortabilityResults} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
-import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
+import {originContractSuffix,buildPortRefinBreakdown,portabilityBreakdownText,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
+import { formatMonthlyRate } from '../../lib/portRefinQuote';
+import { estimateProjectedInssLoan, inssProjectedMargin } from '../../lib/inssProjectedMargin';
+import { selectablePortRefinRates, type RatePolicy } from '../../lib/portRefinRates';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -25,7 +28,7 @@ import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
 
 type SimulationRow = { installmentChanges?: PortedInstallmentChange[]; originalInstallment?: number; contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string; sourceVersionDate?:string | null; sourceContracts?:PortabilityContractDraft[] };
-type Props = { statement?: ReviewedInssStatement; onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
+type Props = { statement?: ReviewedInssStatement; autoRunFromStatement?: boolean; onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
 const currency = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
 const labelClass = 'text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]';
@@ -38,14 +41,16 @@ const EMPTY_FORM={
     lastDueBalance: '', installmentFaceValue: '', openedInstallmentNumber: '', numberOfInstallments: '108', refinancingRate: '', benefitContractCount:'', legalRepresentative: false,
 };
 
-export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue, statement }) => {
-  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>(statement ? { illiterate: statement.illiterate, negativeMarginAmount: statement.loanMargin, benefitStartDate: statement.benefitStart } : {});
+export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue, statement, autoRunFromStatement = false }) => {
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>(statement ? { illiterate: statement.illiterate, ...(Number(parseCurrency(statement.loanMargin)) < 0 ? {negativeMarginAmount:statement.loanMargin} : {}), benefitStartDate: statement.benefitStart } : {});
   const [form, setForm] = useState<typeof EMPTY_FORM & {reviewMetadata?:Record<string,string>}>({...EMPTY_FORM, ...statement?.customer, benefitContractCount: statement?.benefitContractCount ?? '', legalRepresentative: statement ? statement.legalRepresentative : false});
   type FormSnapshot=typeof form & {reviewMetadata?:Record<string,string>};
   const [contractQueue,setContractQueue]=useState<PortabilityContractDraft[]>(statement?.contracts ?? []);
   const unify=true;
   const [progress,setProgress]=useState('');
   const running=React.useRef(false);
+  const autoStarted=React.useRef(false);
+  const paranaPolicies=React.useRef<Promise<RatePolicy[]>|null>(null);
   const identity=()=>`${StorageService.getCurrentTenantId()}:${StorageService.getActiveUser()?.id||''}`;
   const scope=React.useRef(identity());
   const transport=React.useRef<AbortController|null>(null);
@@ -73,6 +78,12 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [saveMessage, setSaveMessage] = useState('');
   const [partnerId, setPartnerId] = useState('');
   const [saved, setSaved] = useState(false);
+  type MarginOffer = { provider:string; institution:string; table:string; amount:number; installment:number|null; term:number|null; rate:number|null; source:'API'|'PLANILHA' };
+  const [marginOffers,setMarginOffers]=useState<MarginOffer[]>([]);
+  const [marginState,setMarginState]=useState<'idle'|'loading'|'ready'>('idle');
+  const [marginNote,setMarginNote]=useState('');
+  const [selectedMargin,setSelectedMargin]=useState<number|null>(null);
+  const [shareStatus,setShareStatus]=useState('');
 
   useEffect(()=>{if(!isOpen)transport.current?.abort();else if(!running.current)scope.current=identity();},[isOpen]);
   const previousCustomer = React.useRef([normalizeCpf(form.cpf), form.benefitNumber]);
@@ -84,7 +95,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       setContractQueue([]);
     }
   }, [form.cpf, form.benefitNumber]);
-  if (!isOpen) return null;
+  // O retorno antecipado fica abaixo dos hooks de inicialização da simulação por extrato.
 
   const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setProviderNotes([]); setError(''); };
   const calculateNossaFintech = async (form:FormSnapshot): Promise<SimulationRow[]> => {
@@ -112,12 +123,40 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     return (result.offers || []).map((offer: any) => ({ provider: 'FACTA', table: { name: offer.name, cod_tabela: offer.code, amount: offer.rate }, success: Boolean(offer.amount), term: offer.term, troco: offer.amount, data: offer, error: offer.amount ? undefined : 'O banco não informou troco nesta condição.' }));
   };
 
+  const getParanaPolicies = () => {
+    if(!paranaPolicies.current) paranaPolicies.current=(async()=>{
+      const response=await request('/api/parana-spreadsheet',{credentials:'same-origin'});
+      const data=await readJsonResponse(response);
+      if(!response.ok || !data.configured || data.enabled===false)
+        throw Error(data.error||'Paraná: planilha não está configurada ou ativada nesta empresa.');
+      return Array.isArray(data.ratePolicies)?data.ratePolicies as RatePolicy[]:[];
+    })();
+    return paranaPolicies.current;
+  };
   const calculateWorkbook = async (provider:'DAYCOVAL'|'C6'|'PARANA',form:FormSnapshot,group:PortabilityContractDraft[]=[form]):Promise<SimulationRow[]> => {
     const route=provider==='DAYCOVAL'?'daycoval':provider==='PARANA'?'parana-spreadsheet':'c6-spreadsheet';
-    const response=await request(`/api/${route}/calculate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(form.reviewMetadata??portabilityContext),birthDate:form.birthDate,benefitType:Number(form.benefitType),term:Number(form.numberOfInstallments),benefitContractCount:form.benefitContractCount?Number(form.benefitContractCount):undefined,refinanceRate:form.refinancingRate?parseCurrency(form.refinancingRate):undefined,contracts:group.map(contract=>({originBank:contract.originLenderCode,originalTerm:Number(contract.originalTerm),remaining:Number(contract.openedInstallmentNumber),balance:parseCurrency(contract.lastDueBalance),installment:parseCurrency(contract.installmentFaceValue)}))})});
+    // Paraná exige taxa de sua planilha; nunca omitir a taxa nem supor 1,85%.
+    // C6 é calculado exclusivamente na própria planilha de portabilidade (108 meses).
+    let chosenRate=form.refinancingRate?parseCurrency(form.refinancingRate):undefined;
+    if(provider==='PARANA' && !(Number(chosenRate)>0)){
+      const policies=await getParanaPolicies();
+      const rates=selectablePortRefinRates(policies,Number(form.numberOfInstallments),Number(parseCurrency(group[0]?.installmentFaceValue)),[32,92].includes(Number(form.benefitType))?15:undefined);
+      if(!rates.length)throw Error('Paraná: nenhuma taxa ativa atende ao prazo, espécie e valor da parcela. Verifique a planilha importada.');
+      chosenRate=rates[0];
+    }
+    const targetTerm=provider==='C6'?108:Number(form.numberOfInstallments);
+    const response=await request(`/api/${route}/calculate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(form.reviewMetadata??portabilityContext),birthDate:form.birthDate,benefitType:Number(form.benefitType),term:targetTerm,benefitContractCount:form.benefitContractCount?Number(form.benefitContractCount):undefined,refinanceRate:chosenRate,contracts:group.map(contract=>({originBank:contract.originLenderCode,originalTerm:Number(contract.originalTerm),remaining:Number(contract.openedInstallmentNumber),balance:parseCurrency(contract.lastDueBalance),installment:parseCurrency(contract.installmentFaceValue)}))})});
     const result=await readJsonResponse(response);if(!response.ok)throw Error(result.error||`Não foi possível calcular ${provider}.`);
     if(!result.offers?.length)throw Error(result.message||'A planilha não retornou condições calculadas.');
-    return result.offers.map((offer:any)=>({provider,table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate},success:true,requiresReview:true,term:offer.term,troco:offer.amount,data:offer,sourceVersionDate:result.version?.versionDate || null,installmentChanges:offer.installmentChanges,reviewReason:offer.requiresReview?'Conferência comercial e documental pendente.':'Cotação calculada por planilha; aprovação bancária pendente.',error:undefined}));
+    return result.offers.map((offer:any)=>({
+      provider,table:{name:offer.name||offer.tableName,cod_tabela:offer.code||offer.tableId,amount:offer.rate},
+      success:offer.calculated===true || offer.eligible===true,
+      skipped:offer.calculated!==true && offer.eligible!==true,
+      requiresReview:true,term:offer.term,troco:offer.amount,data:offer,
+      sourceVersionDate:result.version?.versionDate || null,installmentChanges:offer.installmentChanges,
+      reviewReason:offer.policyReview||'Cotação de planilha para conferência; aprovação bancária pendente.',
+      error:offer.calculated===true||offer.eligible===true?undefined:offer.policyReview||offer.status||'Condição não elegível pela política atual.',
+    }));
   };
 
   const calculateFinanto = async (form:FormSnapshot): Promise<SimulationRow[]> => {
@@ -179,7 +218,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const contractRequired=contractQueue.length===0||hasOriginContractDraft(form);
   const calculate = async (event: React.FormEvent) => {
-    event.preventDefault(); if(running.current)return;transport.current=new AbortController();running.current=true; setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
+    event.preventDefault(); if(running.current)return;paranaPolicies.current=null;transport.current=new AbortController();running.current=true; setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
     if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false);running.current=false; return; }
     if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false);running.current=false; return; }
     try {
