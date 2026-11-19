@@ -56,7 +56,7 @@ it('consulta NOVO + seis contratos em APIs via um único clique e mostra fontes'
   fireEvent.click(screen.getByRole('checkbox',{name:/Confirmo que o cliente autorizou/}));
   fireEvent.click(action);
   await waitFor(()=>expect(http.mock.calls).toHaveLength(7));
-  await waitFor(()=>expect(screen.getByRole('status',{name:''}).textContent).toContain('7 de 7'));
+  await waitFor(()=>expect(screen.getByText(/Consultas concluídas: 7 de 7/)).toBeTruthy());
   const operations=http.mock.calls.map(([,init])=>JSON.parse(String(init?.body)));
   expect(operations.filter(row=>row.operation==='NEW')).toHaveLength(1);
   expect(operations.filter(row=>row.operation==='PORT_REFIN')).toHaveLength(6);
