@@ -132,7 +132,7 @@ export function registerInssStatementQuoteRoutes(
         .filter((row: any) => ['PENDING','ERROR'].includes(row?.state) && typeof row.message === 'string')
         .slice(0, 25)
         .map((row: any) => `${safeText(row.institution || row.provider, 40)}: ${safeText(row.message, 220)}`);
-      if (!offers.length && typeof result.message === 'string' && result.message.trim()) notices.push(safeText(result.message, 220));
+      if (typeof result.message === 'string' && result.message.trim()) notices.push(safeText(result.message, 700));
       return res.json({ offers, notices, operation: raw.operation, ...(projectedScenario ? {
         scenario:'PROJECTED_2027',installment:INSS_PROJECTED_2027.addedInstallment,
         officialMarginAvailable:false,
