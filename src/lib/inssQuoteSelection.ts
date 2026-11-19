@@ -16,7 +16,17 @@ const key=(contract:QuoteContract|undefined):string =>
     ? String(contract.originLenderCode).trim()+':'+String(contract.originContractNumber).trim() : '';
 export function inssQuoteCoveredContracts(row:SelectableInssQuote):string[]{
   const contracts=(row.sourceContracts?.length ? row.sourceContracts : row.sourceForm ? [row.sourceForm] : []);
-  return [...new Set(contracts.map(key).filter(Boolean))];
+  const explicit=[...new Set(contracts.map(key).filter(Boolean))];
+  if(explicit.length)return explicit;
+  // Compatibilidade com cotações antigas que só possuem "Contrato 1" no rótulo.
+  const label=String(row.contractLabel||'');
+  if(row.unified) {
+    const groups=label.match(/contratos?\s+([0-9]+(?:\s*\+\s*[0-9]+)*)/i)
+      || label.match(/unifica(?:ção|cao)\s+([0-9]+(?:\s*\+\s*[0-9]+)*)/i);
+    return groups ? groups[1].split('+').map(n=>'#'+n.trim()) : [];
+  }
+  const individual=label.match(/^Contrato\s+(\d+)/i);
+  return individual?['#'+individual[1]]:[];
 }
 function collides(a:SelectableInssQuote,b:SelectableInssQuote):boolean{
   const left=inssQuoteCoveredContracts(a),right=inssQuoteCoveredContracts(b);
