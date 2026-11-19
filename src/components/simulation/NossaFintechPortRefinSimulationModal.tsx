@@ -461,9 +461,57 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
       {happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
+      {statement && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 sm:p-4" aria-label="Simulação NOVO pela margem atual">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><h3 className="text-sm font-bold">NOVO · Margem atual {currency(parseCurrency(statement.loanMargin))}</h3>
+            <p className="text-xs text-[var(--text-secondary)]">Ofertas do banco consultado. Selecione uma condição para compartilhar.</p></div>
+          <span className="text-xs text-[var(--text-secondary)]">{marginState==='loading'?'Consultando…':marginOffers.length+' condições · '+marginBest.length+' instituições'}</span>
+        </div>
+        {marginState==='loading' && <p role="status" className="text-xs">Consultando a margem disponível nos bancos…</p>}
+        {marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma oferta NOVO retornada para a margem atual.</p>}
+        {marginBest.length>0 && <div className="grid gap-2 sm:grid-cols-2">{marginBest.map(quote=>
+          <div key={quote.index} className={'rounded-lg border p-3 text-xs '+(selectedMargin===quote.index?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--border-default)]')}>
+            <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--text-secondary)]">{quote.source==='API'?'API':'Planilha'}</span></div>
+            <p className="mt-1 truncate text-[var(--text-secondary)]" title={quote.table}>{quote.table}</p>
+            <p className="mt-2 text-[var(--text-secondary)]">Estimativa de valor a liberar</p>
+            <strong className="text-lg text-[var(--success-text)]">{currency(quote.amount)}</strong>
+            <p className="mt-1 text-[var(--text-secondary)]">Parcela {currency(quote.installment)} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)}</p>
+            <button type="button" aria-pressed={selectedMargin===quote.index} className="mt-2 rounded-lg border border-[var(--field-border)] px-3 py-1.5 font-semibold"
+              onClick={()=>{setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}>
+              {selectedMargin===quote.index?'✓ NOVO selecionado':'Selecionar NOVO'}
+            </button>
+          </div>)}</div>}
+        {marginOther.length>0 && <details className="rounded-lg border border-[var(--border-default)] p-3 text-xs">
+          <summary className="cursor-pointer font-semibold">Outras {marginOther.length} condições de NOVO</summary>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">{marginOther.map(quote=>
+            <button type="button" key={quote.index} aria-pressed={selectedMargin===quote.index}
+              onClick={()=>{setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}
+              className={'rounded-lg border p-3 text-left '+(selectedMargin===quote.index?'border-[var(--action)]':'border-[var(--border-default)]')}>
+              <strong>{quote.institution} · {currency(quote.amount)}</strong>
+              <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)} · {selectedMargin===quote.index?'Selecionada':'Selecionar'}</span>
+            </button>)}</div>
+        </details>}
+        {marginNote && <details className="text-xs text-[var(--text-secondary)]"><summary className="cursor-pointer">Pendências do NOVO</summary><p className="mt-2">{marginNote}</p></details>}
+        {forecast && <div className="rounded-lg border border-[var(--warning-border)] p-3 text-xs text-[var(--warning-text)]">
+          <strong>Prévia 2027 · +R$ 42,00 de parcela, ainda não liberados</strong>
+          <p className="mt-1">Valor bruto teórico {currency(estimateProjectedInssLoan(1.85,108))} a 1,85% a.m. / 108 meses, antes de IOF e custos. Não é cotação bancária nem compõe a margem atual.</p>
+        </div>}
+      </section>}
       {rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
       {providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
-      {rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows} conditionFor={conditionFor} onSelect={toggleQuote}/>}
+      {rows.some(row => !row.skipped) && <PortabilityResults rows={rows} selected={selected} selectedRows={selectedRows} savedRows={savedRows} conditionFor={conditionFor} onSelect={toggleQuote} showOwnShare={!statement}/>}
+      {statement && messageForWhatsApp && <section className="mt-4 space-y-2 rounded-xl border border-[var(--success-border)] p-4" aria-label="Copiar seleções para WhatsApp">
+        <h3 className="font-semibold">Compartilhar condições selecionadas</h3>
+        <p className="text-xs text-[var(--text-secondary)]">{selectedRows.length} portabilidade(s) e {chosenMargin?1:0} NOVO selecionado. Apenas as condições escolhidas entram no resumo.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={()=>void copyToWhatsApp()} className="rounded-lg bg-[var(--action)] px-4 py-2 text-xs font-semibold text-[var(--action-ink)]">Copiar para WhatsApp</button>
+          <button type="button" onClick={()=>window.open('https://wa.me/?text='+encodeURIComponent(messageForWhatsApp),'_blank','noopener,noreferrer')} className="rounded-lg border border-[var(--field-border)] px-4 py-2 text-xs font-semibold">Abrir WhatsApp</button>
+        </div>
+        <details className="text-xs"><summary className="cursor-pointer font-semibold">Conferir texto da mensagem</summary>
+          <textarea readOnly value={messageForWhatsApp} rows={9} aria-label="Mensagem para WhatsApp" className="mt-2 w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs"/>
+        </details>
+        {shareStatus && <p role="status" className="text-xs text-[var(--success-text)]">{shareStatus}</p>}
+      </section>}
       {(selectedRows.length > 0 || savedRows.length > 0 || saveMessage) && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] p-4" aria-label="Salvar cotações selecionadas">
         <h3 className="font-semibold">Cotações dos contratos</h3>
         <p className="text-sm text-[var(--text-secondary)]">Selecione uma condição por contrato. É possível salvar contratos distintos do mesmo cliente e parceiro de uma só vez.</p>
