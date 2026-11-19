@@ -37,7 +37,7 @@ export class PartnerSimulationService {
     let plan:any=null;
     const today = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     let preparedDaycoval: ReturnType<typeof prepareDaycovalWorkbook> | undefined;
-    if(isPortability)try {
+    if(isPortability && input.onlyAdditionalPortBanks!==true)try {
       const candidates: RoutingCandidate[] = [];
       const availability = (id:string, enabled:boolean, transport:'OFFICIAL_API'|'WORKBOOK'='OFFICIAL_API') =>
         ({id,enabled,configured:enabled,authorized:enabled,transport,dataReady:true,idempotencyReady:transport==='WORKBOOK'});
@@ -196,7 +196,13 @@ export class PartnerSimulationService {
         }
       }),
     ];
-    await executeRoutingJobs(jobs,plan?.priorityId||null);
+    // No extrato, o comparador histórico já consultou Finanto, Facta, Nossa
+    // Fintech e as três planilhas. Acrescentar somente HAPPY e BMG aqui evita
+    // duplicar chamadas e propostas de simulação no mesmo CPF.
+    const selectedJobs=isPortability && input.onlyAdditionalPortBanks===true
+      ? jobs.filter(item=>item.id.startsWith('happy-')||item.id.startsWith('bmg-'))
+      : jobs;
+    await executeRoutingJobs(selectedJobs,plan?.priorityId||null);
     if(isPortability){
       try{await AuditLogService.record(prisma,{tenantId,action:'simulation.portability_routing',entity:'SimulationRequest',newData:{priorityId:plan?.priorityId,trace:plan?.trace,decisions:[...assessments.map(row=>({bank:portabilityBankId(row.provider||row.institution),status:row.policyStatus,reason:row.message})),...offers.map(row=>({bank:portabilityBankId(row.provider||row.institution),status:row.policyStatus,reason:row.policyReview}))].slice(0,100),offerBanks:[...new Set(offers.map(row=>row.provider||row.institution))]}});}catch{/* Preserve existing simulations if diagnostic storage is unavailable. */}
       const failed=assessments.some(row=>row.policyStatus==='TECHNICAL_FAILURE');
