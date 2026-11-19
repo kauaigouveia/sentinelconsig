@@ -461,6 +461,18 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
       {happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
+      {statement && step===2 && <section aria-label="Bancos consultados" className="mt-3 grid gap-2 sm:grid-cols-3">
+        {(['DAYCOVAL','C6','PARANA'] as const).map(bank=>{
+          const found=rows.filter(row=>row.provider===bank&&row.success&&!row.skipped);
+          const unified=bank==='DAYCOVAL'?found.filter(row=>row.unified).length:0;
+          const note=providerNotes.find(note=>note.includes(' · '+bank+':') || note.startsWith(bank+':'));
+          return <div key={bank} className="rounded-lg border border-[var(--border-default)] p-3 text-xs">
+            <strong>{bank==='PARANA'?'Paraná Banco':bank==='C6'?'C6 Portabilidade':'Daycoval'}</strong>
+            <p className="mt-1 text-[var(--text-secondary)]">{loading?'Em consulta…':found.length?found.length+' condições calculadas'+(unified?' · '+unified+' unificações':''):'Nenhuma cotação retornada'}</p>
+            {!loading&&!found.length&&note&&<p className="mt-1 text-[var(--warning-text)]">{note.slice(0,180)}</p>}
+          </div>;
+        })}
+      </section>}
       {statement && <section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 sm:p-4" aria-label="Simulação NOVO pela margem atual">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><h3 className="text-sm font-bold">NOVO · Margem atual {currency(parseCurrency(statement.loanMargin))}</h3>
