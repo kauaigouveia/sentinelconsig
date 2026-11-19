@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { InssStatement, ReviewedInssStatement } from '../../lib/inssStatement';
-import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
+import { inssProjectedMargin, estimateProjectedInssLoan } from '../../lib/inssProjectedMargin';
 import { emptyStatementQuotes, simulateInssStatementComplete, type StatementAutoQuotes } from '../../lib/inssStatementAutoQuotes';
 import { parseCurrency } from '../../lib/utils';
 import { StorageService } from '../../services/storageService';
@@ -190,7 +190,10 @@ export default function InssStatementWorkspace({ scope, onClose }: Props) {
                 <span>{q.institution} · {q.monthlyRate.toLocaleString('pt-BR',{maximumFractionDigits:4})}% a.m. · {q.term} meses</span>
                 <strong>Bruto teórico: {amount(q.gross)}</strong>
               </div>)}</div>
-            {hasFinished && !quotes.projectedQuotes.length && <p className="mt-2 text-xs">Nenhuma taxa bancária atual disponível para estimar essa prévia.</p>}
+            {hasFinished && !quotes.projectedQuotes.length && <div className="mt-2 rounded-lg border border-[var(--warning-border)] p-3 text-xs">
+              <span>Prévia matemática de referência (sem API): R$ 42,00 · 1,85% a.m. · 108 meses</span>
+              <strong className="ml-2">Bruto teórico: {amount(estimateProjectedInssLoan(1.85,108) ?? 0)}</strong>
+            </div>}
           </section>}
           <div className="space-y-3">
             <h4 className="font-bold">Portabilidades — todos os contratos do extrato</h4>
