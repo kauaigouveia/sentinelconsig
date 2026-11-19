@@ -73,6 +73,7 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
  for(const call of calls.filter(x=>x.url==='/api/c6-spreadsheet/calculate'))expect(call.body.term).toBe(108);
  const group=calls.find(x=>x.url==='/api/daycoval/calculate-groups')!;
  expect(group.body.contracts).toHaveLength(2);
+ expect(calls.filter(x=>x.url==='/api/inss/statement/quote'&&x.body?.onlyAdditionalPortBanks===true)).toHaveLength(2);
  const tabPort=screen.getByRole('button',{name:/^PORTABILIDADE \(/});
  const tabNovo=screen.getByRole('button',{name:/^NOVO \(/});
  expect(tabPort.getAttribute('aria-pressed')).toBe('true');
@@ -93,6 +94,10 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
  await waitFor(()=>expect(screen.getAllByText(/Unificação Daycoval/).length).toBeGreaterThan(0));
  const selectable=screen.getAllByRole('button',{name:'Selecionar cotação'});
  fireEvent.click(selectable[0]);
+ fireEvent.click(tabNovo);
+ fireEvent.click(tabPort);
+ expect(screen.getByRole('button',{name:/Unificações Daycoval/}).getAttribute('aria-pressed')).toBe('true');
+ expect(screen.getByRole('region',{name:'Cotações selecionadas preservadas'}).textContent).toContain('Unificação');
  const copied=vi.fn().mockResolvedValue(undefined);
  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:copied}});
  fireEvent.click(screen.getByRole('button',{name:'Copiar para WhatsApp'}));
