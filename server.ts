@@ -133,6 +133,7 @@ import { C6SyncWorker } from './server/services/c6SyncWorker.js';
 import { FactaBankService } from './server/services/factaBankService.js';
 import { inssSimulationDraft } from './server/services/inssSimulationDraft.js';
 import { registerDaycovalRoutes } from './server/services/daycovalRoutes.js';
+import { registerInssStatementQuoteRoutes } from './server/services/inssStatementQuoteRoutes.js';
 import { FactaSimulationService } from './server/services/factaSimulationService.js';
 import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
@@ -2165,6 +2166,7 @@ async function auditAndEnsureMasterUser() {
   registerBmgRoutes(app, prisma, getAuthSession);
   registerVctexRoutes(app, prisma, getAuthSession);
   registerDaycovalRoutes(app, prisma, getAuthSession);
+  registerInssStatementQuoteRoutes(app, prisma, getAuthSession);
   app.get('/api/simulations', async (req, res) => {
     try {
       const session = await getAuthSession(req);
