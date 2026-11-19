@@ -75,5 +75,10 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
  await waitFor(()=>expect(screen.getAllByText(/Unificação Daycoval/).length).toBeGreaterThan(0));
  const selectable=screen.getAllByRole('button',{name:'Selecionar cotação'});
  fireEvent.click(selectable[0]);
- expect(screen.getByRole('button',{name:'Copiar para WhatsApp'})).toBeTruthy();
+ const copied=vi.fn().mockResolvedValue(undefined);
+ Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:copied}});
+ fireEvent.click(screen.getByRole('button',{name:'Copiar para WhatsApp'}));
+ await waitFor(()=>expect(copied).toHaveBeenCalledOnce());
+ expect(String(copied.mock.calls[0][0])).toContain('PORTABILIDADE');
+ expect(String(copied.mock.calls[0][0])).toContain('Daycoval');
 });
