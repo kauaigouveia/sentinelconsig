@@ -5,7 +5,6 @@ import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portR
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { estimateProjectedInssLoan, inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
-import { selectablePortRefinRates, type RatePolicy } from '../../lib/portRefinRates';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -51,7 +50,6 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [progress,setProgress]=useState('');
   const running=React.useRef(false);
   const autoStarted=React.useRef(false);
-  const paranaPolicies=React.useRef<Promise<RatePolicy[]>|null>(null);
   const identity=()=>`${StorageService.getCurrentTenantId()}:${StorageService.getActiveUser()?.id||''}`;
   const scope=React.useRef(identity());
   const transport=React.useRef<AbortController|null>(null);
@@ -124,39 +122,23 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     return (result.offers || []).map((offer: any) => ({ provider: 'FACTA', table: { name: offer.name, cod_tabela: offer.code, amount: offer.rate }, success: Boolean(offer.amount), term: offer.term, troco: offer.amount, data: offer, error: offer.amount ? undefined : 'O banco não informou troco nesta condição.' }));
   };
 
-  const getParanaPolicies = () => {
-    if(!paranaPolicies.current) paranaPolicies.current=(async()=>{
-      const response=await request('/api/parana-spreadsheet',{credentials:'same-origin'});
-      const data=await readJsonResponse(response);
-      if(!response.ok || !data.configured || data.enabled===false)
-        throw Error(data.error||'Paraná: planilha não está configurada ou ativada nesta empresa.');
-      return Array.isArray(data.ratePolicies)?data.ratePolicies as RatePolicy[]:[];
-    })();
-    return paranaPolicies.current;
-  };
   const calculateWorkbook = async (provider:'DAYCOVAL'|'C6'|'PARANA',form:FormSnapshot,group:PortabilityContractDraft[]=[form]):Promise<SimulationRow[]> => {
     const route=provider==='DAYCOVAL'?'daycoval':provider==='PARANA'?'parana-spreadsheet':'c6-spreadsheet';
-    // Paraná exige taxa de sua planilha; nunca omitir a taxa nem supor 1,85%.
-    // C6 é calculado exclusivamente na própria planilha de portabilidade (108 meses).
-    let chosenRate=form.refinancingRate?parseCurrency(form.refinancingRate):undefined;
-    if(provider==='PARANA' && !(Number(chosenRate)>0)){
-      const policies=await getParanaPolicies();
-      const rates=selectablePortRefinRates(policies,Number(form.numberOfInstallments),Number(parseCurrency(group[0]?.installmentFaceValue)),[32,92].includes(Number(form.benefitType))?15:undefined);
-      if(!rates.length)throw Error('Paraná: nenhuma taxa ativa atende ao prazo, espécie e valor da parcela. Verifique a planilha importada.');
-      chosenRate=rates[0];
-    }
+    // O backend Paraná encontra todas as taxas válidas na planilha ativa quando
+    // nenhuma taxa específica é informada. Nunca reduzir a uma taxa arbitrária.
+    // A planilha C6 Portabilidade só admite 108 meses; explicitar o prazo retornado.
+    const chosenRate=form.refinancingRate?parseCurrency(form.refinancingRate):undefined;
     const targetTerm=provider==='C6'?108:Number(form.numberOfInstallments);
     const response=await request(`/api/${route}/calculate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(form.reviewMetadata??portabilityContext),birthDate:form.birthDate,benefitType:Number(form.benefitType),term:targetTerm,benefitContractCount:form.benefitContractCount?Number(form.benefitContractCount):undefined,refinanceRate:chosenRate,contracts:group.map(contract=>({originBank:contract.originLenderCode,originalTerm:Number(contract.originalTerm),remaining:Number(contract.openedInstallmentNumber),balance:parseCurrency(contract.lastDueBalance),installment:parseCurrency(contract.installmentFaceValue)}))})});
     const result=await readJsonResponse(response);if(!response.ok)throw Error(result.error||`Não foi possível calcular ${provider}.`);
     if(!result.offers?.length)throw Error(result.message||'A planilha não retornou condições calculadas.');
+    // previewPortRefin já filtra ofertas não calculáveis; sua resposta pública
+    // não possui os campos internos "calculated" nem "eligible".
     return result.offers.map((offer:any)=>({
       provider,table:{name:offer.name||offer.tableName,cod_tabela:offer.code||offer.tableId,amount:offer.rate},
-      success:offer.calculated===true || offer.eligible===true,
-      skipped:offer.calculated!==true && offer.eligible!==true,
-      requiresReview:true,term:offer.term,troco:offer.amount,data:offer,
+      success:true,requiresReview:true,term:offer.term,troco:offer.amount,data:offer,
       sourceVersionDate:result.version?.versionDate || null,installmentChanges:offer.installmentChanges,
-      reviewReason:offer.policyReview||'Cotação de planilha para conferência; aprovação bancária pendente.',
-      error:offer.calculated===true||offer.eligible===true?undefined:offer.policyReview||offer.status||'Condição não elegível pela política atual.',
+      reviewReason:offer.requiresReview?'Conferência comercial/documental pendente.':'Cotação por planilha; aprovação bancária pendente.',
     }));
   };
 
@@ -219,7 +201,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const contractRequired=contractQueue.length===0||hasOriginContractDraft(form);
   const calculate = async (event: React.FormEvent) => {
-    event.preventDefault(); if(running.current)return;paranaPolicies.current=null;transport.current=new AbortController();running.current=true; setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
+    event.preventDefault(); if(running.current)return;transport.current=new AbortController();running.current=true; setSelected(null);setSelectedRows([]);setSavedRows([]);setSaveMessage(''); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
     if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false);running.current=false; return; }
     if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false);running.current=false; return; }
     try {
