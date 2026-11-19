@@ -51,6 +51,7 @@ describe('Rodapé institucional autenticado', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Ativar tema escuro' }));
     expect(localStorage.getItem('evolve_theme')).toBe('dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
   it('updates local time without backend calls and cleans up its timer', () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-24T12:00:00Z'));
@@ -75,6 +76,13 @@ describe('Rodapé institucional autenticado', () => {
     expect(css).toContain('max-width: 640px');
     expect(css).toContain('border-left: 18px solid #1aa4b5');
     expect(css).toContain('background: #f9fafb');
+    // Regressão: o rodapé precisa manter o visual claro e assumir a paleta escura
+    // quando o ThemeProvider aplicar .dark ao elemento html.
+    expect(css).toContain('.dark .sentinel-institutional-footer {');
+    expect(css).toContain('background: #11212d');
+    expect(css).toContain('border-top-color: #253745');
+    expect(css).toContain('.dark .institutional-footer-brand {');
+    expect(css).toContain('.dark .institutional-footer-theme:hover {');
   });
 });
 
