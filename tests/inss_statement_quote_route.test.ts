@@ -69,3 +69,28 @@ it('bloqueia sessão ausente sem consultar motor bancário',async()=>{
   expect(res.code).toBe(401);
   expect(PartnerSimulationService.run).not.toHaveBeenCalled();
 });
+
+it('simula o cenário hipotético de R$42 nos provedores NOVO sem alterar a margem declarada e sem criar proposta',async()=>{
+  vi.mocked(PartnerSimulationService.run).mockResolvedValue({
+    rows:[{provider:'C6',institution:'C6 BANK',state:'OFFER',amount:1900,term:108,rate:1.8,installment:42}],
+  } as any);
+  const res=response();
+  await handler({body:{...base,contract:undefined,operation:'PROJECTED_NEW',forecastYear:2027,loanMargin:36.52,income:1621}},res);
+  expect(res.code).toBe(200);
+  expect(res.payload.scenario).toBe('PROJECTED_2027');
+  expect(res.payload.officialMarginAvailable).toBe(false);
+  expect(res.payload.offers[0]).toMatchObject({scenario:'PROJECTED_2027',nonBinding:true,notAvailableMargin:true});
+  const input=vi.mocked(PartnerSimulationService.run).mock.calls[0][2];
+  expect(input).toMatchObject({operation:'NEW',mode:'Payment',value:42,income:1621,projectedScenario:'FORECAST_2027',nonBindingQuoteOnly:true});
+  expect(input.negativeMarginAmount).toBeUndefined();
+  expect(vi.mocked(PartnerSimulationService.run).mock.calls[0][3]).toBe('SIMULATE');
+});
+it('rejeita projeção de 2027 quando extrato não corresponde à renda-base ou ano incorreto',async()=>{
+  const res=response();
+  await handler({body:{...base,contract:undefined,operation:'PROJECTED_NEW',forecastYear:2027,income:3000}},res);
+  expect(res.code).toBe(422);
+  const wrongYear=response();
+  await handler({body:{...base,contract:undefined,operation:'PROJECTED_NEW',forecastYear:2028,income:1621}},wrongYear);
+  expect(wrongYear.code).toBe(422);
+  expect(PartnerSimulationService.run).not.toHaveBeenCalled();
+});
