@@ -96,8 +96,8 @@ const ForcePasswordChangeModal = lazyNamed(() => import('./components/auth/Force
 function isNexusVisualEnabled(): boolean {
   try {
     const choice = new URLSearchParams(window.location.search).get('ui');
-    if (choice === 'classic' || choice === 'aurora' || choice === 'nexus') window.sessionStorage.setItem('sentinel_ui_variant', choice);
-    return (choice || window.sessionStorage.getItem('sentinel_ui_variant')) !== 'classic';
+    if (choice === 'classic' || choice === 'aurora' || choice === 'nexus') window.sessionStorage.setItem('sentinel_nexus_variant', choice);
+    return (choice || window.sessionStorage.getItem('sentinel_nexus_variant')) !== 'classic';
   } catch {
     return true;
   }
