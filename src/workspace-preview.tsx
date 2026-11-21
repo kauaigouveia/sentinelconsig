@@ -5,6 +5,9 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { RouterProvider } from './router';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { WorkbenchBrand, WorkbenchNavigation } from './components/workbench/WorkbenchNavigation';
+import { NexusNavigation } from './components/nexus/NexusNavigation';
+import { NexusPageContext } from './components/nexus/NexusPageContext';
+import { NexusHome } from './components/nexus/NexusHome';
 import { WorkspaceGuide } from './components/workbench/WorkspaceGuide';
 import { Header } from './components/layout/Header';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
@@ -17,6 +20,7 @@ import { ToastContainer } from './components/ui/ToastContainer';
 import './index.css';
 import './styles/workbench.css';
 import './styles/sentinel-aurora.css';
+import './styles/sentinel-nexus.css';
 
 installPreviewEnvironment();
 const lazyNamed = (loader: () => Promise<any>, name: string) => React.lazy(() => loader().then(module => ({default: module[name] as React.ComponentType<any>})));
@@ -112,14 +116,24 @@ function WorkspacePreview() {
   const mode = new URLSearchParams(window.location.search).get('mode');
   if (mode === 'partner') return <React.Suspense fallback={<div>Carregando portal…</div>}><PartnerPortalLayout initialTab={['dashboard','propostas','atendimento','perfil'].includes(new URLSearchParams(window.location.search).get('partnerTab') || '') ? new URLSearchParams(window.location.search).get('partnerTab') : 'dashboard'}/></React.Suspense>;
   if (mode === 'login') return <React.Suspense fallback={<div>Carregando acesso…</div>}><LoginView onLoginSuccess={() => {}}/></React.Suspense>;
-  return <div className={'sentinel-app s2-root s3-root s4-root' + (new URLSearchParams(window.location.search).get('ui')==='classic'?'':' s5-root')}>
+  return <div className={'sentinel-app s2-root s3-root s4-root' + (new URLSearchParams(window.location.search).get('ui')==='classic'?'':' s6-root')}>
     <div className="sentinel-stage">
-      <Header leadingContent={<WorkbenchBrand onHome={() => navigate('/')}/>} redesignPreview onOpenSearch={() => setSearchOpen(true)} onOpenNotifications={() => setNotice('Prévia com dados fictícios. Notificações reais indisponíveis.')} onOpenTestRunner={() => setNotice('Os testes de produção não são executados pela prévia.')} onGlobalSearch={() => setSearchOpen(true)} searchTerm="" onNavigate={navigate}/>
-      <WorkbenchNavigation role="MASTER" path={path} navigate={navigate}/>
-      <main className="sentinel-main min-h-0 flex-1 overflow-y-auto">{path !== '/' && <WorkspaceGuide pathname={path} role="MASTER" navigate={navigate} />}<div className="sentinel-view-body" data-ui-module={route?.viewId} data-ui-family={route ? operationalFamily(route.viewId) : undefined}>
+      <Header leadingContent={new URLSearchParams(window.location.search).get('ui')==='classic'?<WorkbenchBrand onHome={() => navigate('/')}/>:undefined} redesignPreview onOpenSearch={() => setSearchOpen(true)} onOpenNotifications={() => setNotice('Prévia com dados fictícios. Notificações reais indisponíveis.')} onOpenTestRunner={() => setNotice('Os testes de produção não são executados pela prévia.')} onGlobalSearch={() => setSearchOpen(true)} searchTerm="" onNavigate={navigate}/>
+      {new URLSearchParams(window.location.search).get('ui')==='classic'
+        ? <WorkbenchNavigation role="MASTER" path={path} navigate={navigate}/>
+        : <NexusNavigation role="MASTER" path={path} navigate={navigate} onSearch={() => setSearchOpen(true)}/>}
+
+      <main className="sentinel-main min-h-0 flex-1 overflow-y-auto">{path !== '/' && (new URLSearchParams(window.location.search).get('ui')==='classic'
+        ? <WorkspaceGuide pathname={path} role="MASTER" navigate={navigate} />
+        : <NexusPageContext path={path} role="MASTER" navigate={navigate}
+            onApps={() => window.dispatchEvent(new Event('sentinel:nexus-apps'))}/> )}<div className="sentinel-view-body" data-ui-module={route?.viewId} data-ui-family={route ? operationalFamily(route.viewId) : undefined}>
         {notice && <div className="wb-error" role="status">{notice}<button onClick={() => setNotice('')}>Fechar</button></div>}
         <ErrorBoundary key={path}><React.Suspense fallback={<div className="wb-empty">Carregando tela…</div>}>
-          {path === '/' ? <WorkspaceHome rows={galleryRows} bottlenecks={null} role="MASTER" name="Ana Demonstração" navigate={navigate} openProposal={setProposal} newProposal={() => setModal('new')}/> : Screen ? <Screen premium onNavigate={navigate} onNavigateToView={navigate} onKanban={() => navigate('/esteira')} onOpenNewProduction={() => setModal('new')} onOpenImportExcel={() => setModal('import')} onOpenProposalDetail={setProposal}/> : <div className="workspace-empty">Selecione uma área no menu.</div>}
+          {path === '/' ? (new URLSearchParams(window.location.search).get('ui')==='classic'
+            ? <WorkspaceHome rows={galleryRows} bottlenecks={null} role="MASTER" name="Ana Demonstração" navigate={navigate} openProposal={setProposal} newProposal={() => setModal('new')}/>
+            : <NexusHome rows={galleryRows} bottlenecks={null} role="MASTER" name="Ana Demonstração"
+                navigate={navigate} openProposal={setProposal} newProposal={() => setModal('new')}/>)
+            : Screen ? <Screen premium onNavigate={navigate} onNavigateToView={navigate} onKanban={() => navigate('/esteira')} onOpenNewProduction={() => setModal('new')} onOpenImportExcel={() => setModal('import')} onOpenProposalDetail={setProposal}/> : <div className="workspace-empty">Selecione uma área no menu.</div>}
         </React.Suspense></ErrorBoundary>
       </div></main>
     </div>
