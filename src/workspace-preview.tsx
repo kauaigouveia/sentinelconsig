@@ -16,6 +16,7 @@ import { operationalFamily } from './components/redesign/operationalFamilies';
 import { ToastContainer } from './components/ui/ToastContainer';
 import './index.css';
 import './styles/workbench.css';
+import './styles/sentinel-aurora.css';
 
 installPreviewEnvironment();
 const lazyNamed = (loader: () => Promise<any>, name: string) => React.lazy(() => loader().then(module => ({default: module[name] as React.ComponentType<any>})));
@@ -111,7 +112,7 @@ function WorkspacePreview() {
   const mode = new URLSearchParams(window.location.search).get('mode');
   if (mode === 'partner') return <React.Suspense fallback={<div>Carregando portal…</div>}><PartnerPortalLayout initialTab={['dashboard','propostas','atendimento','perfil'].includes(new URLSearchParams(window.location.search).get('partnerTab') || '') ? new URLSearchParams(window.location.search).get('partnerTab') : 'dashboard'}/></React.Suspense>;
   if (mode === 'login') return <React.Suspense fallback={<div>Carregando acesso…</div>}><LoginView onLoginSuccess={() => {}}/></React.Suspense>;
-  return <div className="sentinel-app s2-root s3-root s4-root">
+  return <div className={'sentinel-app s2-root s3-root s4-root' + (new URLSearchParams(window.location.search).get('ui')==='classic'?'':' s5-root')}>
     <div className="sentinel-stage">
       <Header leadingContent={<WorkbenchBrand onHome={() => navigate('/')}/>} redesignPreview onOpenSearch={() => setSearchOpen(true)} onOpenNotifications={() => setNotice('Prévia com dados fictícios. Notificações reais indisponíveis.')} onOpenTestRunner={() => setNotice('Os testes de produção não são executados pela prévia.')} onGlobalSearch={() => setSearchOpen(true)} searchTerm="" onNavigate={navigate}/>
       <WorkbenchNavigation role="MASTER" path={path} navigate={navigate}/>
