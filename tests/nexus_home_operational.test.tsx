@@ -21,6 +21,8 @@ afterEach(()=>cleanup());
 it('mostra indicadores reais da carteira, sem valores inventados',()=>{
   render(<NexusHome rows={rows} role="MASTER" name="Operador Teste"
     navigate={()=>{}} openProposal={()=>{}}/>);
+  expect(screen.getByText('SENTINEL CONSIG · INTELIGÊNCIA EM CADA OPERAÇÃO.')).toBeTruthy();
+  expect(screen.queryByText(/nexus/i)).toBeNull();
   const indicators=screen.getByRole('region',{name:'Indicadores da carteira carregada'});
   expect(within(indicators).getByText('Na carteira').parentElement?.parentElement?.textContent).toContain('3');
   expect(within(indicators).getByText('Em andamento').parentElement?.parentElement?.textContent).toContain('2');
