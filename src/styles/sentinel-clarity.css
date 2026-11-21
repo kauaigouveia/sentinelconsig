@@ -1,0 +1,416 @@
+/*
+ * SENTINEL CONSIG — responsive navigation + genuinely paired light/dark skins.
+ * Limited to s6 operational shell. Application routes and banking workflows unchanged.
+ */
+.s6-root.s4-root.s3-root{
+  --sc-nav-bg:#f8fbfc;
+  --sc-nav-text:#294653;
+  --sc-nav-secondary:#53717b;
+  --sc-nav-muted:#68858e;
+  --sc-nav-border:#d7e5e8;
+  --sc-nav-hover:#e9f3f4;
+  --sc-nav-active:#e1f2f0;
+  --sc-nav-accent:#007f83;
+  --sc-nav-active-ink:#15535b;
+  --sc-nav-panel:#eaf4f5;
+}
+.dark .s6-root.s4-root.s3-root{
+  --sc-nav-bg:#10232c;
+  --sc-nav-text:#e0f2f3;
+  --sc-nav-secondary:#bdD3d8;
+  --sc-nav-muted:#94b2bb;
+  --sc-nav-border:#2f4b55;
+  --sc-nav-hover:#1b3943;
+  --sc-nav-active:#1c474c;
+  --sc-nav-accent:#72d9cb;
+  --sc-nav-active-ink:#e9fffa;
+  --sc-nav-panel:#19333c;
+}
+/* Desktop: one continuous scroll for the sidebar — never a tiny nested scrollbar. */
+.s6-root.s4-root.s3-root .sentinel-stage{
+  grid-template-columns:254px minmax(0,1fr);
+}
+.s6-root.s4-root.s3-root .sentinel-stage>.nx-sidebar{
+  background:var(--sc-nav-bg);
+  color:var(--sc-nav-text);
+  border-right:1px solid var(--sc-nav-border);
+  padding:22px 14px 16px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--sc-nav-border) transparent;
+  gap:0;
+}
+.s6-root.s4-root.s3-root .nx-group-nav{
+  flex:0 0 auto;
+  overflow:visible;
+  min-height:auto;
+  padding-bottom:0;
+}
+.s6-root.s4-root.s3-root .nx-sidebar-brand{
+  flex-shrink:0;
+  padding:1px 10px 25px;
+  color:var(--sc-nav-text);
+}
+.s6-root.s4-root.s3-root .nx-sidebar-brand .nx-sidebar-tagline{
+  color:var(--sc-nav-secondary)!important;
+  font-size:11px!important;
+  line-height:1.4;
+  margin-top:5px;
+}
+.s6-root.s4-root.s3-root .nx-section-caption{
+  color:var(--sc-nav-muted);
+  font-size:10px;
+  margin:0 10px 12px;
+  letter-spacing:.12em;
+  font-weight:780;
+}
+.s6-root.s4-root.s3-root .nx-quick-nav{gap:4px;flex-shrink:0;}
+.s6-root.s4-root.s3-root .nx-quick-nav a{
+  min-height:44px;
+  padding:0 13px;
+  color:var(--sc-nav-secondary);
+  font-size:13px;
+  border:1px solid transparent;
+  border-radius:11px;
+}
+.s6-root.s4-root.s3-root .nx-quick-nav a .nx-chevron{
+  color:var(--sc-nav-secondary);
+}
+.s6-root.s4-root.s3-root .nx-quick-nav a:hover,
+.s6-root.s4-root.s3-root .nx-quick-nav a:focus-visible{
+  color:var(--sc-nav-text);
+  background:var(--sc-nav-hover);
+}
+.s6-root.s4-root.s3-root .nx-quick-nav a[aria-current=page]{
+  color:var(--sc-nav-active-ink);
+  background:var(--sc-nav-active);
+  box-shadow:none;
+  border:1px solid color-mix(in srgb,var(--sc-nav-accent) 37%,var(--sc-nav-border));
+  font-weight:800;
+}
+.s6-root.s4-root.s3-root .nx-quick-nav a[aria-current=page] svg{color:var(--sc-nav-accent);}
+.s6-root.s4-root.s3-root .nx-sidebar-rule{
+  margin:21px 9px 20px;
+  background:var(--sc-nav-border);
+}
+.s6-root.s4-root.s3-root .nx-group{
+  flex-shrink:0;
+  margin-bottom:4px;
+}
+.s6-root.s4-root.s3-root .nx-group>button{
+  min-height:43px;
+  color:var(--sc-nav-secondary);
+  font-size:13px;
+  border:1px solid transparent;
+  padding:0 12px;
+}
+.s6-root.s4-root.s3-root .nx-group>button:hover,
+.s6-root.s4-root.s3-root .nx-group-open>button{
+  color:var(--sc-nav-text);
+  background:var(--sc-nav-hover);
+}
+.s6-root.s4-root.s3-root .nx-group-links{
+  padding:5px 7px 9px 32px;
+}
+.s6-root.s4-root.s3-root .nx-group-links a{
+  color:var(--sc-nav-secondary);
+  font-size:12px;
+  border-left:1px solid var(--sc-nav-border);
+  padding:10px 9px;
+  line-height:1.4;
+}
+.s6-root.s4-root.s3-root .nx-group-links a:hover,
+.s6-root.s4-root.s3-root .nx-group-links a[aria-current=page]{
+  color:var(--sc-nav-active-ink);
+  border-left-color:var(--sc-nav-accent);
+  background:var(--sc-nav-active);
+}
+.s6-root.s4-root.s3-root .nx-sidebar-all-apps{
+  flex:0 0 auto;
+  width:100%;
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:11px 13px;
+  margin-top:auto;
+  border:1px solid var(--sc-nav-border);
+  border-radius:12px;
+  background:var(--sc-nav-panel);
+  color:var(--sc-nav-text);
+  font-size:13px;
+  font-weight:730;
+  text-align:left;
+  cursor:pointer;
+}
+.s6-root.s4-root.s3-root .nx-sidebar-all-apps span{flex:1;}
+.s6-root.s4-root.s3-root .nx-sidebar-all-apps:hover,
+.s6-root.s4-root.s3-root .nx-sidebar-all-apps:focus-visible{
+  border-color:var(--sc-nav-accent);
+  color:var(--sc-nav-active-ink);
+}
+.s6-root.s4-root.s3-root .nx-sidebar-all-apps>svg:last-child{color:var(--sc-nav-accent);}
+.s6-root.s4-root.s3-root .nx-sidebar-brand:focus-visible,
+.s6-root.s4-root.s3-root .nx-group>button:focus-visible,
+.s6-root.s4-root.s3-root .nx-sidebar-all-apps:focus-visible{
+  outline:2px solid var(--sc-nav-accent);
+  outline-offset:2px;
+}
+.s6-root.s4-root.s3-root .nx-launcher{
+  border-color:var(--border-default);
+  color:var(--text-primary);
+}
+/* Modern, legible KPI cards. The strip is a layout grid, not a seventh enclosing card. */
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:14px!important;
+  margin:0;
+  padding:0!important;
+  background:transparent!important;
+  border:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div{
+  min-width:0;
+  min-height:132px;
+  padding:18px 20px!important;
+  background:var(--bg-surface)!important;
+  border:1px solid var(--border-default)!important;
+  border-radius:14px!important;
+  box-shadow:0 4px 18px rgba(0,0,0,.035)!important;
+}
+.dark .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div{
+  box-shadow:0 5px 22px rgba(0,0,0,.09)!important;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div>div:first-child{
+  color:var(--text-secondary)!important;
+  letter-spacing:.015em;
+  font-size:12px!important;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div>div:nth-child(2){
+  font-size:30px!important;
+  margin-top:9px!important;
+  line-height:1.05;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div>div:last-child{
+  color:var(--text-secondary)!important;
+  font-size:12px!important;
+  margin-top:9px!important;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>.nx-pendency-overdue{
+  border-color:var(--danger-border)!important;
+  background:color-mix(in srgb,var(--danger-bg) 20%,var(--bg-surface))!important;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>.nx-pendency-overdue>div:first-child,
+.s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>.nx-pendency-overdue>div:nth-child(2){
+  color:var(--danger-text)!important;
+}
+/* One clean filter card, six native controls instead of two oversized tab strips. */
+.s6-root.s4-root.s3-root .sentinel-main .nx-pendency-filters{
+  padding:20px;
+  background:var(--bg-surface);
+  border:1px solid var(--border-default);
+  border-radius:15px;
+  display:grid;
+  gap:17px;
+  min-width:0;
+  box-shadow:none;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-heading>div{
+  display:grid;gap:4px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-heading strong{
+  color:var(--text-primary);
+  font-size:15px;
+  font-weight:750;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-heading span{
+  color:var(--text-secondary);
+  font-size:12px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-clear-filters{
+  display:flex;gap:7px;align-items:center;
+  color:var(--text-secondary);
+  background:transparent;
+  padding:8px 10px;
+  min-height:38px;
+  font-size:12px;
+  border:1px solid var(--border-default);
+  border-radius:9px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-clear-filters:hover{color:var(--danger-text);border-color:var(--danger-border);}
+.s6-root.s4-root.s3-root .nx-pendency-filter-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  align-items:end;
+  gap:13px;
+  min-width:0;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-field,
+.s6-root.s4-root.s3-root .nx-pendency-filter-search{
+  display:grid;
+  min-width:0;
+  gap:7px;
+  color:var(--text-secondary);
+  font-size:12px;
+  font-weight:680;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-field select{
+  width:100%;
+  min-width:0;
+  height:43px;
+  padding:0 12px;
+  border:1px solid var(--field-border);
+  border-radius:10px;
+  background:var(--bg-surface-elevated);
+  color:var(--text-primary);
+  font:inherit;
+  font-size:13px;
+  font-weight:560;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-field select:focus-visible,
+.s6-root.s4-root.s3-root .nx-pendency-filter-search input:focus-visible{
+  outline:2px solid var(--focus);outline-offset:2px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-filter-search{
+  grid-column:span 3;
+}
+.s6-root.s4-root.s3-root .nx-pendency-search-box{
+  display:flex;align-items:center;
+  height:43px;
+  gap:9px;
+  padding:0 9px 0 13px;
+  border:1px solid var(--field-border);
+  border-radius:10px;
+  background:var(--bg-surface-elevated);
+  color:var(--text-secondary);
+}
+.s6-root.s4-root.s3-root .nx-pendency-search-box input{
+  flex:1;
+  min-width:0;width:100%;height:100%;
+  padding:0!important;
+  background:transparent!important;border:0!important;
+  outline:none;
+  color:var(--text-primary);
+  font:inherit;font-size:13px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-search-box:focus-within{
+  outline:2px solid var(--focus);outline-offset:2px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-search-box button{
+  display:grid;place-items:center;
+  width:34px;height:34px;
+  padding:0;flex:0 0 34px;
+  border:0;border-radius:7px;
+  color:var(--text-secondary);
+  background:transparent;
+}
+.s6-root.s4-root.s3-root .nx-pendency-search-box button[type=submit]{
+  background:var(--nx-accent-soft);
+  color:var(--link);
+}
+.s6-root.s4-root.s3-root .nx-pendency-mine-filter{
+  align-self:end;min-height:43px;
+  padding:0 12px;
+  display:flex;align-items:center;justify-content:flex-start;gap:9px;
+  border-radius:10px;
+  border:1px solid var(--border-default);
+  background:var(--bg-surface-elevated);
+  color:var(--text-primary);
+  font-size:12px;
+  font-weight:680;
+}
+.s6-root.s4-root.s3-root .nx-pendency-mine-filter>span:nth-child(2){flex:1;text-align:left;}
+.s6-root.s4-root.s3-root .nx-pendency-mine-filter[aria-pressed=true]{
+  border-color:var(--link);
+  background:var(--nx-accent-soft);
+}
+.s6-root.s4-root.s3-root .nx-pendency-toggle{
+  position:relative;
+  display:block;
+  width:34px;height:19px;
+  border-radius:20px;
+  background:var(--border-strong);
+  flex:0 0 34px;
+}
+.s6-root.s4-root.s3-root .nx-pendency-toggle:before{
+  content:"";position:absolute;left:3px;top:3px;width:13px;height:13px;
+  border-radius:50%;background:white;transition:transform 160ms ease;
+}
+.s6-root.s4-root.s3-root .nx-pendency-mine-filter[aria-pressed=true] .nx-pendency-toggle{background:var(--link);}
+.s6-root.s4-root.s3-root .nx-pendency-mine-filter[aria-pressed=true] .nx-pendency-toggle:before{transform:translateX(15px);}
+.s6-root.s4-root.s3-root .sentinel-main .p2-pendency-list{
+  border-radius:15px!important;
+  background:var(--bg-surface)!important;
+  border:1px solid var(--border-default)!important;
+  box-shadow:none;
+}
+.s6-root.s4-root.s3-root .sentinel-main .p2-pendency-list>.p-16{
+  min-height:170px;padding:36px 18px!important;
+}
+/* Fluid cards respond to the content pane, not the monitor's total pixel width. */
+@container sentinel-nexus (max-width:1080px){
+  .s6-root.s4-root.s3-root .nx-pendency-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .s6-root.s4-root.s3-root .nx-pendency-filter-search{grid-column:span 2;}
+  .s6-root.s4-root.s3-root .nx-pendency-mine-filter{grid-column:span 2;}
+}
+@container sentinel-nexus (max-width:830px){
+  .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@container sentinel-nexus (max-width:510px){
+  .s6-root.s4-root.s3-root .nx-pendency-filter-grid{grid-template-columns:minmax(0,1fr);}
+  .s6-root.s4-root.s3-root .nx-pendency-filter-search,
+  .s6-root.s4-root.s3-root .nx-pendency-mine-filter{grid-column:1;}
+  .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div{
+    padding:15px 12px!important;min-height:125px;
+  }
+  .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip>div>div:nth-child(2){
+    font-size:26px!important;
+  }
+}
+@container sentinel-nexus (max-width:340px){
+  .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip{
+    grid-template-columns:1fr!important;
+  }
+}
+@media(max-width:1230px){
+  .s6-root.s4-root.s3-root .sentinel-stage{grid-template-columns:229px minmax(0,1fr);}
+}
+@media(max-width:980px){
+  .s6-root.s4-root.s3-root .sentinel-stage{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:62px minmax(0,1fr) auto;
+  }
+  .s6-root.s4-root.s3-root .sentinel-stage>.nx-sidebar{display:none;}
+  .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-header{grid-column:1;grid-row:1;}
+  .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-main{grid-column:1;grid-row:2;min-width:0;}
+  .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-institutional-footer{grid-column:1;grid-row:3;}
+  .s6-root .nx-mobile-bottom>a,.s6-root .nx-mobile-bottom>button{min-height:48px;}
+}
+@media(max-width:600px){
+  .s6-root.s4-root.s3-root .sentinel-main .nx-pendency-filters{padding:15px 13px;}
+  .s6-root.s4-root.s3-root .nx-pendency-filter-heading{align-items:start;gap:7px;}
+  .s6-root.s4-root.s3-root .nx-pendency-filter-heading strong{font-size:14px;}
+  .s6-root.s4-root.s3-root .sentinel-main .p2-live-pendencies>.ui-metrics-strip{margin-top:0;}
+}
+@media(prefers-reduced-motion:reduce){
+  .s6-root.s4-root.s3-root .nx-pendency-toggle:before{transition:none;}
+}
