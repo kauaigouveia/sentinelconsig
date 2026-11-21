@@ -341,3 +341,50 @@
 @media(prefers-reduced-motion:reduce){
   .s6-root.s4-root.s3-root :is(.nx-group,.nx-quick-nav,.ui-card,.ui-metric){transition:none!important;}
 }
+
+
+/* Home visual direction: understated finance command center, not neon demo. */
+.s6-root .nx-home{gap:20px;}
+.s6-root .nx-hero{
+  min-height:225px;border-radius:18px;
+  border:1px solid #32636b;
+  background:linear-gradient(116deg,#13313c 0%,#1b4350 57%,#173842 100%);
+  box-shadow:0 8px 30px rgba(4,18,24,.12);
+}
+.s6-root .nx-hero::before{
+  background:radial-gradient(ellipse at 95% 25%,rgba(101,214,205,.12),transparent 55%);
+}
+.s6-root .nx-hero-copy{padding-block:30px;}
+.s6-root .nx-hero-kicker{color:#9ce0d5;font-size:10px;letter-spacing:.13em;}
+.s6-root .nx-hero h1{font-size:clamp(26px,2.45vw,37px);line-height:1.17;max-width:570px;}
+.s6-root .nx-hero p{color:#d1e4e8;font-size:13px;}
+.s6-root .nx-hero-primary{background:#d8fbf4;border-color:#d8fbf4;color:#15363d;}
+.s6-root .nx-hero-secondary{border-color:#699b9f;color:#e7f8f5;}
+.s6-root .nx-hero-visual{opacity:.62;min-height:225px;}
+.s6-root .nx-orbit{border-color:#8fdcd74b;}
+.s6-root .nx-core{
+  background:linear-gradient(150deg,#4ac9bd,#226b77);
+  box-shadow:0 0 45px #57c2bc46,0 16px 30px #09262e75;
+  border-color:#71cfc4;
+}
+.s6-root .nx-orbit-caption{
+  background:#16414dba;border-color:#65b8ae5c;color:#dbfff9;
+}
+.s6-root .nx-metric,.s6-root .nx-home-worklist,.s6-root .nx-side-panel{
+  border-radius:15px;border-color:var(--border-default);
+  box-shadow:0 3px 17px rgba(4,18,24,.055);
+}
+.s6-root .nx-metric-blue{--nx-metric-accent:#47baa9;}
+.s6-root .nx-metric-violet{--nx-metric-accent:#72aab6;}
+.s6-root .nx-metric-amber{--nx-metric-accent:#d7ab66;}
+.s6-root .nx-metric-green{--nx-metric-accent:#45b796;}
+.s6-root .nx-shortcut-list button{background:var(--bg-surface-elevated);border-color:var(--border-subtle);}
+.s6-root .nx-shortcut-icon{background:var(--nx-accent-soft);color:var(--link);}
+.s6-root .nx-avatar{background:var(--nx-accent-soft);color:var(--link);}
+.s6-root .nx-bank-track>span{background:linear-gradient(90deg,#1d8e92,#5dceb7);}
+@media(max-width:640px){
+  .s6-root .nx-hero{min-height:245px;border-radius:15px;}
+  .s6-root .nx-hero-copy{padding:24px 18px;}
+  .s6-root .nx-hero h1{font-size:clamp(25px,7vw,30px);}
+  .s6-root .nx-metric{padding:15px 13px;min-height:128px;}
+}
