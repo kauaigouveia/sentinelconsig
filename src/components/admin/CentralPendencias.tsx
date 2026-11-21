@@ -628,6 +628,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
       </div>
 
       {premium ? (
+        <>
       {/* Responsive filters — retain existing state, API parameters and permissions. */}
       <section className={`nx-pendency-filters ${premium ? 'p2-pendency-filters' : ''}`} aria-label="Filtros de pendências">
         <div className="nx-pendency-filter-heading">
@@ -713,7 +714,9 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
           </button>
         </div>
       </section>
+        </>
       ) : (
+        <>
       {/* Advanced Filter and Search Bar */}
       <div className={`bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-4 space-y-3 ${premium ? 'p2-pendency-filters' : ''}`}>
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
@@ -867,6 +870,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
           )}
         </div>
       </div>
+        </>
       )}
 
       {/* Main List */}
