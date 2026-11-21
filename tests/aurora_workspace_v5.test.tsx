@@ -65,6 +65,8 @@ describe('Sentinel Aurora v5 — refatoração visual sem alterar permissões',(
     expect(css).toContain('.dark .s5-root.s4-root.s3-root');
     expect(css).toContain('.wb-navigation:');
     expect(css).toContain('wb-pinned');
+    expect(css).toContain('.wb-sidebar-pin { display:none; }');
+    expect(css).toContain('grid-template-columns:var(--aurora-rail)');
     expect(css).toContain('prefers-reduced-motion:reduce');
     expect(css).toContain('max-width:1030px');
     expect(css).toContain('.p2-bi-workspace');
