@@ -27,7 +27,7 @@ it('mostra indicadores reais da carteira, sem valores inventados',()=>{
   expect(within(indicators).getByText('Com pendência').parentElement?.parentElement?.textContent).toContain('1');
   expect(within(indicators).getByText('Pagas').parentElement?.parentElement?.textContent).toContain('1');
   expect(screen.getByText(/registros carregados/)).toBeTruthy();
-  expect(screen.getByText(/C6 BANK/)).toBeTruthy();
+  expect(screen.getAllByText(/C6 BANK/).length).toBeGreaterThan(0);
 });
 it('abre a proposta real selecionada e filtra a carteira',()=>{
   const open=vi.fn();
@@ -41,7 +41,7 @@ it('abre a proposta real selecionada e filtra a carteira',()=>{
   expect(open).toHaveBeenCalledWith('p1');
 });
 it('não usa dados da carteira sem a permissão de leitura',()=>{
-  render(<NexusHome rows={rows} role="DIGITADOR" name="Técnico"
+  render(<NexusHome rows={rows} role="DIGITADOR" permissions={['dashboard.view']} name="Técnico"
     navigate={()=>{}} openProposal={()=>{}}/>);
   expect(screen.queryByRole('region',{name:'Indicadores da carteira carregada'})).toBeNull();
   expect(screen.queryByRole('button',{name:'Abrir proposta de Cliente Sintético'})).toBeNull();
