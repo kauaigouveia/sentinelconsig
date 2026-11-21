@@ -580,7 +580,7 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? (isFocusMode ? "s2-root s3-root" : "s2-root s3-root s4-root") : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
+    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? (isFocusMode ? "s2-root s3-root" : "s2-root s3-root s4-root" + (new URLSearchParams(window.location.search).get('ui') === 'classic' ? '' : ' s5-root')) : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
       <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
       {/* Main Content Area */}
       <div className="sentinel-stage flex flex-1 flex-col overflow-hidden min-w-0">
