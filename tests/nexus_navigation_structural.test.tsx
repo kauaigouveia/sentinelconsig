@@ -15,6 +15,9 @@ it('utiliza navegação mobile inferior e não reutiliza o drawer antigo',()=>{
   expect(screen.getByRole('navigation',{name:'Acesso rápido'})).toBeTruthy();
   expect(screen.queryByText('Seu espaço de trabalho')).toBeNull();
   expect(screen.getByRole('button',{name:'Sentinel Consig — página inicial'})).toBeTruthy();
+  const sidebar=screen.getByLabelText('Navegação principal');
+  const destinations=[...sidebar.querySelectorAll('a[href]')].map(a=>a.getAttribute('href'));
+  expect(new Set(destinations).size).toBe(destinations.length); // no duplicated quick/module links
   expect(screen.getAllByText('Inteligência em cada operação.').length).toBeGreaterThan(0);
   expect(screen.queryByText(/nexus/i)).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Buscar no Sentinel'}));
@@ -45,8 +48,10 @@ it('liga cabeçalho de módulo à navegação de aplicativos sem inventar rotas'
     <NexusPageContext role="MASTER" path="/propostas" navigate={navigate}
       onApps={()=>window.dispatchEvent(new Event('sentinel:nexus-apps'))}/>
   </>);
-  expect(screen.getByRole('heading',{name:'Propostas'})).toBeTruthy();
-  expect(screen.getByText('SENTINEL CONSIG · OPERAÇÃO')).toBeTruthy();
+  const breadcrumbs=screen.getByRole('navigation',{name:'Caminho da tela'});
+  expect(within(breadcrumbs).getByText('Propostas')).toBeTruthy();
+  // Every module already has a PageHeader; the shell must not duplicate it.
+  expect(screen.queryByRole('heading',{name:'Propostas'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Abrir todos os aplicativos'}));
   expect(screen.getByRole('dialog',{name:'Todos os aplicativos'})).toBeTruthy();
   expect(visibleNavigation('MASTER').some(item=>item.path==='/propostas')).toBe(true);
@@ -76,4 +81,12 @@ it('troca o AppShell para Nexus somente no workspace e mantém versão clássica
   expect(navigationCss).toContain('max-width:980px');
   expect(css).toContain('prefers-reduced-motion');
   expect(preview).toContain('<NexusHome');
+  const main=readFileSync('src/main.tsx','utf8');
+  expect(main.indexOf("import './styles/sentinel-refined.css'"))
+    .toBeGreaterThan(main.indexOf("import './styles/sentinel-nexus.css'"));
+  const refined=readFileSync('src/styles/sentinel-refined.css','utf8');
+  expect(refined).toContain('grid-template-columns:repeat(3,minmax(0,1fr))');
+  expect(refined).toContain('grid-template-columns:repeat(2,minmax(0,1fr))');
+  expect(refined).toContain('max-width:980px');
+  expect(refined).toContain('prefers-reduced-motion:reduce');
 });
