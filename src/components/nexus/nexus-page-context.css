@@ -1,0 +1,24 @@
+.s6-root .nx-page-context{max-width:1640px;margin:0 auto 25px;padding:0 0 22px;border-bottom:1px solid var(--border-subtle)}
+.s6-root .nx-context-breadcrumb{display:flex;align-items:center;gap:11px;color:var(--text-secondary);font-size:11px;margin-bottom:20px}
+.s6-root .nx-context-breadcrumb a{color:var(--text-secondary);display:flex;align-items:center}
+.s6-root .nx-context-breadcrumb strong{color:var(--text-primary);font-weight:680}
+.s6-root .nx-context-title-row{display:flex;justify-content:space-between;align-items:flex-end;gap:20px}
+.s6-root .nx-context-title-row h1{color:var(--text-primary);font-size:clamp(25px,2.25vw,35px);font-weight:810;letter-spacing:-.046em;line-height:1.25;margin:9px 0 6px}
+.s6-root .nx-context-title-row p{font-size:12px;line-height:1.55;color:var(--text-secondary)}
+.s6-root .nx-context-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.s6-root .nx-context-actions a,.s6-root .nx-context-actions button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:39px;padding:0 12px;border:1px solid var(--border-default);border-radius:11px;background:var(--bg-surface);font-size:11px;text-decoration:none;font-weight:740;color:var(--text-primary)}
+.s6-root .nx-context-actions a:hover,.s6-root .nx-context-actions button:hover{border-color:var(--link);background:var(--bg-surface-elevated)}
+.s6-root .nx-context-actions button{color:var(--link)}
+.s6-root .sentinel-view-body>.ui-page-header:first-child h1{letter-spacing:-.035em}
+@media(max-width:920px){
+ .s6-root .nx-context-title-row{align-items:flex-start}
+ .s6-root .nx-context-actions>a{display:none}
+}
+@media(max-width:600px){
+ .s6-root .nx-page-context{margin-bottom:16px;padding-bottom:16px}
+ .s6-root .nx-context-breadcrumb{margin-bottom:13px;gap:8px;font-size:10px}
+ .s6-root .nx-context-title-row h1{font-size:25px}
+ .s6-root .nx-context-title-row p{font-size:11px}
+ .s6-root .nx-context-actions button{width:40px;height:40px;padding:0}
+ .s6-root .nx-context-actions button span{display:none}
+}
