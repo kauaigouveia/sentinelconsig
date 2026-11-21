@@ -135,7 +135,7 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
       onMouseDown={event=>{if(event.target===event.currentTarget)setLauncherOpen(false);}}>
       <div className="nx-launcher" ref={launcher} role="dialog" aria-modal="true" aria-labelledby="nx-launcher-title">
         <header className="nx-launcher-header">
-          <div><span className="nx-overline">SENTINEL WORKSPACE</span><h2 id="nx-launcher-title">Todos os aplicativos</h2>
+          <div><span className="nx-overline">SENTINEL CONSIG</span><h2 id="nx-launcher-title">Todos os aplicativos</h2>
             <p>Escolha uma área. Você vê apenas os recursos liberados para seu acesso.</p></div>
           <button type="button" aria-label="Fechar aplicativos" onClick={()=>{setLauncherOpen(false);moreButton.current?.focus();}}><X size={21}/></button>
         </header>
