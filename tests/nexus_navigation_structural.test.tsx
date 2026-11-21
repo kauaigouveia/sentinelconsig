@@ -20,8 +20,7 @@ it('utiliza navegação mobile inferior e não reutiliza o drawer antigo',()=>{
   expect(new Set(destinations).size).toBe(destinations.length); // no duplicated quick/module links
   expect(screen.getAllByText('Inteligência em cada operação.').length).toBeGreaterThan(0);
   expect(screen.queryByText(/nexus/i)).toBeNull();
-  fireEvent.click(screen.getByRole('button',{name:'Buscar no Sentinel'}));
-  expect(search).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button',{name:'Buscar no Sentinel'})).toBeNull(); // Topbar owns global search
   const bottom=screen.getByRole('navigation',{name:'Navegação inferior'});
   const link=within(bottom).getByRole('link',{name:/Simular crédito/});
   expect(link.getAttribute('aria-current')).toBe('page');
@@ -85,6 +84,15 @@ it('troca o AppShell para Nexus somente no workspace e mantém versão clássica
   expect(main.indexOf("import './styles/sentinel-refined.css'"))
     .toBeGreaterThan(main.indexOf("import './styles/sentinel-nexus.css'"));
   const refined=readFileSync('src/styles/sentinel-refined.css','utf8');
+  const clarity=readFileSync('src/styles/sentinel-clarity.css','utf8');
+  expect(clarity).toContain('.dark .s6-root.s4-root.s3-root');
+  expect(clarity).toContain('--sc-nav-bg:#f8fbfc');
+  expect(clarity).toContain('--sc-nav-bg:#10232c');
+  expect(clarity).toContain('overflow-y:auto');
+  expect(clarity).toContain('overflow:visible');
+  expect(clarity).toContain('grid-template-columns:repeat(2,minmax(0,1fr))');
+  expect(main.indexOf("import './styles/sentinel-clarity.css'"))
+    .toBeGreaterThan(main.indexOf("import './styles/sentinel-refined.css'"));
   expect(refined).toContain('grid-template-columns:repeat(3,minmax(0,1fr))');
   expect(refined).toContain('grid-template-columns:repeat(2,minmax(0,1fr))');
   expect(refined).toContain('max-width:980px');
