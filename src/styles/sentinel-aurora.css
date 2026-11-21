@@ -1,0 +1,485 @@
+/*
+ * SENTINEL AURORA — v5 visual system
+ * Based on an abstract dark SaaS reference: icon rail, ambient depth,
+ * layered analytics cards and restrained motion. Presentation only.
+ * A ?ui=classic query on the operational workspace restores the v4 shell.
+ * All business logic, RBAC, tenants, data endpoints and bank integrations remain untouched.
+ */
+.s5-root.s4-root.s3-root {
+  --aurora-rail:76px;
+  --aurora-open-rail:248px;
+  --aurora-radius:16px;
+  --aurora-radius-sm:11px;
+  --aurora-glow:rgb(105 122 255 / .20);
+  --aurora-sky:rgb(89 198 246 / .17);
+  --aurora-card-shadow:0 10px 44px rgb(1 8 31 / .13);
+  --aurora-active:linear-gradient(115deg,rgba(85,112,246,.32),rgba(70,180,217,.15));
+  --aurora-surface-gradient:linear-gradient(147deg,rgba(255,255,255,.038),transparent 78%);
+  --radius-panel:var(--aurora-radius);
+  --radius-control:9px;
+  --radius-dialog:20px;
+  --motion-fast:180ms;
+  --motion-normal:260ms;
+  --bg-canvas:#eef3fc;
+  --bg-surface:#fff;
+  --bg-surface-elevated:#f0f3fb;
+  --border-default:#cfdaed;
+  --border-subtle:#dbe2ef;
+  --border-strong:#9aaccb;
+  --field-border:#afbeda;
+  --text-primary:#182744;
+  --text-secondary:#536584;
+  --link:#4669b7;
+  --focus:#5075db;
+  --action-default:#3f63be;
+  --action-default-ink:#fff;
+}
+.dark .s5-root.s4-root.s3-root {
+  --bg-canvas:#080f25;
+  --bg-surface:#111c3a;
+  --bg-surface-elevated:#1a2a4d;
+  --border-default:#2b3c62;
+  --border-subtle:#203354;
+  --border-strong:#465985;
+  --field-border:#40547d;
+  --text-primary:#f0f5ff;
+  --text-secondary:#aabbd9;
+  --text-muted:#9daccb;
+  --action-default:#728fff;
+  --action-default-ink:#0b1734;
+  --action-hover-default:#98aaff;
+  --link:#9fb4ff;
+  --focus:#a8b5ff;
+  --info-bg:#15264c;
+  --info-border:#4a68a0;
+  --info-text:#d2e4ff;
+  --success-bg:#0b3335;
+  --success-border:#328b82;
+  --success-text:#9ae4d6;
+  --warning-bg:#332b33;
+  --warning-border:#9c815e;
+  --warning-text:#e5cfa7;
+  --danger-bg:#351e35;
+  --danger-border:#a9698b;
+  --danger-text:#f0bfd5;
+  --aurora-card-shadow:0 14px 50px rgb(0 5 20 / .3);
+}
+.s5-root.s4-root.s3-root,
+.s5-root.s4-root.s3-root .sentinel-stage {background:var(--bg-canvas);}
+.s5-root.s4-root.s3-root .sentinel-stage {
+  grid-template-columns:var(--aurora-rail) minmax(0,1fr);
+  grid-template-rows:70px minmax(0,1fr) auto;
+}
+.s5-root.s4-root.s3-root .sentinel-stage > .sentinel-header {
+  height:70px;min-height:70px;
+  position:relative;z-index:50;
+  border-bottom:1px solid var(--border-default);
+  background:color-mix(in srgb,var(--bg-surface) 94%,transparent);
+  box-shadow:0 4px 32px rgb(8 14 39 / .12);
+  backdrop-filter:blur(18px) saturate(145%);
+  gap:clamp(10px,1.35vw,22px);
+}
+.dark .s5-root.s4-root.s3-root .sentinel-stage > .sentinel-header {
+  background:linear-gradient(90deg,rgba(17,28,58,.97),rgba(15,26,55,.92));
+  box-shadow:0 6px 26px rgb(0 5 25 / .28);
+}
+.s5-root.s4-root.s3-root .sentinel-header .wb-brand {
+  min-height:48px;max-width:162px;flex-basis:162px;
+  padding-right:18px;border-right-color:var(--border-default);
+}
+.s5-root.s4-root.s3-root .sentinel-header .s2-company-selector {
+  padding:5px 10px;border-radius:11px;max-width:190px;
+}
+.s5-root.s4-root.s3-root .sentinel-header .s2-global-search {
+  min-height:42px;height:42px;border-radius:12px;
+  color:var(--text-secondary);background:color-mix(in srgb,var(--bg-canvas) 75%,var(--bg-surface));
+  border:1px solid var(--border-default);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .035);
+  transition:border-color var(--motion-fast),box-shadow var(--motion-fast),background var(--motion-fast);
+}
+.s5-root.s4-root.s3-root .sentinel-header .s2-global-search:hover,
+.s5-root.s4-root.s3-root .sentinel-header .s2-global-search:focus-visible {
+  border-color:var(--focus);box-shadow:0 0 0 3px rgb(104 132 255 / .12);
+}
+.s5-root.s4-root.s3-root .sentinel-header :is(.s2-button,#btn-theme-toggle,#btn-system-status,#btn-user-profile-menu) {
+  border-radius:11px;
+  border-color:var(--border-default);
+  background:color-mix(in srgb,var(--bg-surface) 88%,var(--bg-surface-elevated));
+  color:var(--text-primary);
+  transition:transform var(--motion-fast),border-color var(--motion-fast),background var(--motion-fast);
+}
+.s5-root.s4-root.s3-root .sentinel-header :is(.s2-button,#btn-theme-toggle,#btn-system-status,#btn-user-profile-menu):hover {
+  border-color:var(--border-strong);background:var(--bg-surface-elevated);transform:translateY(-1px);
+}
+/* Collapsed icon rail with discoverable hover/keyboard expansion.
+   Pinning expands the grid column; hovering floats over the content. */
+@media(min-width:1031px){
+  .s5-root.s4-root.s3-root .sentinel-stage:has(> .wb-navigation.wb-pinned) {
+    grid-template-columns:var(--aurora-open-rail) minmax(0,1fr);
+  }
+  .s5-root.s4-root.s3-root .sentinel-stage > .wb-navigation {
+    position:relative;z-index:45;
+    width:var(--aurora-rail);min-width:var(--aurora-rail);
+    padding:18px 9px 13px;overflow-x:hidden;
+    background:var(--bg-surface);
+    border-right:1px solid var(--border-default);
+    box-shadow:4px 0 20px rgb(1 7 27 / .07);
+    transition:width var(--motion-normal) cubic-bezier(.2,.8,.2,1),box-shadow var(--motion-normal);
+  }
+  .dark .s5-root.s4-root.s3-root .sentinel-stage > .wb-navigation {
+    background:linear-gradient(180deg,#101c3b,#0e1934);
+    box-shadow:5px 0 28px rgb(0 3 24 / .36);
+  }
+  .s5-root.s4-root.s3-root .sentinel-stage > .wb-navigation:hover,
+  .s5-root.s4-root.s3-root .sentinel-stage > .wb-navigation:focus-within,
+  .s5-root.s4-root.s3-root .sentinel-stage > .wb-navigation.wb-pinned {
+    width:var(--aurora-open-rail);box-shadow:10px 0 42px rgb(0 7 29 / .24);
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-heading {
+    min-height:43px;gap:8px;margin-bottom:20px;padding:0 7px;
+    flex-direction:row-reverse;
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-heading > div {
+    min-width:0;overflow:hidden;white-space:nowrap;
+    opacity:0;width:0;transition:opacity 150ms ease,width var(--motion-normal);
+  }
+  .s5-root.s4-root.s3-root .wb-navigation:is(:hover,:focus-within,.wb-pinned) .wb-sidebar-heading > div {
+    opacity:1;width:155px;
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-pin {
+    display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;
+    border-radius:12px;border:1px solid var(--border-default);
+    background:var(--bg-surface-elevated);color:var(--link);
+    transition:background var(--motion-fast),transform var(--motion-fast);
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-pin:hover {background:var(--bg-surface-elevated);transform:translateY(-1px);}
+  .s5-root.s4-root.s3-root .wb-areas {gap:7px;}
+  .s5-root.s4-root.s3-root .wb-areas a {
+    width:100%;height:46px;min-height:46px;min-width:0;
+    padding:0 14px;gap:15px;border-radius:13px;
+    border:1px solid transparent;overflow:hidden;
+    font-size:12px;font-weight:680;
+    transition:background var(--motion-fast),border-color var(--motion-fast),color var(--motion-fast);
+  }
+  .s5-root.s4-root.s3-root .wb-areas a svg:first-child {width:19px;height:19px;flex-shrink:0;}
+  .s5-root.s4-root.s3-root .wb-areas a span,
+  .s5-root.s4-root.s3-root .wb-areas a svg:last-child:not(:first-child) {
+    opacity:0;white-space:nowrap;
+    transition:opacity var(--motion-fast);
+  }
+  .s5-root.s4-root.s3-root .wb-navigation:is(:hover,:focus-within,.wb-pinned) .wb-areas a :is(span,svg:last-child) {opacity:1;}
+  .s5-root.s4-root.s3-root .wb-areas a:hover {
+    border-color:color-mix(in srgb,var(--link) 25%,transparent);
+    background:color-mix(in srgb,var(--bg-surface-elevated) 90%,transparent);
+  }
+  .s5-root.s4-root.s3-root .wb-areas a[aria-current="true"] {
+    color:var(--text-primary);background:var(--aurora-active);
+    border-color:color-mix(in srgb,var(--link) 37%,transparent);
+    box-shadow:0 5px 20px rgb(77 100 224 / .11),inset 3px 0 0 var(--link);
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-divider {margin:19px 9px 16px;}
+  .s5-root.s4-root.s3-root .wb-local-navigation {
+    display:none;padding:0 4px;
+    animation:aurora-reveal 190ms ease-out both;
+  }
+  .s5-root.s4-root.s3-root .wb-navigation:is(:hover,:focus-within,.wb-pinned) .wb-local-navigation {display:grid;}
+  .s5-root.s4-root.s3-root .wb-local-navigation a {
+    border-radius:10px;min-height:36px;padding:9px 13px;
+    transition:color var(--motion-fast),background var(--motion-fast);
+  }
+  .s5-root.s4-root.s3-root .wb-local-navigation a[aria-current="page"] {
+    background:color-mix(in srgb,var(--link) 15%,var(--bg-surface));
+    color:var(--text-primary);
+    border:1px solid color-mix(in srgb,var(--link) 25%,transparent);
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-bottom {padding-top:12px;gap:12px;}
+  .s5-root.s4-root.s3-root .wb-map-trigger {
+    min-width:0;min-height:43px;gap:15px;padding:0 13px;
+    border-radius:12px;background:var(--bg-surface-elevated);
+  }
+  .s5-root.s4-root.s3-root .wb-map-trigger svg:first-child {flex-shrink:0;width:19px;height:19px;}
+  .s5-root.s4-root.s3-root .wb-map-trigger span,
+  .s5-root.s4-root.s3-root .wb-map-trigger svg:last-child,
+  .s5-root.s4-root.s3-root .wb-sidebar-bottom > p {display:none;}
+  .s5-root.s4-root.s3-root .wb-navigation:is(:hover,:focus-within,.wb-pinned) .wb-map-trigger span,
+  .s5-root.s4-root.s3-root .wb-navigation:is(:hover,:focus-within,.wb-pinned) .wb-map-trigger svg:last-child {display:inline;}
+  .s5-root.s4-root.s3-root .wb-navigation:is(:hover,:focus-within,.wb-pinned) .wb-sidebar-bottom > p {display:flex;}
+}
+/* The map is a modal: never affected by rail collapse. */
+.s5-root.s4-root.s3-root .wb-system-map {
+  border-radius:20px;border-color:var(--border-strong);
+  box-shadow:0 30px 95px rgb(0 6 24 / .48);
+  background:var(--bg-surface);
+}
+.s5-root.s4-root.s3-root .wb-system-map-group a {
+  border-radius:11px;
+}
+.s5-root.s4-root.s3-root .wb-system-map-group a:hover {
+  background:color-mix(in srgb,var(--link) 10%,var(--bg-surface-elevated));
+}
+/* Content canvas: ambient depth without obscuring charts or text. */
+.s5-root.s4-root.s3-root .sentinel-stage > .sentinel-main {
+  min-width:0;padding:clamp(20px,2.1vw,34px) clamp(18px,2.65vw,44px) 42px;
+  background:
+    radial-gradient(ellipse 46% 33% at 87% 0%,rgba(112,135,246,.07),transparent 100%),
+    radial-gradient(ellipse 33% 45% at 4% 98%,rgba(62,180,210,.055),transparent 100%),
+    var(--bg-canvas);
+  scrollbar-color:var(--border-default) transparent;
+}
+.dark .s5-root.s4-root.s3-root .sentinel-stage > .sentinel-main {
+  background:
+    radial-gradient(ellipse 48% 37% at 85% 0%,rgba(72,95,240,.17),transparent 100%),
+    radial-gradient(ellipse 37% 53% at 2% 86%,rgba(21,132,188,.12),transparent 100%),
+    #080f25;
+}
+.s5-root.s4-root.s3-root .sentinel-view-body {max-width:1680px;}
+.s5-root.s4-root.s3-root .sentinel-view-body > * {min-width:0;max-width:100%;}
+.s5-root.s4-root.s3-root :is(.ui-page-header,.module-command-header) {
+  border:0;margin-bottom:5px;padding-bottom:18px;
+}
+.s5-root.s4-root.s3-root :is(.ui-page-title h1,.module-command-header h1,.sentinel-action-bar h2) {
+  font-size:clamp(23px,2vw,33px);letter-spacing:-.035em;font-weight:740;
+  color:var(--text-primary);
+}
+.s5-root.s4-root.s3-root :is(.ui-page-header,.module-command-header) p {
+  color:var(--text-secondary);font-size:13px;
+}
+/* Universal cards used by operations, support, BI, CRM and reports. */
+.s5-root.s4-root.s3-root .sentinel-main :is(
+  .ui-card,.ui-metric,.ui-panel,.p2-panel,.operation-card,
+  .p2-operational-workspace,.p2-summary-card,.record-filters,
+  .record-results,.p2-bi-workspace .rounded-xl.border,
+  .p2-intelligence-workspace .rounded-2xl.border
+) {
+  border:1px solid var(--border-default);
+  border-radius:var(--aurora-radius);
+  background:var(--aurora-surface-gradient),var(--bg-surface);
+  box-shadow:var(--aurora-card-shadow);
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(
+  .ui-card,.ui-metric,.ui-panel,.p2-panel,.operation-card
+) {
+  transition:border-color var(--motion-normal),box-shadow var(--motion-normal),transform var(--motion-normal);
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(
+  .ui-card,.ui-metric,.ui-panel,.p2-panel,.operation-card
+):hover {
+  border-color:color-mix(in srgb,var(--link) 32%,var(--border-default));
+  box-shadow:0 14px 48px rgb(20 37 89 / .16);
+}
+.dark .s5-root.s4-root.s3-root .sentinel-main :is(
+  .ui-card,.ui-metric,.ui-panel,.p2-panel,.operation-card
+):hover {box-shadow:0 15px 50px rgb(0 5 24 / .45);}
+.s5-root.s4-root.s3-root :is(.ui-metrics-strip,.p2-dashboard-metrics) {gap:14px;}
+.s5-root.s4-root.s3-root :is(.p2-bi-workspace,.p2-intelligence-workspace) {
+  max-width:100%;min-width:0;
+}
+.s5-root.s4-root.s3-root .p2-bi-workspace .grid > div[class*="border"],
+.s5-root.s4-root.s3-root .p2-intelligence-workspace .grid > div[class*="border"] {
+  border-radius:14px;
+  border-color:var(--border-default);
+  background:var(--aurora-surface-gradient),var(--bg-surface);
+  box-shadow:var(--aurora-card-shadow);
+  transition:transform 180ms ease,border-color 180ms ease;
+}
+.s5-root.s4-root.s3-root .p2-bi-workspace .grid > div[class*="border"]:hover,
+.s5-root.s4-root.s3-root .p2-intelligence-workspace .grid > div[class*="border"]:hover {
+  transform:translateY(-2px);border-color:var(--border-strong);
+}
+.s5-root.s4-root.s3-root :is(.wb-home,.p2-bi-workspace,.p2-intelligence-workspace,.p2-operational-workspace) {
+  animation:aurora-page 420ms cubic-bezier(.16,.86,.32,1) both;
+}
+.s5-root.s4-root.s3-root .wb-introduction {
+  position:relative;overflow:hidden;isolation:isolate;
+  border:1px solid var(--border-default);
+  border-radius:22px;
+  padding:clamp(24px,3vw,46px);
+  margin-bottom:24px;
+  background:linear-gradient(115deg,var(--bg-surface),color-mix(in srgb,var(--bg-surface-elevated) 76%,var(--bg-surface)));
+  box-shadow:var(--aurora-card-shadow);
+}
+.s5-root.s4-root.s3-root .wb-introduction::before {
+  content:"";position:absolute;z-index:-1;pointer-events:none;
+  width:420px;height:420px;right:-140px;top:-210px;
+  border-radius:50%;background:radial-gradient(circle,rgba(101,123,245,.2),transparent 68%);
+}
+.s5-root.s4-root.s3-root .wb-introduction h1 {
+  font-size:clamp(30px,3vw,47px);font-weight:740;
+  letter-spacing:-.045em;line-height:1.12;
+}
+.s5-root.s4-root.s3-root .wb-introduction-actions {gap:12px;}
+.s5-root.s4-root.s3-root :is(.wb-primary,.wb-secondary) {
+  border-radius:12px;min-height:44px;font-weight:720;
+  transition:transform 160ms ease,box-shadow 160ms ease;
+}
+.s5-root.s4-root.s3-root :is(.wb-primary,.wb-secondary):hover {
+  transform:translateY(-2px);
+}
+.s5-root.s4-root.s3-root .wb-portfolio-summary {
+  border-color:var(--border-default);
+}
+.s5-root.s4-root.s3-root .wb-portfolio-summary strong {
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.05em;
+}
+.s5-root.s4-root.s3-root .wb-portfolio-bands :is(span,div) {border-radius:6px;}
+.s5-root.s4-root.s3-root .wb-home-columns {gap:clamp(20px,2.4vw,36px);}
+.s5-root.s4-root.s3-root .wb-activity-list article {
+  border-bottom:1px solid var(--border-subtle);
+  transition:background var(--motion-fast),transform var(--motion-fast);
+}
+.s5-root.s4-root.s3-root .wb-activity-list article:hover {
+  background:color-mix(in srgb,var(--link) 6%,transparent);
+  transform:translateX(2px);
+}
+.s5-root.s4-root.s3-root .wb-shortcuts button {
+  border-bottom-color:var(--border-default);
+  transition:padding-left var(--motion-fast),color var(--motion-fast);
+}
+.s5-root.s4-root.s3-root .wb-shortcuts button:hover {padding-left:7px;}
+/* Shared controls, tabs, tables and Kanban — do not mutate their behavior. */
+.s5-root.s4-root.s3-root .sentinel-main :is(.s2-button,.ui-page-actions button,.module-command-header button) {
+  border-radius:10px;
+  transition:transform 160ms ease,background 160ms ease,border-color 160ms ease;
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(.s2-button,.ui-page-actions button,.module-command-header button):not(:disabled):hover {
+  transform:translateY(-1px);
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea) {
+  background:var(--bg-surface);color:var(--text-primary);
+  border-radius:10px;
+  border-color:var(--field-border);
+  transition:border-color var(--motion-fast),box-shadow var(--motion-fast);
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(input,select,textarea):focus-visible {
+  outline:2px solid var(--focus);outline-offset:2px;
+  box-shadow:0 0 0 4px rgb(105 122 255 / .1);
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(.p2-analytics-tabs,.p2-operation-tabs) {
+  gap:6px;scrollbar-width:thin;
+}
+.s5-root.s4-root.s3-root .sentinel-main :is(.p2-analytics-tabs button,[role="tab"],button[aria-pressed="true"]) {
+  border-radius:10px;
+}
+.s5-root.s4-root.s3-root table {
+  border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;
+}
+.s5-root.s4-root.s3-root table thead th {
+  color:var(--text-secondary);
+  background:color-mix(in srgb,var(--bg-surface-elevated) 72%,var(--bg-surface));
+  border-color:var(--border-subtle);
+  font-size:10px;letter-spacing:.06em;
+}
+.s5-root.s4-root.s3-root table tbody tr:hover {
+  background:color-mix(in srgb,var(--link) 7%,var(--bg-surface));
+}
+.s5-root.s4-root.s3-root table td {
+  border-bottom-color:var(--border-subtle);
+}
+.s5-root.s4-root.s3-root :is(.p2-operational-toolbar,.p2-operational-heading) {background:transparent;}
+.s5-root.s4-root.s3-root .p2-operational-toolbar {border-radius:var(--aurora-radius) var(--aurora-radius) 0 0;}
+.s5-root.s4-root.s3-root .operation-card {
+  background:var(--aurora-surface-gradient),var(--bg-surface);
+  border-radius:15px;
+}
+.s5-root.s4-root.s3-root :is(.p2-kanban-column,.kanban-column,[data-kanban-column]) {
+  background:color-mix(in srgb,var(--bg-surface) 85%,var(--bg-canvas));
+  border:1px solid var(--border-default);
+  border-radius:16px;
+}
+.s5-root.s4-root.s3-root :is(.ui-page-actions,.p2-actions,.s2-actions) {gap:9px;}
+.s5-root.s4-root.s3-root .wb-guide {
+  border:1px solid var(--border-default);
+  border-radius:12px;
+  padding:12px 16px;
+  background:color-mix(in srgb,var(--bg-surface) 80%,transparent);
+}
+/* Modal: consistent depth for simulations, proposal and admin forms. */
+.s5-root.s4-root.s3-root [role="dialog"] {
+  border-color:var(--border-strong);border-radius:18px;
+  box-shadow:0 24px 85px rgb(0 7 30 / .43);
+}
+.s5-root.s4-root.s3-root [role="dialog"] :is(input,select,textarea,button) {
+  accent-color:var(--link);
+}
+.s5-root.s4-root.s3-root .sentinel-institutional-footer {
+  border-top-color:var(--border-default);
+  border-right-color:var(--border-default);
+  background:var(--bg-surface);
+  color:var(--text-secondary);
+}
+.dark .s5-root.s4-root.s3-root .sentinel-institutional-footer {
+  background:#101b38;
+  color:#acbbd4;
+}
+.s5-root.s4-root.s3-root .institutional-footer-brand {color:var(--link);}
+/* Partner and authentication areas share the same visual family. */
+.s3-portal .sentinel-portal-header,
+.s3-portal .wb-portal-navigation {border-color:var(--border-default);background:var(--bg-surface);}
+.s3-portal .sentinel-portal-header {box-shadow:0 8px 24px rgb(5 13 35 / .1);}
+.s3-portal .sentinel-main :is(.ui-card,.ui-metric,.operation-card) {
+  border-radius:14px;box-shadow:0 12px 38px rgb(0 7 22 / .1);
+  background:linear-gradient(135deg,rgba(255,255,255,.04),transparent),var(--bg-surface);
+}
+.s3-portal .sentinel-main :is(.ui-page-actions button,.sentinel-secondary-button) {border-radius:10px;}
+.wb-auth .wb-auth-form {
+  border-radius:20px;
+  box-shadow:0 24px 85px rgb(7 15 40 / .16);
+}
+.wb-auth .wb-auth-form form :is(input,select,button) {border-radius:10px;}
+@keyframes aurora-page {
+  from {opacity:0;transform:translateY(9px);}
+  to {opacity:1;transform:translateY(0);}
+}
+@keyframes aurora-reveal {
+  from {opacity:0;transform:translateX(-7px);}
+  to {opacity:1;transform:translateX(0);}
+}
+@media(max-width:1200px) and (min-width:1031px) {
+  .s5-root.s4-root.s3-root .sentinel-header .wb-brand {max-width:130px;flex-basis:130px;padding-right:10px;}
+  .s5-root.s4-root.s3-root .sentinel-header .s2-company-selector {flex-basis:130px;}
+}
+@media(max-width:1030px) {
+  .s5-root.s4-root.s3-root .sentinel-stage {display:flex;flex-direction:column;}
+  .s5-root.s4-root.s3-root .sentinel-stage > .wb-navigation {
+    width:min(320px,88vw);max-width:88vw;
+    background:var(--bg-surface);
+    border-right:1px solid var(--border-strong);
+    padding:20px 13px;
+    box-shadow:25px 0 75px rgb(0 4 25 / .35);
+  }
+  .s5-root.s4-root.s3-root .wb-sidebar-pin {display:none;}
+  .s5-root.s4-root.s3-root .wb-areas a {border-radius:10px;}
+  .s5-root.s4-root.s3-root .sentinel-stage > .sentinel-main {
+    padding:22px clamp(16px,3vw,28px) 32px;
+  }
+  .s5-root.s4-root.s3-root .wb-mobile-toolbar {
+    background:var(--bg-surface);border-color:var(--border-default);
+  }
+  .s5-root.s4-root.s3-root .wb-mobile-toolbar button {border-radius:10px;}
+}
+@media(max-width:600px) {
+  .s5-root.s4-root.s3-root .sentinel-stage > .sentinel-header {
+    height:62px;min-height:62px;padding-inline:12px;gap:7px;
+  }
+  .s5-root.s4-root.s3-root .sentinel-header .wb-brand {
+    max-width:120px;flex-basis:120px;padding-right:8px;
+  }
+  .s5-root.s4-root.s3-root .sentinel-stage > .sentinel-main {padding:16px 13px 28px;}
+  .s5-root.s4-root.s3-root .wb-introduction {padding:24px 19px;border-radius:17px;}
+  .s5-root.s4-root.s3-root .wb-introduction h1 {font-size:30px;}
+  .s5-root.s4-root.s3-root .sentinel-main :is(.ui-card,.ui-panel,.p2-panel,.operation-card) {
+    border-radius:12px;
+  }
+  .s5-root.s4-root.s3-root table th {padding:10px 12px;}
+  .s5-root.s4-root.s3-root table td {padding:12px;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .s5-root.s4-root.s3-root *,
+  .s5-root.s4-root.s3-root *::before,
+  .s5-root.s4-root.s3-root *::after {
+    animation-duration:.01ms!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
