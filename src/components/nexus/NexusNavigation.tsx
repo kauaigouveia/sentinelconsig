@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight, Bell, BriefcaseBusiness, ChartNoAxesCombined, ChevronRight,
-  CircleHelp, ClipboardList, Compass, House, LayoutGrid, LifeBuoy,
-  LockKeyhole, Menu, Search, Settings2, Users, Wallet, Workflow, X,
+  ArrowRight, BriefcaseBusiness, ChartNoAxesCombined, ChevronRight,
+  ClipboardList, Compass, House, LayoutGrid, LifeBuoy,
+  LockKeyhole, Search, Settings2, Users, Workflow, X,
   type LucideIcon,
 } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
@@ -57,6 +57,11 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
     event.preventDefault();go(url);
   };
   useEffect(()=>setLauncherOpen(false),[path,role,permissionSignature]);
+  useEffect(()=>{
+    const open=()=>setLauncherOpen(true);
+    window.addEventListener('sentinel:nexus-apps',open);
+    return ()=>window.removeEventListener('sentinel:nexus-apps',open);
+  },[]);
   useEffect(()=>{
     if(!launcherOpen)return;
     const old = document.body.style.overflow;
