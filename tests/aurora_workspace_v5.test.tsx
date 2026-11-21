@@ -9,15 +9,17 @@ beforeEach(()=>window.localStorage.removeItem('sentinel_aurora_sidebar_pinned'))
 afterEach(()=>{cleanup();window.localStorage.removeItem('sentinel_aurora_sidebar_pinned');});
 
 describe('Sentinel Aurora v5 — refatoração visual sem alterar permissões',()=>{
-  it('importa a camada v5 após a v4 e permite retornar ao shell classic',()=>{
+  it('mantém a camada Aurora como legado e o retorno classic após a ativação Nexus',()=>{
     const app=readFileSync('src/App.tsx','utf8');
     const main=readFileSync('src/main.tsx','utf8');
     expect(app).toContain('s2-root s3-root s4-root');
-    expect(app).toContain('s5-root');
+    expect(app).toContain('s6-root');
     expect(app).toContain("get('ui')");
-    expect(app).toContain('sentinel_ui_variant');
+    expect(app).toContain('sentinel_nexus_variant');
     expect(main.indexOf("import './styles/sentinel-aurora.css'"))
       .toBeGreaterThan(main.indexOf("import './styles/workbench.css'"));
+    expect(main.indexOf("import './styles/sentinel-nexus.css'"))
+      .toBeGreaterThan(main.indexOf("import './styles/sentinel-aurora.css'"));
   });
 
   it('permite fixar e recolher a barra sem mudar a rota',()=>{
