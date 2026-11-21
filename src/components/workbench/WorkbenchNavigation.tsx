@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Building2, ChartNoAxesCombined, ChevronDown, Compass, House, Menu, Search, Settings2, Users, Workflow, X } from 'lucide-react';
+import { ArrowRight, Building2, ChartNoAxesCombined, ChevronDown, Compass, House, Menu, PanelLeftClose, PanelLeftOpen, Search, Settings2, Users, Workflow, X } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
 import { AREA_SUMMARY, GROUPS, visibleNavigation } from '../redesign/navigation';
 import { matchRoute } from '../../router/routes';
@@ -35,6 +35,15 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
 }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pinned, setPinned] = useState<boolean>(() => {
+    try { return window.localStorage.getItem('sentinel_aurora_sidebar_pinned') === 'true'; }
+    catch { return false; }
+  });
+  const togglePinned = () => setPinned(current => {
+    const next = !current;
+    try { window.localStorage.setItem('sentinel_aurora_sidebar_pinned', String(next)); } catch { /* preferences are optional */ }
+    return next;
+  });
   const root = useRef<HTMLElement>(null);
   const mapTrigger = useRef<HTMLButtonElement>(null);
   const mobileTrigger = useRef<HTMLButtonElement>(null);
@@ -110,16 +119,21 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
       </button>
     </div>
     {mobileOpen && <button type="button" className="wb-mobile-scrim" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} />}
-    <section id="wb-sidebar" className={'wb-navigation' + (mobileOpen ? ' wb-mobile-open' : '')} ref={root} aria-label="Navegação do Sentinel">
+    <section id="wb-sidebar" className={'wb-navigation' + (mobileOpen ? ' wb-mobile-open' : '') + (pinned ? ' wb-pinned' : '')} ref={root} aria-label="Navegação do Sentinel">
       <div className="wb-sidebar-heading">
         <div><span className="wb-side-eyebrow">WORKSPACE</span><strong>Seu espaço de trabalho</strong></div>
+        <button type="button" className="wb-sidebar-pin" aria-label={pinned ? 'Recolher menu lateral' : 'Fixar menu lateral expandido'}
+          aria-pressed={pinned} title={pinned ? 'Recolher menu lateral' : 'Fixar menu lateral expandido'} onClick={togglePinned}>
+          {pinned ? <PanelLeftClose size={18} aria-hidden="true" /> : <PanelLeftOpen size={18} aria-hidden="true" />}
+        </button>
         <button type="button" className="wb-mobile-close" aria-label="Fechar menu lateral" onClick={() => setMobileOpen(false)}><X size={20} /></button>
       </div>
       <nav className="wb-areas" aria-label="Áreas do sistema">
         {groups.map(group => {
           const destination = items.find(item => item.group === group)!;
           const Icon = AREA_ICONS[group];
-          return <a key={group} href={destination.path} aria-current={activeGroup === group ? 'true' : undefined}
+          return <a key={group} href={destination.path} title={group === 'Início' ? 'Meu dia' : group}
+            aria-label={group === 'Início' ? 'Meu dia' : group} aria-current={activeGroup === group ? 'true' : undefined}
             onClick={event => link(event, destination.path)}>
             <Icon size={17} aria-hidden="true" /><span>{group === 'Início' ? 'Meu dia' : group}</span>
             {activeGroup === group && <ChevronDown size={14} aria-hidden="true" />}
@@ -129,7 +143,7 @@ export function WorkbenchNavigation({ path, role, permissions = [], navigate }: 
       <div className="wb-sidebar-divider" aria-hidden="true" />
       <nav className="wb-local-navigation" aria-label={'Ferramentas de ' + activeGroup}>
         <span className="wb-local-title">{activeGroup}</span>
-        {primaryLocal.map(item => <a key={item.path} href={item.path}
+        {primaryLocal.map(item => <a key={item.path} href={item.path} title={item.title}
           aria-current={current?.path === item.path ? 'page' : undefined}
           onClick={event => link(event, item.path)}>{item.title}</a>)}
         {remaining > 0 && <button type="button" className="wb-local-more" onClick={() => { setMobileOpen(false); setMapOpen(true); }}>
