@@ -1,5 +1,5 @@
 import React from 'react';
-import {ArrowRight, ArrowUpRight, Compass, House, LayoutGrid} from 'lucide-react';
+import {ArrowUpRight, House, LayoutGrid} from 'lucide-react';
 import {visibleNavigation} from '../redesign/navigation';
 import {matchRoute} from '../../router/routes';
 import type {Role} from '../../types';
