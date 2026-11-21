@@ -26,7 +26,7 @@ it('mostra indicadores reais da carteira, sem valores inventados',()=>{
   expect(within(indicators).getByText('Em andamento').parentElement?.parentElement?.textContent).toContain('2');
   expect(within(indicators).getByText('Com pendência').parentElement?.parentElement?.textContent).toContain('1');
   expect(within(indicators).getByText('Pagas').parentElement?.parentElement?.textContent).toContain('1');
-  expect(screen.getByText(/registros carregados/)).toBeTruthy();
+  expect(screen.getAllByText(/registros carregados/).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/C6 BANK/).length).toBeGreaterThan(0);
 });
 it('abre a proposta real selecionada e filtra a carteira',()=>{
