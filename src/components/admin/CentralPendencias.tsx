@@ -557,7 +557,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
       </PageHeader>
 
       {/* KPI Counters & SLA Health */}
-      <div className="ui-metrics-strip">
+      <div className="ui-metrics-strip" aria-label="Resumo de pendências por situação">
         <div className="ui-metric">
           <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider flex items-center justify-between">
             <span>Total Fila</span>
@@ -602,7 +602,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
           <div className="text-xs text-[var(--text-secondary)] mt-1">prazos confortáveis</div>
         </div>
 
-        <div className="bg-[var(--action)] border border-[var(--border-default)] rounded-xl p-4 flex flex-col justify-between border-[var(--border-default)] bg-[var(--action)]">
+        <div className="ui-metric nx-pendency-overdue">
           <div className="text-xs font-semibold text-[var(--danger-text)] uppercase tracking-wider flex items-center justify-between">
             <span>SLA Estourado</span>
             <AlertOctagon className="w-4 h-4 text-[var(--danger-text)]" />
