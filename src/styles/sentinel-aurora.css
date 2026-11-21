@@ -5,6 +5,8 @@
  * A ?ui=classic query on the operational workspace restores the v4 shell.
  * All business logic, RBAC, tenants, data endpoints and bank integrations remain untouched.
  */
+/* Fixar o menu é exclusivo do v5; no retorno clássico o controle não aparece. */
+.wb-sidebar-pin { display:none; }
 .s5-root.s4-root.s3-root {
   --aurora-rail:76px;
   --aurora-open-rail:248px;
