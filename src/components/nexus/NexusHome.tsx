@@ -2,7 +2,7 @@ import React, {useMemo,useState} from 'react';
 import {
   ArrowRight, ArrowUpRight, BriefcaseBusiness, Calculator, CheckCircle2,
   ChevronRight, CircleAlert, ClipboardList, Clock3, FilePlus2, LayoutDashboard,
-  RefreshCw, Search, TrendingUp, Users, Wallet, Workflow,
+  RefreshCw, Search, Users, Workflow,
 } from 'lucide-react';
 import {hasPermission} from '../../lib/permissions';
 import {formatCurrency} from '../../lib/utils';
