@@ -1,0 +1,152 @@
+/* NEXUS — structural application design, isolated from the previous Aurora v5.
+ * s6-root changes the actual composition, not just surface colors. All existing
+ * modules, tenant checks, banking routes and permissions are still rendered. */
+.s6-root.s4-root.s3-root{
+  --nx-bg:#f1f4fb;--nx-panel:#ffffff;--nx-panel-elevated:#f7f9ff;--nx-border:#dce3f0;
+  --nx-accent:#435fc9;--nx-accent-soft:#e7ebff;--nx-type:#142348;--nx-muted:#5d6a86;
+  --bg-canvas:var(--nx-bg);
+  --bg-surface:var(--nx-panel);
+  --bg-surface-elevated:var(--nx-panel-elevated);
+  --border-default:var(--nx-border);
+  --border-subtle:#e5ebf4;
+  --border-strong:#a6b4d4;
+  --field-border:#b3bfd8;
+  --text-primary:var(--nx-type);
+  --text-secondary:var(--nx-muted);
+  --link:var(--nx-accent);
+  --focus:#5d76dd;
+  --action-default:#4766d1;
+  --action-default-ink:#fff;
+  --radius-panel:16px;
+  --radius-control:10px;
+  --radius-dialog:18px;
+}
+.dark .s6-root.s4-root.s3-root{
+  --nx-bg:#0a1022;--nx-panel:#141d37;--nx-panel-elevated:#1a2847;
+  --nx-border:#2d3b60;--nx-accent:#9fb2ff;--nx-accent-soft:#25396c;
+  --nx-type:#f3f6ff;--nx-muted:#abb8d8;
+  --border-subtle:#293856;
+  --border-strong:#51648f;--field-border:#485c85;
+  --action-default:#7e98f4;
+  --action-default-ink:#0a1530;
+  --info-bg:#162e52;--info-border:#4066a3;--info-text:#cae5ff;
+  --warning-bg:#393022;--warning-border:#886f42;--warning-text:#f0cb88;
+  --success-bg:#15382f;--success-border:#3e846e;--success-text:#9ee4c9;
+  --danger-bg:#3e2637;--danger-border:#aa678b;--danger-text:#f9c0d8;
+}
+.s6-root.s4-root.s3-root .sentinel-stage{background:var(--bg-canvas)}
+.s6-root.s4-root.s3-root .sentinel-stage>.sentinel-header{
+  grid-column:2;grid-row:1;
+  min-width:0;height:74px;min-height:74px;
+  padding:0 clamp(20px,2.5vw,42px);
+  justify-content:space-between;
+  border-bottom:1px solid var(--border-subtle);
+  background:var(--bg-surface);
+  box-shadow:0 3px 24px #06143d0e;
+  z-index:50;
+}
+.dark .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-header{background:#111b34;box-shadow:0 8px 30px #0002}
+.s6-root.s4-root.s3-root .sentinel-header .s2-company-selector{max-width:215px;flex-basis:200px;border:1px solid var(--border-default);background:var(--bg-surface-elevated);border-radius:12px;padding:5px 10px}
+.s6-root.s4-root.s3-root .sentinel-header .s2-company-selector select{max-width:100%}
+.s6-root.s4-root.s3-root .sentinel-header .s2-header-search{flex:1;max-width:720px;min-width:0}
+.s6-root.s4-root.s3-root .sentinel-header .s2-global-search{max-width:none;height:42px;min-height:42px;border-radius:12px;border:1px solid var(--border-default);background:var(--bg-canvas);color:var(--text-secondary)}
+.s6-root.s4-root.s3-root .sentinel-header .s2-global-search:hover,.s6-root.s4-root.s3-root .sentinel-header .s2-global-search:focus-visible{border-color:var(--link)}
+.s6-root.s4-root.s3-root .sentinel-header .s2-header-actions{gap:6px}
+.s6-root.s4-root.s3-root .sentinel-header .s2-header-actions button{border-radius:11px;transition:transform .17s,border-color .17s;background:var(--bg-surface);border-color:var(--border-default);color:var(--text-primary)}
+.s6-root.s4-root.s3-root .sentinel-header .s2-header-actions button:hover{transform:translateY(-1px);border-color:var(--link)}
+.s6-root.s4-root.s3-root .sentinel-stage>.sentinel-main{
+  grid-column:2;grid-row:2;
+  min-width:0;min-height:0;overflow-y:auto;
+  padding:clamp(22px,2.5vw,38px) clamp(19px,2.6vw,42px) 42px;
+  background:
+    radial-gradient(ellipse at 81% -13%,#7798e014,transparent 45%),
+    radial-gradient(ellipse at -10% 76%,#5fc5da0a,transparent 41%),var(--bg-canvas);
+  scrollbar-color:var(--border-default) transparent;
+}
+.dark .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-main{
+  background:radial-gradient(ellipse at 86% 0%,#465aa51c,transparent 52%),var(--bg-canvas);
+}
+.s6-root.s4-root.s3-root .sentinel-stage>.sentinel-institutional-footer{
+  grid-column:2;grid-row:3;max-width:100%;min-width:0;
+  background:var(--bg-surface);border-color:var(--border-subtle);color:var(--text-secondary);
+}
+.s6-root.s4-root.s3-root .sentinel-view-body{max-width:1640px;min-width:0;width:100%;margin:0 auto;container:sentinel-nexus / inline-size}
+.s6-root.s4-root.s3-root .sentinel-view-body>*{max-width:100%;min-width:0}
+.s6-root.s4-root.s3-root .sentinel-main :is(.ui-card,.ui-panel,.ui-metric,.p2-panel,.operation-card,
+ .p2-operational-workspace,.p2-bi-workspace>.rounded-xl,.p2-live-pendencies>.rounded-xl){
+  border-radius:16px;
+  background:var(--bg-surface);
+  border:1px solid var(--border-default);
+  box-shadow:0 9px 28px #09153812;
+}
+.dark .s6-root.s4-root.s3-root .sentinel-main :is(.ui-card,.ui-panel,.ui-metric,.p2-panel,.operation-card,
+ .p2-operational-workspace){box-shadow:0 9px 26px #0003}
+.s6-root.s4-root.s3-root .sentinel-main :is(.ui-page-header,.module-command-header,.p2-operational-heading){
+  border-color:var(--border-subtle);background:transparent;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.ui-page-header,.module-command-header) h1{
+  color:var(--text-primary);font-size:clamp(20px,2vw,27px);font-weight:780;letter-spacing:-.03em;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.ui-page-header,.module-command-header) p{
+  color:var(--text-secondary);font-size:12px;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.p2-operational-toolbar,.ui-operational-toolbar){
+  background:var(--bg-surface-elevated);border-color:var(--border-subtle);
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.ui-page-actions,.p2-actions,.s2-actions) {gap:9px}
+.s6-root.s4-root.s3-root .sentinel-main :is(.s2-button,.ui-page-actions button,.p2-actions button,.module-command-header button){
+  border-radius:10px;min-height:36px;transition:background .15s,border-color .15s;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.s2-button,.ui-page-actions button,.p2-actions button,.module-command-header button):hover:not(:disabled){border-color:var(--link)}
+.s6-root.s4-root.s3-root .sentinel-main :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
+  background:var(--bg-surface);border-color:var(--field-border);color:var(--text-primary);border-radius:11px;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(input,select,textarea):focus-visible,.s6-root.s4-root.s3-root a:focus-visible,.s6-root.s4-root.s3-root button:focus-visible{
+  outline:2px solid var(--focus);outline-offset:2px;
+}
+.s6-root.s4-root.s3-root .sentinel-main table{border-spacing:0;font-variant-numeric:tabular-nums}
+.s6-root.s4-root.s3-root .sentinel-main table thead th{font-size:10px;font-weight:760;letter-spacing:.065em;border-color:var(--border-subtle);background:var(--bg-surface-elevated);color:var(--text-secondary)}
+.s6-root.s4-root.s3-root .sentinel-main table tbody tr{border-color:var(--border-subtle)}
+.s6-root.s4-root.s3-root .sentinel-main table tbody tr:hover{background:color-mix(in srgb,var(--link) 7%,var(--bg-surface))}
+.s6-root.s4-root.s3-root .sentinel-main :is([data-kanban-column],.kanban-column,.p2-kanban-column){
+  border-radius:16px;background:var(--bg-surface-elevated);border:1px solid var(--border-default);
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.p2-bi-workspace,.p2-intelligence-workspace,.p2-live-production,.p2-live-pendencies){
+  min-width:0;max-width:100%;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.p2-bi-workspace,.p2-intelligence-workspace) .grid>[class*="border"]{
+  border-color:var(--border-default);background:var(--bg-surface);border-radius:15px;
+}
+.s6-root.s4-root.s3-root .sentinel-main :is(.p2-analytics-tabs,.p2-operation-tabs){
+  overflow-x:auto;overflow-y:hidden;max-width:100%;scrollbar-width:thin;
+}
+.s6-root.s4-root.s3-root [role=dialog] {border-radius:19px;border-color:var(--border-strong);box-shadow:0 28px 80px #0006}
+.s6-root.s4-root.s3-root .sentinel-main :is(.p2-operational-workspace,.ui-page-header,.module-command-header){
+  min-width:0;max-width:100%;
+}
+.s6-root.s4-root.s3-root .sentinel-main{overscroll-behavior:contain}
+@media(max-width:1250px){
+ .s6-root.s4-root.s3-root .sentinel-stage{grid-template-columns:242px minmax(0,1fr)}
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-header{padding:0 20px}
+ .s6-root.s4-root.s3-root .sentinel-header .s2-company-selector{flex-basis:150px;max-width:180px}
+}
+@media(max-width:980px){
+ .s6-root.s4-root.s3-root .sentinel-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:62px minmax(0,1fr) auto}
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-header{grid-column:1;grid-row:1;min-height:62px;height:62px;padding:0 13px}
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-main{grid-column:1;grid-row:2;min-width:0;min-height:0;padding:22px 17px 90px}
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-institutional-footer{grid-column:1;grid-row:3}
+ .s6-root.s4-root.s3-root .sentinel-header .s2-company-selector{display:none}
+}
+@media(max-width:640px){
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-main{padding:19px 13px 105px}
+ .s6-root.s4-root.s3-root .sentinel-header .s2-header-search{flex:0 0 42px;min-width:42px}
+ .s6-root.s4-root.s3-root .sentinel-header .s2-header-actions{gap:3px}
+ .s6-root.s4-root.s3-root .sentinel-main :is(.p2-operational-workspace,.ui-panel,.ui-card){border-radius:13px}
+ .s6-root.s4-root.s3-root .sentinel-main table td{padding:10px}
+ .s6-root.s4-root.s3-root .sentinel-main table th{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .s6-root.s4-root.s3-root *, .s6-root.s4-root.s3-root *::before,.s6-root.s4-root.s3-root *::after{
+   animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;
+ }
+}
