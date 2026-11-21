@@ -630,7 +630,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
       {premium ? (
         <>
       {/* Responsive filters — retain existing state, API parameters and permissions. */}
-      <section className={`nx-pendency-filters ${premium ? 'p2-pendency-filters' : ''}`} aria-label="Filtros de pendências">
+      <section className="nx-pendency-filters" aria-label="Filtros de pendências">
         <div className="nx-pendency-filter-heading">
           <div>
             <strong>Filtrar pendências</strong>
