@@ -14,6 +14,9 @@ it('utiliza navegação mobile inferior e não reutiliza o drawer antigo',()=>{
   expect(screen.getByRole('navigation',{name:'Navegação inferior'})).toBeTruthy();
   expect(screen.getByRole('navigation',{name:'Acesso rápido'})).toBeTruthy();
   expect(screen.queryByText('Seu espaço de trabalho')).toBeNull();
+  expect(screen.getByRole('button',{name:'Sentinel Consig — página inicial'})).toBeTruthy();
+  expect(screen.getByText('Inteligência em cada operação.')).toBeTruthy();
+  expect(screen.queryByText(/nexus/i)).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Buscar no Sentinel'}));
   expect(search).toHaveBeenCalledOnce();
   const bottom=screen.getByRole('navigation',{name:'Navegação inferior'});
