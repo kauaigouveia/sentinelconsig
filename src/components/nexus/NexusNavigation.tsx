@@ -84,9 +84,10 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
 
   return <>
     <aside className="nx-sidebar" aria-label="Navegação principal">
-      <button className="nx-sidebar-brand" type="button" onClick={()=>go(items.find(i=>i.path==='/')?.path || items[0]?.path || '/')}>
+      <button className="nx-sidebar-brand" type="button" aria-label="Sentinel Consig — página inicial"
+        onClick={()=>go(items.find(i=>i.path==='/')?.path || items[0]?.path || '/')}>
         <BrandLogo width={151} height={43}/>
-        <span>WORKSPACE <strong>NEXUS</strong></span>
+        <span className="nx-sidebar-tagline">Inteligência em cada operação.</span>
       </button>
       <button type="button" className="nx-search-action" onClick={onSearch} aria-label="Buscar no Sentinel">
         <Search size={18} aria-hidden="true"/><span>Buscar qualquer coisa</span><kbd>⌘ K</kbd>
