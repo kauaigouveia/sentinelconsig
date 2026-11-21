@@ -644,7 +644,6 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
               setTypeFilter('ALL');
               setSearchQuery('');
               setMineOnly(false);
-              void fetchPendencies('');
             }}>
               <RotateCcw size={15} /> Limpar filtros
             </button>
