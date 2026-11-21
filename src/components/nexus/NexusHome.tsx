@@ -70,7 +70,7 @@ export function NexusHome({rows,role,permissions=[],name,navigate,openProposal,n
     </div>
     <section className="nx-hero">
       <div className="nx-hero-copy">
-        <span className="nx-hero-kicker">SENTINEL WORKSPACE · NEXUS</span>
+        <span className="nx-hero-kicker">SENTINEL CONSIG · INTELIGÊNCIA EM CADA OPERAÇÃO.</span>
         <h1>Uma visão clara do que move sua operação.</h1>
         <p>Bom trabalho, {customerFirstName}. As prioridades, simulações e propostas da sua carteira em um só lugar.</p>
         <div className="nx-hero-actions">
