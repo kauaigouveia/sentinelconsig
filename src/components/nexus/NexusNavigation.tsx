@@ -46,6 +46,7 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
   const canonical = active?.isDynamic ? active.path.split('/').filter(segment=>!segment.startsWith(':')).join('/') : active?.path || path;
   const current = items.find(item => item.path === canonical) || items.find(item => item.path === path);
   const currentGroup = current?.group ?? 'Início';
+  const [expandedGroup,setExpandedGroup] = useState<NavigationGroup|null>(currentGroup);
   const quick = QUICK.map(item=>({...item,route:items.find(route=>route.path===item.path)}))
     .filter(item=>item.route);
   const bottom = BOTTOM.map(item=>({...item,route:items.find(route=>route.path===item.path)}))
@@ -57,6 +58,7 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
     event.preventDefault();go(url);
   };
   useEffect(()=>setLauncherOpen(false),[path,role,permissionSignature]);
+  useEffect(()=>setExpandedGroup(currentGroup),[currentGroup]);
   useEffect(()=>{
     const open=()=>setLauncherOpen(true);
     window.addEventListener('sentinel:nexus-apps',open);
@@ -101,12 +103,14 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
       <nav className="nx-group-nav" aria-label="Módulos do sistema">
         {GROUPS.filter(group=>items.some(item=>item.group===group)).map(group=>{
           const Icon=ICONS[group],groupItems=items.filter(item=>item.group===group);
-          return <details key={group} open={currentGroup===group} className="nx-group">
-            <summary><Icon size={17} aria-hidden="true"/><span>{group}</span><ChevronRight size={16} className="nx-group-arrow" aria-hidden="true"/></summary>
-            <div className="nx-group-links">{groupItems.map(item=><a key={item.path} href={item.path}
+          return <section key={group} className={'nx-group'+(expandedGroup===group?' nx-group-open':'')}>
+            <button type="button" aria-expanded={expandedGroup===group} onClick={()=>setExpandedGroup(old=>old===group?null:group)}>
+              <Icon size={17} aria-hidden="true"/><span>{group}</span><ChevronRight size={16} className="nx-group-arrow" aria-hidden="true"/>
+            </button>
+            {expandedGroup===group&&<div className="nx-group-links">{groupItems.map(item=><a key={item.path} href={item.path}
               aria-current={isCurrent(item.path)?'page':undefined}
-              onClick={event=>link(event,item.path)} title={item.description}>{item.title}</a>)}</div>
-          </details>;
+              onClick={event=>link(event,item.path)} title={item.description}>{item.title}</a>)}</div>}
+          </section>;
         })}
       </nav>
       <div className="nx-sidebar-footer">
