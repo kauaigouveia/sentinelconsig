@@ -4,6 +4,7 @@ import App from './App.tsx';
 import { V8WorkerConsentPage } from './components/simulation/V8WorkerConsentPage.tsx';
 import './index.css';
 import './styles/workbench.css';
+import './styles/sentinel-aurora.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
 import { SpeedInsights } from '@vercel/speed-insights/react';
