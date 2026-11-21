@@ -49,6 +49,12 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
   const [expandedGroup,setExpandedGroup] = useState<NavigationGroup|null>(currentGroup);
   const quick = QUICK.map(item=>({...item,route:items.find(route=>route.path===item.path)}))
     .filter(item=>item.route);
+  // An operational destination appears only once in the desktop sidebar.
+  // The full launcher remains the canonical list of all authorized routes.
+  const shortcuts = new Set(quick.map(item=>item.path));
+  const additionalGroups = GROUPS.map(group=>({
+    group, pages:items.filter(item=>item.group===group&&!shortcuts.has(item.path)),
+  })).filter(({pages})=>pages.length>0);
   const bottom = BOTTOM.map(item=>({...item,route:items.find(route=>route.path===item.path)}))
     .filter(item=>item.route).slice(0,4);
   const isCurrent = (url:string) => url === canonical || url === path;
@@ -92,7 +98,7 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
       <button type="button" className="nx-search-action" onClick={onSearch} aria-label="Buscar no Sentinel">
         <Search size={18} aria-hidden="true"/><span>Buscar qualquer coisa</span><kbd>⌘ K</kbd>
       </button>
-      <span className="nx-section-caption">ACESSO RÁPIDO</span>
+      <span className="nx-section-caption">PRINCIPAIS</span>
       <nav className="nx-quick-nav" aria-label="Acesso rápido">
         {quick.map(({path:url,title,icon:Icon})=><a key={url} href={url}
           aria-current={isCurrent(url)?'page':undefined} onClick={event=>link(event,url)}>
@@ -100,10 +106,10 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
         </a>)}
       </nav>
       <div className="nx-sidebar-rule"/>
-      <span className="nx-section-caption">ÁREAS DE TRABALHO</span>
+      <span className="nx-section-caption">OUTRAS FERRAMENTAS</span>
       <nav className="nx-group-nav" aria-label="Módulos do sistema">
-        {GROUPS.filter(group=>items.some(item=>item.group===group)).map(group=>{
-          const Icon=ICONS[group],groupItems=items.filter(item=>item.group===group);
+        {additionalGroups.map(({group,pages:groupItems})=>{
+          const Icon=ICONS[group];
           return <section key={group} className={'nx-group'+(expandedGroup===group?' nx-group-open':'')}>
             <button type="button" aria-expanded={expandedGroup===group} onClick={()=>setExpandedGroup(old=>old===group?null:group)}>
               <Icon size={17} aria-hidden="true"/><span>{group}</span><ChevronRight size={16} className="nx-group-arrow" aria-hidden="true"/>
