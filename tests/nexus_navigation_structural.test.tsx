@@ -29,7 +29,10 @@ it('abre painel completo de aplicativos e fecha por Escape',()=>{
   const navigate=vi.fn();
   render(<NexusNavigation role="MASTER" path="/propostas" navigate={navigate} onSearch={()=>{}}/>);
   fireEvent.click(screen.getByRole('button',{name:'Todos os aplicativos'}));
-  expect(screen.getByRole('dialog',{name:'Todos os aplicativos'})).toBeTruthy();
+  const dialog=screen.getByRole('dialog',{name:'Todos os aplicativos'});
+  expect(dialog).toBeTruthy();
+  expect(within(dialog).getByText('SENTINEL CONSIG')).toBeTruthy();
+  expect(within(dialog).queryByText(/nexus|workspace/i)).toBeNull();
   expect(document.body.style.overflow).toBe('hidden');
   fireEvent.keyDown(document,{key:'Escape'});
   expect(screen.queryByRole('dialog',{name:'Todos os aplicativos'})).toBeNull();
@@ -43,6 +46,7 @@ it('liga cabeçalho de módulo à navegação de aplicativos sem inventar rotas'
       onApps={()=>window.dispatchEvent(new Event('sentinel:nexus-apps'))}/>
   </>);
   expect(screen.getByRole('heading',{name:'Propostas'})).toBeTruthy();
+  expect(screen.getByText('SENTINEL CONSIG · OPERAÇÃO')).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Abrir todos os aplicativos'}));
   expect(screen.getByRole('dialog',{name:'Todos os aplicativos'})).toBeTruthy();
   expect(visibleNavigation('MASTER').some(item=>item.path==='/propostas')).toBe(true);
