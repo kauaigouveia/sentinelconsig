@@ -14,8 +14,11 @@ describe('Pendências Premium com leituras mockadas',()=>{
   it('mantém filtros status, responsável e busca no endpoint existente',async()=>{
     render(<CentralPendencias premium />);
     await screen.findByText('Nenhuma pendência encontrada');
-    fireEvent.click(screen.getByRole('button',{name:'Abertas'}));
+    fireEvent.change(screen.getByRole('combobox',{name:'Situação'}),{target:{value:'ABERTA'}});
     await waitFor(()=>expect(vi.mocked(fetch).mock.calls.some(([url])=>String(url).includes('status=ABERTA'))).toBe(true));
+    expect(screen.getByRole('combobox',{name:'Prazo SLA'})).toBeTruthy();
+    expect(screen.getByRole('combobox',{name:'Prioridade'})).toBeTruthy();
+    expect(screen.getByRole('combobox',{name:'Categoria'})).toBeTruthy();
     fireEvent.click(screen.getByRole('button',{name:'Minhas pendências'}));
     await waitFor(()=>expect(vi.mocked(fetch).mock.calls.some(([url])=>String(url).includes('assignedToId=unit-user'))).toBe(true));
     fireEvent.change(screen.getByLabelText('Buscar pendências por contrato, cliente, CPF ou título'),{target:{value:'documento'}});
