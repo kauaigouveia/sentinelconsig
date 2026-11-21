@@ -6,6 +6,9 @@ import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
 import { WorkbenchBrand, WorkbenchNavigation } from './components/workbench/WorkbenchNavigation';
+import { NexusNavigation } from './components/nexus/NexusNavigation';
+import { NexusPageContext } from './components/nexus/NexusPageContext';
+import { NexusHome } from './components/nexus/NexusHome';
 import { WorkspaceGuide } from './components/workbench/WorkspaceGuide';
 import { WorkspaceHome as DailyWorkspace } from './components/redesign/WorkspaceHome';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
@@ -90,10 +93,10 @@ const ForcePasswordChangeModal = lazyNamed(() => import('./components/auth/Force
  * The query is explicit; sessionStorage keeps the choice through navigation.
  * ?ui=aurora re-enables the new design in the same browser tab.
  */
-function isAuroraVisualEnabled(): boolean {
+function isNexusVisualEnabled(): boolean {
   try {
     const choice = new URLSearchParams(window.location.search).get('ui');
-    if (choice === 'classic' || choice === 'aurora') window.sessionStorage.setItem('sentinel_ui_variant', choice);
+    if (choice === 'classic' || choice === 'aurora' || choice === 'nexus') window.sessionStorage.setItem('sentinel_ui_variant', choice);
     return (choice || window.sessionStorage.getItem('sentinel_ui_variant')) !== 'classic';
   } catch {
     return true;
@@ -102,6 +105,8 @@ function isAuroraVisualEnabled(): boolean {
 
 function AppMainContent() {
   const newUI = true;
+  const nexusEnabled = newUI && isNexusVisualEnabled();
+  const HomeComponent = nexusEnabled ? NexusHome : DailyWorkspace;
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
   const [activeUser, setActiveUser] = useState<User | null>(null);
@@ -595,14 +600,14 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? (isFocusMode ? "s2-root s3-root" : "s2-root s3-root s4-root" + (isAuroraVisualEnabled() ? ' s5-root' : '')) : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
+    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? (isFocusMode ? "s2-root s3-root" : "s2-root s3-root s4-root" + (nexusEnabled ? ' s6-root' : '')) : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
       <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
       {/* Main Content Area */}
       <div className="sentinel-stage flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Top Header or Sleek Focus Mode Floating Bar */}
         {!isFocusMode ? (
           <Header
-            leadingContent={newUI ? <WorkbenchBrand name={branding?.companyName} logo={branding?.logoUrl} onHome={() => handleNavigate('/')}/> : undefined}
+            leadingContent={newUI && !nexusEnabled ? <WorkbenchBrand name={branding?.companyName} logo={branding?.logoUrl} onHome={() => handleNavigate('/')}/> : undefined}
             redesignPreview={newUI}
             onToggleFavorite={newUI && hasRouteAccess && activeRoute && !activeRoute.isDynamic ? () => workspace.toggleFavorite(activeRoute.path) : undefined}
             isFavorite={!!activeRoute && workspace.favorites.includes(activeRoute.path)}
@@ -671,10 +676,14 @@ function AppMainContent() {
           </div>
         )}
 
-        {newUI && !isFocusMode && <WorkbenchNavigation path={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate}/>}
+        {newUI && !isFocusMode && (nexusEnabled
+          ? <NexusNavigation path={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} onSearch={() => setIsUniversalSearchOpen(true)}/>
+          : <WorkbenchNavigation path={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate}/>)}
 
         <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]' : ''}`}>
-          {newUI && !isFocusMode && !is404 && hasRouteAccess && activeRoute && <WorkspaceGuide pathname={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} />}
+          {newUI && !isFocusMode && !is404 && hasRouteAccess && activeRoute && (nexusEnabled
+            ? effectiveView !== 'torre-controle' && <NexusPageContext path={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} onApps={() => window.dispatchEvent(new Event('sentinel:nexus-apps'))}/>
+            : <WorkspaceGuide pathname={pathname} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} />)}
           <div><div className="sentinel-view-body" data-ui-module={newUI && hasRouteAccess ? effectiveView : undefined} data-ui-family={newUI && hasRouteAccess ? operationalFamily(effectiveView) : undefined}>
           {is404 ? (
             <NotFoundView
@@ -692,7 +701,7 @@ function AppMainContent() {
           ) : (
             <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-[var(--text-secondary)]">Carregando tela...</div>}>
             <>
-              {effectiveView === 'torre-controle' && newUI && <DailyWorkspace onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
+              {effectiveView === 'torre-controle' && newUI && <HomeComponent onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
               {effectiveView === 'tv-monitor' && <TVOperationsMonitor />}
 
               {effectiveView === 'dashboard-executivo' && <ExecutiveBIDashboard />}
