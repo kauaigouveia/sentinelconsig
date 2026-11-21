@@ -7,6 +7,7 @@ import './styles/workbench.css';
 import './styles/sentinel-aurora.css';
 import './styles/sentinel-nexus.css';
 import './styles/sentinel-refined.css';
+import './styles/sentinel-clarity.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
 import { SpeedInsights } from '@vercel/speed-insights/react';
