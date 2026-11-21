@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, BriefcaseBusiness, ChartNoAxesCombined, ChevronRight,
-  ClipboardList, Compass, House, LayoutGrid, LifeBuoy,
-  LockKeyhole, Search, Settings2, Users, Workflow, X,
+  ClipboardList, Compass, House, LayoutGrid,
+  LockKeyhole, Settings2, Users, Workflow, X,
   type LucideIcon,
 } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
@@ -36,7 +36,7 @@ const QUICK: { path:string; title:string; icon:LucideIcon }[] = [
 ];
 const BOTTOM: {path:string; title:string; icon:LucideIcon}[] = QUICK.slice(0,4);
 
-export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:Props) {
+export function NexusNavigation({path,role,permissions = [],navigate}:Props) {
   const permissionSignature = permissions.join('|');
   const items = useMemo(() => visibleNavigation(role,permissions), [role,permissionSignature]);
   const [launcherOpen,setLauncherOpen] = useState(false);
@@ -46,7 +46,10 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
   const canonical = active?.isDynamic ? active.path.split('/').filter(segment=>!segment.startsWith(':')).join('/') : active?.path || path;
   const current = items.find(item => item.path === canonical) || items.find(item => item.path === path);
   const currentGroup = current?.group ?? 'Início';
-  const [expandedGroup,setExpandedGroup] = useState<NavigationGroup|null>(currentGroup);
+  // Expand secondary modules only when visiting one of their destinations.
+  // The main dashboard no longer opens a redundant “Início” group.
+  const activeIsShortcut = QUICK.some(item=>item.path===canonical);
+  const [expandedGroup,setExpandedGroup] = useState<NavigationGroup|null>(activeIsShortcut?null:currentGroup);
   const quick = QUICK.map(item=>({...item,route:items.find(route=>route.path===item.path)}))
     .filter(item=>item.route);
   // An operational destination appears only once in the desktop sidebar.
@@ -64,7 +67,7 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
     event.preventDefault();go(url);
   };
   useEffect(()=>setLauncherOpen(false),[path,role,permissionSignature]);
-  useEffect(()=>setExpandedGroup(currentGroup),[currentGroup]);
+  useEffect(()=>setExpandedGroup(activeIsShortcut?null:currentGroup),[currentGroup,activeIsShortcut]);
   useEffect(()=>{
     const open=()=>setLauncherOpen(true);
     window.addEventListener('sentinel:nexus-apps',open);
@@ -95,9 +98,6 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
         <BrandLogo width={151} height={43}/>
         <span className="nx-sidebar-tagline">Inteligência em cada operação.</span>
       </button>
-      <button type="button" className="nx-search-action" onClick={onSearch} aria-label="Buscar no Sentinel">
-        <Search size={18} aria-hidden="true"/><span>Buscar qualquer coisa</span><kbd>⌘ K</kbd>
-      </button>
       <span className="nx-section-caption">PRINCIPAIS</span>
       <nav className="nx-quick-nav" aria-label="Acesso rápido">
         {quick.map(({path:url,title,icon:Icon})=><a key={url} href={url}
@@ -120,12 +120,10 @@ export function NexusNavigation({path,role,permissions = [],navigate,onSearch}:P
           </section>;
         })}
       </nav>
-      <div className="nx-sidebar-footer">
-        <div className="nx-sidebar-footer-mark"><LifeBuoy size={18}/></div>
-        <div><strong>Central de trabalho</strong><span>Inteligência em cada operação.</span></div>
-        <button aria-label="Ver todos os aplicativos" title="Ver todos os aplicativos"
-          onClick={()=>setLauncherOpen(true)}><ArrowRight size={17}/></button>
-      </div>
+      <button className="nx-sidebar-all-apps" type="button"
+        onClick={()=>setLauncherOpen(true)} aria-label="Ver todos os aplicativos">
+        <LayoutGrid size={18} aria-hidden="true"/><span>Todos os módulos</span><ArrowRight size={17} aria-hidden="true"/>
+      </button>
     </aside>
 
     <nav className="nx-mobile-bottom" aria-label="Navegação inferior">
