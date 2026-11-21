@@ -38,7 +38,7 @@ export function NexusPageContext({path,role,permissions=[],navigate,onApps}:Prop
         <span>/</span><span>{current.group}</span><span>/</span><strong>{current.title}</strong>
       </nav>
       <div className="nx-context-title-row">
-        <div><span className="nx-overline">SENTINEL · {current.group.toLocaleUpperCase('pt-BR')}</span>
+        <div><span className="nx-overline">SENTINEL CONSIG · {current.group.toLocaleUpperCase('pt-BR')}</span>
           <h1>{current.title}</h1>
           <p>{shortDescription[current.path]||current.description}</p>
         </div>
