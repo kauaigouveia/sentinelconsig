@@ -14,7 +14,8 @@ describe('Sentinel Aurora v5 — refatoração visual sem alterar permissões',(
     const main=readFileSync('src/main.tsx','utf8');
     expect(app).toContain('s2-root s3-root s4-root');
     expect(app).toContain('s5-root');
-    expect(app).toContain("get('ui') === 'classic'");
+    expect(app).toContain("get('ui')");
+    expect(app).toContain('sentinel_ui_variant');
     expect(main.indexOf("import './styles/sentinel-aurora.css'"))
       .toBeGreaterThan(main.indexOf("import './styles/workbench.css'"));
   });
