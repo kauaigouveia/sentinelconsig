@@ -24,6 +24,37 @@ export type PortabilityResult = {
 };
 
 type Condition = { installment?: number | null; rate?: number | string | null };
+
+/**
+ * Count exactly the conditions the comparator offers for selection.
+ * Group by contract + institution + individual/unified and apply the same
+ * presentation policy used by PortabilityResults (one preferred quote per
+ * bank and contract; Daycoval tied tables remain individually selectable).
+ * The raw API/worksheet row count is NOT the number of available simulations.
+ */
+export function displayedPortabilityQuoteCount<T extends PortabilityResult>(
+  rows:readonly T[],conditionFor:(row:T)=>Condition,
+):number {
+  const groups=new Map<string,T[]>();
+  for(const row of rows){
+    if(!row.success||row.skipped||!positive(row.troco))continue;
+    const key=JSON.stringify([Boolean(row.unified),row.contractLabel||'Contrato informado',row.provider]);
+    const bucket=groups.get(key)||[];
+    bucket.push(row);
+    groups.set(key,bucket);
+  }
+  let count=0;
+  for(const bucket of groups.values()){
+    count+=selectPortabilityQuoteRows(bucket,bucket[0].provider,{
+      name:row=>row.table?.name||row.table?.cod_tabela,
+      rate:row=>conditionFor(row).rate,
+      amount:row=>row.troco,
+      valid:row=>row.success&&!row.skipped,
+    }).length;
+  }
+  return count;
+}
+
 const amount = (value:unknown) => {
   const number = Number(value);
   return value == null || !Number.isFinite(number) || number < 0
