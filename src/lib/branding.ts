@@ -33,6 +33,7 @@ export const SYSTEM_IDENTITY = {
   badge: 'ENTERPRISE',
   subtitle: 'Inteligência em cada operação.',
   defaultLogo: '/branding/sentinel-symbol-v6.png',
+  defaultFavicon: '/branding/sentinel-symbol-v6.png',
 };
 
 export function resolveEffectiveTenantBranding(
@@ -85,8 +86,11 @@ export function resolveEffectiveTenantBranding(
   };
 }
 
-// The partner portal always identifies the product in the browser tab.
+// Keep browser tabs short and distinct while preserving tenant identification.
 export function browserBrandTitle(pathname: string, companyName?: string): string {
-  if (pathname === '/parceiro' || pathname.startsWith('/parceiro/')) return 'Sentinel Consig | Portal do parceiro';
-  return `${companyName || SYSTEM_IDENTITY.name} | Sentinel Consig`;
+  if (pathname === '/parceiro' || pathname.startsWith('/parceiro/')) return 'Sentinel Consig · Parceiros';
+  const tenantName = companyName?.trim() || SYSTEM_IDENTITY.name;
+  // On the platform tenant, repeating the same product name serves no purpose.
+  if (tenantName.localeCompare(SYSTEM_IDENTITY.name, 'pt-BR', { sensitivity: 'base' }) === 0) return SYSTEM_IDENTITY.name;
+  return `${tenantName} · ${SYSTEM_IDENTITY.name}`;
 }
