@@ -80,7 +80,10 @@ export class PartnerSimulationService {
       job('HAPPY', async () => { offers.push(...await partnerHappySimulation(prisma, tenantId, input, action)); }),
       job('FACTA', async () => {
         const config = await FactaBankService.getTenantConfig(prisma, tenantId);
-        if (!config.isConfigured || !config.simulationEnabled) {if(isPortability)assessments.push({provider:'FACTA',policyStatus:'INTEGRATION_UNAVAILABLE',message:'Integração não habilitada para a empresa.'});return;}
+        if (!config.isConfigured || !config.simulationEnabled) {
+          assessments.push({provider:'FACTA',institution:'FACTA',state:'PENDING',policyStatus:'INTEGRATION_UNAVAILABLE',outcome:'UNSUPPORTED',message:'Integração FACTA não configurada ou desabilitada nesta empresa.'});
+          return;
+        }
         const result = await FactaSimulationService.inss(prisma, tenantId, { ...input, mode: input.mode === 'Payment' ? 'INSTALLMENT' : 'AMOUNT' } as FactaInssInput);
         offers.push(...result.offers.map(offer => ({ ...offer, provider: 'FACTA', institution: 'FACTA', state: offer.amount ? 'OFFER' : 'PENDING' })));
         if (result.message) notes.push(`FACTA: ${result.message}`);
@@ -112,7 +115,10 @@ export class PartnerSimulationService {
       job('BMG', async () => { if (input.bmgActorId) offers.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, input)); }),
       job('Nossa Fintech', async () => {
         const config = await NossaFintechService.getConfig(prisma, tenantId);
-        if (!config.enabled || !config.isConfigured) return;
+        if (!config.enabled || !config.isConfigured) {
+          assessments.push({provider:'Nossa Fintech',institution:'Nossa Fintech',state:'PENDING',policyStatus:'INTEGRATION_UNAVAILABLE',outcome:'UNSUPPORTED',message:'Nossa Fintech: integração desativada ou sem credenciais para a empresa atual.'});
+          return;
+        }
         if (!['NEW', 'PORT_REFIN'].includes(input.operation)) { notes.push('Nossa Fintech: modalidade disponível neste fluxo somente para Novo e Portabilidade + Refin.'); return; }
         const result = input.operation === 'NEW'
           ? await NossaFintechService.simulateInssNovoAcrossTables(prisma, tenantId, { numberOfInstallments: input.term, mode: input.mode === 'Payment' ? 'INSTALLMENT' : 'AMOUNT', value: input.value, legalRepresentative: !!input.legalRepresentative, birthDate: input.birthDate, benefitType: input.benefitType })
@@ -206,7 +212,13 @@ export class PartnerSimulationService {
     if(isPortability){
       try{await AuditLogService.record(prisma,{tenantId,action:'simulation.portability_routing',entity:'SimulationRequest',newData:{priorityId:plan?.priorityId,trace:plan?.trace,decisions:[...assessments.map(row=>({bank:portabilityBankId(row.provider||row.institution),status:row.policyStatus,reason:row.message})),...offers.map(row=>({bank:portabilityBankId(row.provider||row.institution),status:row.policyStatus,reason:row.policyReview}))].slice(0,100),offerBanks:[...new Set(offers.map(row=>row.provider||row.institution))]}});}catch{/* Preserve existing simulations if diagnostic storage is unavailable. */}
       const failed=assessments.some(row=>row.policyStatus==='TECHNICAL_FAILURE');
-      return {rows:publicPortabilityRows(offers),operationalStatus:offers.length?(failed?'PARTIAL':'OFFERS'):(failed?'TECHNICAL_FAILURE':'NO_OFFERS'),message:failed?'Uma ou mais instituições não concluíram a consulta. Consulte as ofertas disponíveis ou solicite orientação à mesa.':offers.length?'':'Nenhuma oferta disponível para os dados informados. Consulte a mesa para orientação.'};
+      const situationNotes = assessments
+        .filter(row=>row.state==='PENDING'||row.policyStatus==='TECHNICAL_FAILURE')
+        .slice(0,10)
+        .map(row=>String(row.provider||row.institution||'Banco')+': '+String(row.message||row.policyStatus||'sem cotação').slice(0,170));
+      const statusMessage=failed?'Uma ou mais instituições não concluíram a consulta.':offers.length?'':'Nenhuma oferta disponível para os dados informados.';
+      return {rows:publicPortabilityRows(offers),operationalStatus:offers.length?(failed?'PARTIAL':'OFFERS'):(failed?'TECHNICAL_FAILURE':'NO_OFFERS'),
+        message:[statusMessage,...situationNotes].filter(Boolean).join(' · ').slice(0,1050)};
     }
     return { rows: [...offers,...assessments], message: notes.join(' · ') || (!offers.length ? 'Nenhuma oferta retornada para os dados informados.' : '') };
   }
