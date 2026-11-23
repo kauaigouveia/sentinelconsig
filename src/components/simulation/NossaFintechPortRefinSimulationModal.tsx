@@ -6,6 +6,7 @@ import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
 import { inssBankProjectedQuotes } from '../../lib/inssBankProjectedQuotes';
+import {dedupeInssNovoOffers, inssNovoConsultationTerms, normalizeInssNovoOffers} from '../../lib/inssNovoConsultationTerms';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
 import {StorageService} from '../../services/storageService';
 import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
@@ -292,7 +293,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   };
 
   const loadStatementMargin = async () => {
-    if(!statement) return;
+    if(!statement)return;
     const margin=parseCurrency(statement.loanMargin);
     setMarginState('loading');setMarginOffers([]);setMarginNote('');
     if(statement.loanBlocked || margin==null || margin<=0){
@@ -300,36 +301,48 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       setMarginNote(statement.loanBlocked?'Benefício bloqueado para empréstimos conforme extrato.':'Sem margem atual positiva para NOVO.');
       return;
     }
-    try {
-      const result=await request('/api/inss/statement/quote',{
-        method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
-        body:JSON.stringify({
-          confirmedClientAuthorization:true,operation:'NEW',
-          cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
-          benefitNumber:statement.customer.benefitNumber,
-          benefitType:Number(statement.customer.benefitType),birthDate:statement.customer.birthDate,
-          benefitStartDate:statement.benefitStart,illiterate:statement.illiterate,
-          legalRepresentative:statement.legalRepresentative===true,loanBlocked:false,
-          loanMargin:margin,income:parseCurrency(statement.income),term:108,
-        }),
-      });
-      const data=await readJsonResponse(result);
-      if(!result.ok)throw Error(data.error||'Falha na consulta da margem atual.');
-      if(scope.current!==identity()||transport.current?.signal.aborted)return;
-      const next=(Array.isArray(data.offers)?data.offers:[]).filter((item:any)=>
-        typeof item.amount==='number'&&Number.isFinite(item.amount)&&item.amount>0)
-        .map((item:any)=>({
-          provider:String(item.provider||''),institution:String(item.institution||item.provider||'Instituição'),
-          table:String(item.table||'Tabela INSS'),amount:Number(item.amount),
-          installment:Number(item.installment)>0?Number(item.installment):null,
-          term:Number(item.term)>0?Number(item.term):null,rate:Number(item.rate)>0?Number(item.rate):null,
-          source:item.source==='PLANILHA'?'PLANILHA' as const:'API' as const,
-        }));
-      next.sort((a:any,b:any)=>b.amount-a.amount);
-      setMarginOffers(next);setMarginNote((Array.isArray(data.notices)?data.notices:[]).join(' · ').slice(0,700));
-    }catch(error:any){if(!transport.current?.signal.aborted)setMarginNote(error.message||'Não foi possível consultar NOVO pela margem atual.');}
-    finally{if(scope.current===identity()&&!transport.current?.signal.aborted)setMarginState('ready');}
+    const quotes:ReturnType<typeof normalizeInssNovoOffers>=[];
+    const notes:string[]=[];
+    // 108 meses sozinho pode excluir todos os bancos para clientes mais idosos.
+    // Consultar prazos mais curtos com a MESMA margem atual (sem inventar taxas).
+    const terms=inssNovoConsultationTerms(statement.customer.birthDate);
+    for(const term of terms){
+      if(transport.current?.signal.aborted || scope.current!==identity())break;
+      try{
+        const response=await request('/api/inss/statement/quote',{
+          method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
+          body:JSON.stringify({
+            confirmedClientAuthorization:true,operation:'NEW',
+            cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
+            benefitNumber:statement.customer.benefitNumber,
+            benefitType:Number(statement.customer.benefitType),birthDate:statement.customer.birthDate,
+            benefitStartDate:statement.benefitStart,illiterate:statement.illiterate,
+            legalRepresentative:statement.legalRepresentative===true,loanBlocked:false,
+            loanMargin:margin,income:parseCurrency(statement.income),term,
+          }),
+        });
+        const data=await readJsonResponse(response);
+        if(!response.ok)throw Error(data.error||`Consulta NOVO HTTP ${response.status}.`);
+        if(scope.current!==identity()||transport.current?.signal.aborted)break;
+        const found=normalizeInssNovoOffers(data,term);
+        quotes.push(...found);
+        if(found.length===0){
+          const messages=(Array.isArray(data.notices)?data.notices:[]).map((value:unknown)=>String(value).slice(0,180));
+          notes.push(`${term} meses: ${messages.slice(0,3).join(' · ')||'Nenhuma oferta bancária retornada.'}`);
+        }
+        setMarginOffers(dedupeInssNovoOffers(quotes));
+      }catch(error:any){
+        if(transport.current?.signal.aborted)break;
+        notes.push(`${term} meses: ${String(error?.message||'Consulta indisponível.').slice(0,180)}`);
+      }
+    }
+    if(scope.current===identity()&&!transport.current?.signal.aborted){
+      setMarginOffers(dedupeInssNovoOffers(quotes));
+      setMarginNote(notes.join(' · ').slice(0,1500));
+      setMarginState('ready');
+    }
   };
+
   useEffect(()=>{
     if(!isOpen || !statement || !autoRunFromStatement || autoStarted.current)return;
     autoStarted.current=true;
