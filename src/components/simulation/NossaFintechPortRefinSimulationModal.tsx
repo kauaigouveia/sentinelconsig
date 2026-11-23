@@ -373,9 +373,15 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         if(scope.current!==identity()||transport.current?.signal.aborted)break;
         const found=normalizeInssNovoOffers(data,term);
         quotes.push(...found);
+        // A falta de cotação de um banco deve ser visível mesmo quando outros
+        // bancos retornam ofertas. Não tratar a falha da FINANTO como sucesso geral.
+        const messages=(Array.isArray(data.notices)?data.notices:[]).map((value:unknown)=>String(value).slice(0,180));
+        const finantoMessages=messages.filter((message:string)=>/\\bFINANTO\\b/i.test(message)).slice(0,3);
+        notes.push(...finantoMessages.map((message:string)=>`${term} meses · ${message}`));
         if(found.length===0){
-          const messages=(Array.isArray(data.notices)?data.notices:[]).map((value:unknown)=>String(value).slice(0,180));
-          notes.push(`${term} meses: ${messages.slice(0,3).join(' · ')||'Nenhuma oferta bancária retornada.'}`);
+          const otherMessages=messages.filter((message:string)=>!/\\bFINANTO\\b/i.test(message)).slice(0,3);
+          if(otherMessages.length) notes.push(`${term} meses: ${otherMessages.join(' · ')}`);
+          else if(!finantoMessages.length) notes.push(`${term} meses: Nenhuma oferta bancária retornada.`);
         }
         setMarginOffers(dedupeInssNovoOffers(quotes));
       }catch(error:any){
@@ -702,7 +708,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
               <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)} · {selectedMargin===quote.index?'Selecionada':'Selecionar'}</span>
             </button>)}</div>
         </details>}
-        {marginState==='ready' && <details open={marginOffers.length===0} className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
+        {marginState==='ready' && <details open={marginOffers.length===0 || !marginOffers.some(quote=>quote.provider.toUpperCase().includes('FINANTO'))} className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
           <summary className="cursor-pointer font-semibold">Status das integrações de NOVO · {inssNovoConsultationTerms(statement.customer.birthDate).join(', ')} meses consultados</summary>
           <div className="mt-2 flex flex-wrap gap-2">{['C6','FACTA','Nossa Fintech','FINANTO','HAPPY','BMG'].map(bank=>{
             const found=marginOffers.some(quote=>quote.provider.toUpperCase().includes(bank.toUpperCase()));
