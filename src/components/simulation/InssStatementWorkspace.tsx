@@ -60,6 +60,7 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
   }
   if (!withinScope()) return null;
   const chosen = statement?.contracts.filter((_, i) => selected.includes(i)) ?? [];
+  const canSimulateNovo = Boolean(statement && !statement.loanBlocked && (parseCurrency(statement.loanMargin) ?? 0) > 0);
   const projected = statement ? inssProjectedMargin(statement.income, statement.loanMargin, statement.loanBlocked) : null;
   if (flow && statement && illiterate) {
     const reviewed: ReviewedInssStatement = { ...statement, contracts: chosen, illiterate,
@@ -108,13 +109,16 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
         </fieldset>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold">Empréstimos do extrato ({statement.contracts.length})</h3>
-          <div className="flex gap-2 text-xs">
+          {statement.contracts.length>0 && <div className="flex gap-2 text-xs">
             <button type="button" className={button} onClick={()=>setSelected(statement.contracts.slice(0, MAX_SIMULATION_CONTRACTS).map((_,i)=>i))}>Selecionar todos</button>
             <button type="button" className={button} onClick={()=>setSelected([])}>Limpar seleção</button>
-          </div>
+          </div>}
         </div>
         {statement.issues.length > 0 && <div role="status" className="text-sm">{[...new Set(statement.issues)].map(issue => <p key={issue}>{issue}</p>)}</div>}
         {statement.contracts.length > MAX_SIMULATION_CONTRACTS && <p>Escolha até {MAX_SIMULATION_CONTRACTS} contratos por comparação.</p>}
+        {statement.contracts.length===0 && <p role="status" className="rounded-lg border border-[var(--info-border)] bg-[var(--info-bg)] px-3 py-3 text-sm text-[var(--info-text)]">
+          Nenhum empréstimo ativo identificado. {canSimulateNovo ? 'Você pode simular NOVO utilizando a margem de empréstimo disponível, sem selecionar contratos.' : 'Não há portabilidade para comparar; confira a margem atual e a situação do benefício.'}
+        </p>}
         <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
         {statement.contracts.map((c,i) => <label key={i} className={'flex items-center gap-3 rounded-lg border p-3 text-xs '+(selected.includes(i) ? 'border-[var(--action)] bg-[var(--bg-surface-elevated)]' : 'border-[var(--field-border)]')}>
           <input type="checkbox" checked={selected.includes(i)} disabled={!selected.includes(i) && selected.length >= MAX_SIMULATION_CONTRACTS}
@@ -123,23 +127,23 @@ export default function InssStatementWorkspace({ scope, partners, happyEnabled, 
           Parcela {money(c.installmentFaceValue)} · Saldo {money(c.lastDueBalance)} · {c.openedInstallmentNumber} de {c.originalTerm} restantes</span>
         </label>)}
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs">
+        {statement.contracts.length>0 && <div className="flex flex-wrap items-center gap-3 text-xs">
           <label className="font-medium">Total de contratos no benefício (Paraná)
             <input type="number" min="1" max="13" value={contractCount || ''} onChange={event=>setContractCount(Number(event.target.value)||0)}
               className="ml-2 w-16 rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-2 py-1.5"/>
           </label>
           <span className="text-[var(--text-secondary)]">Confirme o total mesmo se simular apenas alguns contratos.</span>
-        </div>
+        </div>}
         <label className="flex items-start gap-2 rounded-lg border border-[var(--field-border)] p-3 text-xs">
           <input type="checkbox" className="mt-0.5" checked={clientAuthorized} onChange={e=>setClientAuthorized(e.target.checked)}/>
           Confirmo que o cliente autorizou esta consulta às instituições bancárias.
         </label>
         <button type="button" className="w-full rounded-xl bg-[var(--action)] px-5 py-3 text-sm font-bold text-[var(--action-ink)] disabled:opacity-50"
-          disabled={!illiterate || !clientAuthorized || !chosen.length}
+          disabled={!illiterate || !clientAuthorized || (!chosen.length && !canSimulateNovo)}
           onClick={() => setFlow('multi')}>
-          Simular margem e portabilidades ({chosen.length} {chosen.length===1?'contrato':'contratos'})
+          {chosen.length===0 ? 'Simular NOVO pela margem disponível' : `Simular margem e portabilidades (${chosen.length} ${chosen.length===1?'contrato':'contratos'})`}
         </button>
-        <p className="text-xs text-[var(--text-secondary)]">As portabilidades e unificações Daycoval usam os contratos selecionados; margem atual e prévia de R$ 42,00 são mostradas separadamente. Cotação não equivale à aprovação bancária.</p>
+        <p className="text-xs text-[var(--text-secondary)]">{chosen.length>0 ? 'As portabilidades e unificações Daycoval usam os contratos selecionados; a margem atual é simulada separadamente.' : 'Sem contratos selecionados, a consulta é exclusiva para NOVO pela margem atual.'} Prévia de aumento não é margem liberada. Cotação não equivale à aprovação bancária.</p>
       </>}
     </div>
   </div>;
