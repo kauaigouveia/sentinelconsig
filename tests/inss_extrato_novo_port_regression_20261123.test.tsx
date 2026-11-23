@@ -23,6 +23,18 @@ describe('Extrato INSS — consulta por prazos sem suposições sobre os bancos'
     expect(inssNovoConsultationTerms('1986-03-03',today)).toEqual([108]);
     expect(inssNovoConsultationTerms('invalid',today)).toEqual([108]);
   });
+  it('consulta FINANTO em 96 meses aos 69 anos, sem ignorar as demais APIs',()=>{
+    const birthDate='1957-03-03';
+    expect(finantoAgeError(birthDate,108,today)).toMatch(/prazo máximo/i);
+    expect(finantoAgeError(birthDate,96,today)).toBeNull();
+    expect(inssNovoConsultationTerms(birthDate,today)).toEqual([108,96]);
+  });
+  it('consulta FINANTO em 48 meses aos 73 anos, sem confundir com ausência de produto',()=>{
+    const birthDate='1953-03-03';
+    expect(finantoAgeError(birthDate,60,today)).toMatch(/prazo máximo/i);
+    expect(finantoAgeError(birthDate,48,today)).toBeNull();
+    expect(inssNovoConsultationTerms(birthDate,today)).toEqual([108,84,72,60,48]);
+  });
   it('preserva as ofertas de API com 60 meses sem alterar margem nem inventar valores',()=>{
     const data={offers:[
       {provider:'Nossa Fintech',institution:'Nossa Fintech',table:'INSS NOVO 60',amount:3400,
