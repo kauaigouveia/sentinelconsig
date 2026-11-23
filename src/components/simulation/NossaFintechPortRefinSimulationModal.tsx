@@ -342,7 +342,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const loadStatementMargin = async () => {
     if(!statement)return;
     const margin=parseCurrency(statement.loanMargin);
-    setMarginState('loading');setMarginOffers([]);setMarginNote('');
+    setMarginState('loading');setMarginOffers([]);setMarginNote('');setSelectedMargin(null);
     if(statement.loanBlocked || margin==null || margin<=0){
       setMarginState('ready');
       setMarginNote(statement.loanBlocked?'Benefício bloqueado para empréstimos conforme extrato.':'Sem margem atual positiva para NOVO.');
@@ -669,7 +669,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           </button>
         </div>
         {marginState==='loading' && <p role="status" className="text-xs">Consultando os bancos em prazos compatíveis com a idade…</p>}
-        {marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma oferta válida nos prazos consultados. Veja o status dos bancos e os critérios de idade e prazo.</p>}
+        {novoScenario==='CURRENT' && marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma oferta válida nos prazos consultados. Veja o status dos bancos e os critérios de idade e prazo.</p>}
         {novoScenario==='CURRENT' && marginBest.length>0 && <div className="grid gap-2 sm:grid-cols-2">{marginBest.map(quote=>
           <div key={quote.index} className={'rounded-lg border p-3 text-xs '+(selectedMargin===quote.index?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--border-default)]')}>
             <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--text-secondary)]">{quote.source==='API'?'API':'Planilha'}</span></div>
@@ -677,7 +677,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             <p className="mt-2 text-[var(--text-secondary)]">Estimativa de valor a liberar</p>
             <strong className="text-lg text-[var(--success-text)]">{currency(quote.amount)}</strong>
             <p className="mt-1 text-[var(--text-secondary)]">Parcela {currency(quote.installment)} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)}</p>
-            <button type="button" aria-pressed={selectedMargin===quote.index} className="mt-2 rounded-lg border border-[var(--field-border)] px-3 py-1.5 font-semibold"
+            <button type="button" aria-pressed={selectedMargin===quote.index} disabled={marginState==='loading'} className="mt-2 rounded-lg border border-[var(--field-border)] px-3 py-1.5 font-semibold"
               onClick={()=>{setSelectedProjected(null);setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}>
               {selectedMargin===quote.index?'✓ NOVO selecionado':'Selecionar NOVO'}
             </button>
@@ -685,7 +685,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         {novoScenario==='CURRENT' && marginOther.length>0 && <details className="rounded-lg border border-[var(--border-default)] p-3 text-xs">
           <summary className="cursor-pointer font-semibold">Outras {marginOther.length} condições de NOVO</summary>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">{marginOther.map(quote=>
-            <button type="button" key={quote.index} aria-pressed={selectedMargin===quote.index}
+            <button type="button" key={quote.index} disabled={marginState==='loading'} aria-pressed={selectedMargin===quote.index}
               onClick={()=>{setSelectedProjected(null);setSelectedMargin(old=>old===quote.index?null:quote.index);setShareStatus('');}}
               className={'rounded-lg border p-3 text-left '+(selectedMargin===quote.index?'border-[var(--action)]':'border-[var(--border-default)]')}>
               <strong>{quote.institution} · {currency(quote.amount)}</strong>
