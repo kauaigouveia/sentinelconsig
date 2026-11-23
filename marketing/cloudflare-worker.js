@@ -40,6 +40,14 @@ async function lead(request,env){
    else{console.error("resend delivery failed",response.status);await env.LEADS_DB.prepare("UPDATE leads SET notification_error=? WHERE id=?").bind("provider_http_"+response.status,id).run().catch(()=>{});}
   }catch(e){console.error("resend request failed",e?.name||"error");}
  }
+
+ if(env.COMMERCIAL_EMAIL && !env.RESEND_API_KEY){
+  const summary="Novo contato comercial Sentinel Consig\n"+"Tipo: "+type+"\nNome: "+name+"\nEmpresa: "+company+"\nE-mail: "+email+"\nTelefone: "+phone+"\nPlano: "+plan+"\nData: "+(date||"—")+"\nPeríodo: "+(period||"—")+"\nObservações: "+(notes||"—");
+  try{
+   await env.COMMERCIAL_EMAIL.send({from:"notificacoes@sentinelconsig.com.br",to:"kauaigouveia@gmail.com",subject:(type==="demo"?"Demonstração":"Contratação")+" • Sentinel Consig • "+company,text:summary});
+   await env.LEADS_DB.prepare("UPDATE leads SET notified=1 WHERE id=?").bind(id).run().catch(()=>{});
+  }catch(e){console.error("commercial email notification unavailable",e?.name||"error");await env.LEADS_DB.prepare("UPDATE leads SET notification_error=? WHERE id=?").bind("cloudflare_email_error",id).run().catch(()=>{});}
+ }
  return json("Recebemos sua solicitação! Nossa equipe entrará em contato para confirmar os próximos passos.",200);
 }
 export default {
