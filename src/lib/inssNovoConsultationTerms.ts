@@ -11,8 +11,14 @@ import {ageAt} from './inssEligibility';
 export function inssNovoConsultationTerms(birthDate: string, today?: Date): number[] {
   const age = ageAt(birthDate, today);
   if (age === null) return [108];
+  // As restrições de prazo FINANTO para NOVO são progressivas após 68 anos:
+  // 69: 96; 70: 84; 71: 72; 72: 60; 73: 48 meses.
+  // Manter 108 para os demais bancos e acrescentar somente os prazos
+  // alternativos necessários, sem presumir elegibilidade bancária.
   if (age >= 74) return [108, 60, 48];
+  if (age >= 73) return [108, 84, 72, 60, 48];
   if (age >= 70) return [108, 84, 72, 60];
+  if (age >= 69) return [108, 96];
   return [108];
 }
 
