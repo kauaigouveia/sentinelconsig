@@ -165,6 +165,7 @@
     .hero h1 .accent{background:linear-gradient(105deg,#49cfe0 0%,#9ceaff 38%,#3bb8d3 68%,#49cfe0 100%);background-size:210% 100%;background-clip:text;-webkit-background-clip:text;color:transparent;animation:accentFlow 9s ease-in-out infinite alternate}
     .device{animation:dashboardFloat 8s ease-in-out infinite;will-change:transform;box-shadow:0 40px 92px #0009,0 0 68px #0c9dd21c}
     .device::before{content:"";position:absolute;z-index:-1;inset:-15px;border-radius:26px;pointer-events:none;background:linear-gradient(115deg,transparent 10%,#26ccf01b 46%,transparent 80%);filter:blur(19px);animation:deviceHalo 7s ease-in-out infinite alternate}
+    .screen-name img{width:21px;height:21px;object-fit:contain;filter:drop-shadow(0 0 6px #25dcf72a)}
     .screen-head .dots span{animation:signalBlink 2.8s ease-in-out infinite}
     .screen-head .dots span:nth-child(2){animation-delay:.45s}
     .screen-head .dots span:nth-child(3){animation-delay:.9s}
@@ -181,8 +182,8 @@
     .button{position:relative;overflow:hidden}
     .button.primary::after{content:"";position:absolute;top:-50%;bottom:-50%;width:80px;left:-120px;background:linear-gradient(90deg,transparent,#fff5,transparent);transform:skewX(-22deg);transition:left .7s ease;pointer-events:none}
     .button.primary:hover::after{left:calc(100% + 120px)}
-    @keyframes brandArrival{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes heroEnter{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes brandArrival{from{opacity:.82;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes heroEnter{from{opacity:.78;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     @keyframes accentFlow{from{background-position:0% 50%}to{background-position:100% 50%}}
     @keyframes gridMove{from{background-position:0 0}to{background-position:48px 48px}}
     @keyframes auraLeft{from{transform:translate(0,0) scale(.9);opacity:.3}to{transform:translate(100px,-55px) scale(1.15);opacity:.65}}
@@ -191,7 +192,7 @@
     @keyframes mobileDashboardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
     @keyframes deviceHalo{from{opacity:.35}to{opacity:.86}}
     @keyframes signalBlink{0%,100%{background:#506b78;box-shadow:none}45%{background:#5ce0e9;box-shadow:0 0 10px #47d9df}}
-    @keyframes statEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes statEnter{from{opacity:.72;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes barGrow{from{transform:scaleY(.04);opacity:.24}to{transform:scaleY(1);opacity:.86}}
     @keyframes graphSweep{0%,17%{left:-120px;opacity:0}35%{opacity:1}54%,100%{left:calc(100% + 120px);opacity:0}}
     @keyframes tagPulse{0%,100%{border-color:#246174;box-shadow:none}50%{border-color:#48a4bd;box-shadow:0 0 13px #12c7e21f}}
@@ -232,7 +233,7 @@
         </div>
         <div class="device" role="img" aria-label="Representação ilustrativa do painel de gestão Sentinel Consig">
           <div class="screen">
-            <div class="screen-head"><span class="screen-name"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 34 11v13c0 9-8 13-14 16C14 37 6 33 6 24V11z" stroke="#43d7ea" stroke-width="3" fill="none"/><path d="M25 12c-9-5-17 6-4 10 11 5 1 12-7 6" stroke="#67d5ec" stroke-width="4" fill="none" stroke-linecap="round"/></svg> SENTINEL <span style="color:#69d8e9">CONSIG</span></span><div class="dots" aria-hidden="true"><span></span><span></span><span></span></div></div>
+            <div class="screen-head"><span class="screen-name"><img src="/branding/official-symbol-v6.png" alt="" width="21" height="21"> SENTINEL <span style="color:#69d8e9">CONSIG</span></span><div class="dots" aria-hidden="true"><span></span><span></span><span></span></div></div>
             <div class="screen-content">
               <div class="screen-title"><div><strong>Visão geral da operação</strong><small>Painel estratégico • exemplo visual</small></div><span class="screen-tag">● Gestão centralizada</span></div>
               <div class="stat-grid"><div class="stat"><small>Propostas</small><strong>1.248</strong><em>↗ Visão consolidada</em></div><div class="stat"><small>Em andamento</small><strong>186</strong><em>• Acompanhamento</em></div><div class="stat"><small>Indicador de aprovação</small><strong>72%</strong><em>↗ Performance</em></div></div>
