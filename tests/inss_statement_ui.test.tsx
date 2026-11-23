@@ -79,3 +79,33 @@ it('descarta o extrato e fecha a simulação quando a sessão troca de empresa',
   expect(close).toHaveBeenCalledOnce();
   expect(screen.queryByText('Pessoa sintética')).toBeNull();
 });
+
+it('extrato com margem positiva e nenhum contrato libera NOVO sem selecionar portabilidade',async()=>{
+  vi.mocked(readInssStatement).mockResolvedValue({
+    ...fixture, contracts:[], loanMargin:'87.06',issues:[],
+  });
+  open();
+  const action=await screen.findByRole('button',{name:'Simular NOVO pela margem disponível'});
+  expect(screen.getByText(/Nenhum empréstimo ativo identificado/)).toBeTruthy();
+  expect((action as HTMLButtonElement).disabled).toBe(true); // autorização e alfabetização obrigatórias
+  expect(screen.queryByText(/Total de contratos no benefício \(Paraná\)/)).toBeNull();
+  fireEvent.click(screen.getByRole('radio',{name:'Não'}));
+  fireEvent.click(screen.getByRole('checkbox',{name:/Confirmo que o cliente autorizou/}));
+  expect((action as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(action);
+  const modal=screen.getByRole('region',{name:'Comparador original restaurado'});
+  expect(modal.getAttribute('data-count')).toBe('0');
+  expect(modal.getAttribute('data-auto-run')).toBe('true');
+});
+
+it('extrato sem contratos e sem margem de empréstimo não inicia cotação fictícia',async()=>{
+  vi.mocked(readInssStatement).mockResolvedValue({
+    ...fixture, contracts:[], loanMargin:'0.00',issues:[],
+  });
+  open();
+  const action=await screen.findByRole('button',{name:'Simular NOVO pela margem disponível'});
+  fireEvent.click(screen.getByRole('radio',{name:'Não'}));
+  fireEvent.click(screen.getByRole('checkbox',{name:/Confirmo que o cliente autorizou/}));
+  expect((action as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText(/Não há portabilidade para comparar/)).toBeTruthy();
+});
