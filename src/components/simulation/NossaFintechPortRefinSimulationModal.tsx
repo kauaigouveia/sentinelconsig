@@ -376,10 +376,10 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         // A falta de cotação de um banco deve ser visível mesmo quando outros
         // bancos retornam ofertas. Não tratar a falha da FINANTO como sucesso geral.
         const messages=(Array.isArray(data.notices)?data.notices:[]).map((value:unknown)=>String(value).slice(0,180));
-        const finantoMessages=messages.filter((message:string)=>/\\bFINANTO\\b/i.test(message)).slice(0,3);
+        const finantoMessages=messages.filter((message:string)=>/\bFINANTO\b/i.test(message)).slice(0,3);
         notes.push(...finantoMessages.map((message:string)=>`${term} meses · ${message}`));
         if(found.length===0){
-          const otherMessages=messages.filter((message:string)=>!/\\bFINANTO\\b/i.test(message)).slice(0,3);
+          const otherMessages=messages.filter((message:string)=>!/\bFINANTO\b/i.test(message)).slice(0,3);
           if(otherMessages.length) notes.push(`${term} meses: ${otherMessages.join(' · ')}`);
           else if(!finantoMessages.length) notes.push(`${term} meses: Nenhuma oferta bancária retornada.`);
         }
