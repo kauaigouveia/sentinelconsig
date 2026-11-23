@@ -268,6 +268,46 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             }
           }else notes.push(`${label} · ${provider}: ${String(result.reason?.message||'não foi possível simular').slice(0,220)}`);
         });
+        // At older ages the requested 108-month term may have no eligible
+        // table. Try real bank/worksheet results at 60 months only for
+        // providers that did not return a positive offer at 108; C6 workbook
+        // explicitly uses 108 and must not be counted twice.
+        if(statement && Number(snapshot.numberOfInstallments)>60 &&
+          inssNovoConsultationTerms(snapshot.birthDate).includes(60)){
+          const alternate={...snapshot,numberOfInstallments:'60'};
+          const fallbackProviders: Array<{name:string;index:number;run:()=>Promise<SimulationRow[]>}>=[
+            {name:'Nossa Fintech',index:0,run:()=>calculateNossaFintech(alternate)},
+            {name:'FINANTO',index:1,run:()=>calculateFinanto(alternate)},
+            {name:'FACTA',index:2,run:()=>calculateFacta(alternate)},
+            {name:'DAYCOVAL',index:3,run:()=>calculateWorkbook('DAYCOVAL',alternate)},
+            {name:'PARANA',index:5,run:()=>calculateWorkbook('PARANA',alternate)},
+            {name:'HAPPY/BMG',index:6,run:()=>calculateAdditionalBanks(alternate)},
+          ];
+          const pending=fallbackProviders.filter(({index})=>{
+            const original=calls[index];
+            if(original.status==='fulfilled'&&original.value.some(row=>row.success&&!row.skipped&&Number(row.troco)>0))return false;
+            if(original.status==='rejected'&&/não (?:está )?configurad|desativad|não habilitad|sem autorização/i.test(String(original.reason?.message||'')))return false;
+            return true;
+          });
+          if(pending.length){
+            setProgress(`Conferindo prazos alternativos de 60 meses · contrato ${contractOrdinal}`);
+            const retry=await Promise.allSettled(pending.map(item=>item.run()));
+            retry.forEach((result,index)=>{
+              const provider=pending[index].name;
+              if(result.status==='fulfilled'){
+                const valid=result.value.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0);
+                combined.push(...valid.map(row=>({...row,contractLabel:label,sourceForm:alternate,
+                  originalInstallment:parseCurrency(alternate.installmentFaceValue)??undefined,
+                  installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`,
+                    bankCode:alternate.originLenderCode,contractSuffix:originContractSuffix(alternate.originContractNumber)}))})));
+                if(!valid.length){
+                  const reasons=[...new Set(result.value.map(row=>row.error?.trim()).filter(Boolean))].slice(0,2);
+                  notes.push(`${label} · ${provider} (60 meses): ${reasons.join(' · ')||'nenhuma oferta positiva disponível.'}`);
+                }
+              }else notes.push(`${label} · ${provider} (60 meses): ${String(result.reason?.message||'não foi possível simular').slice(0,180)}`);
+            });
+          }
+        }
         if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
         setRows(combined.filter(row=>row.troco==null||row.troco>=0));setProviderNotes([...notes]);
       }
@@ -412,7 +452,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> =>
     portabilityQuoteCondition(row, parseCurrency(row.sourceForm?.installmentFaceValue ?? form.installmentFaceValue));
-  const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
+  const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: String(selected?.term || form.numberOfInstallments) });
   const toggleQuote = (row:SimulationRow) => {
     if (loading || savedRows.includes(row)) return;
     const next = toggleInssQuoteSelection(selectedRows,row);
