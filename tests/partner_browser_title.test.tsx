@@ -23,3 +23,13 @@ it('uses the portal title for nested routes and preserves company titles elsewhe
   expect(browserBrandTitle('/propostas', 'SENTINEL CONSIG')).toBe('Sentinel Consig');
   expect(browserBrandTitle('/propostas', '  Sentinel Consig  ')).toBe('Sentinel Consig');
 });
+
+it('uses the official compact icon when no tenant favicon exists', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok:true,json:async()=>({status:'PLATFORM_DEFAULT',domainType:'PLATFORM_DEFAULT',companyName:'SENTINEL CONSIG'})}));
+  function Branding() { useTenantBranding(); return null; }
+  render(<Branding/>);
+  await waitFor(() => {
+    expect(document.title).toBe('Sentinel Consig');
+    expect(document.querySelector("link[rel~='icon']")?.getAttribute('href')).toBe('/branding/sentinel-symbol-v6.png');
+  });
+});
