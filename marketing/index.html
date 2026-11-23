@@ -1,317 +1,236 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#06141B">
-  <meta name="description" content="Sentinel Consig: tecnologia para transformar a gestão de promotoras e operações de crédito consignado. Conheça a plataforma, escolha seu plano e agende uma demonstração.">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="pt_BR">
-  <meta property="og:title" content="Sentinel Consig | Inteligência em cada operação">
-  <meta property="og:description" content="Sua operação financeira mais organizada, conectada e inteligente.">
-  <meta property="og:url" content="https://sentinelconsig.com.br/">
-  <link rel="canonical" href="https://sentinelconsig.com.br/">
-  <link rel="icon" type="image/svg+xml" href="/branding/favicon.svg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <title>Sentinel Consig — Inteligência em cada operação</title>
-  <style>
-    :root{color-scheme:dark;--bg:#06141b;--surface:#11212d;--raised:#192e3b;--line:#253745;--muted:#9ba8ab;--text:#ccd0cf;--white:#f3f7f8;--aqua:#44d7e9;--blue:#2a8bff;--shadow:0 24px 90px rgba(0,0,0,.32)}
-    *,*::before,*::after{box-sizing:border-box}
-    html{scroll-behavior:smooth;scroll-padding-top:102px}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:"DM Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-    body.modal-open{overflow:hidden}button,input,select,textarea{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
-    button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--aqua);outline-offset:4px}
-    ::selection{background:#22a9cc;color:#04121a}
-    .container{width:min(1168px,calc(100% - 52px));margin:0 auto}
-    .header{position:sticky;z-index:50;top:0;background:rgba(6,20,27,.84);border-bottom:1px solid rgba(126,160,173,.12);backdrop-filter:blur(22px)}
-    .header-wrap{height:88px;display:flex;align-items:center;gap:26px}
-    .brand{width:205px;height:54px;display:flex;align-items:center;flex-shrink:0;overflow:hidden}
-    .brand img{width:202px;height:auto;display:block;transform:translateY(-2px)}
-    .nav{display:flex;align-items:center;gap:31px;margin-left:auto}
-    .nav a,.login-link{color:#abb8c1;font-size:13px;font-weight:600;transition:color .2s}
-    .nav a:hover,.login-link:hover{color:white}
-    .header-actions{display:flex;align-items:center;gap:20px;margin-left:12px}
-    .button{border:1px solid transparent;border-radius:11px;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:800;padding:0 23px;transition:background .2s,transform .2s,border-color .2s,box-shadow .2s}
-    .button:hover{transform:translateY(-2px)}.button:active{transform:translateY(0)}
-    .primary{background:linear-gradient(110deg,#52deea 0%,#2ca7de 100%);color:#06141b;box-shadow:0 10px 32px #05bfe026}
-    .primary:hover{box-shadow:0 14px 38px #20d9f244}
-    .outline{border-color:#496475;background:#11212d80;color:var(--white)}.outline:hover{border-color:#6a8998;background:#243746}
-    .ghost{background:transparent;color:var(--white);border-color:#55707e}
-    .menu-toggle{display:none;background:#11212d;color:white;border:1px solid #344c5b;border-radius:10px;width:42px;height:42px;font-size:22px}
-    .announcement{display:flex;align-items:center;gap:11px;border:1px solid #37708790;border-radius:100px;width:fit-content;color:#c7dee2;background:rgba(17,52,64,.55);padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
-    .announcement::before{content:"";width:7px;height:7px;border-radius:50%;background:#4bdebc;box-shadow:0 0 18px #4bdebc}
-    .hero{position:relative;isolation:isolate;overflow:hidden;padding:99px 0 105px;border-bottom:1px solid #1e3540}
-    .hero::before{content:"";position:absolute;inset:0;z-index:-2;background:radial-gradient(circle at 77% 24%,#11557066 0%,transparent 32%),radial-gradient(circle at 3% 83%,#0a2e4244 0%,transparent 29%)}
-    .hero::after{content:"";z-index:-1;pointer-events:none;position:absolute;inset:0;opacity:.24;background-image:linear-gradient(#3e6b751a 1px,transparent 1px),linear-gradient(90deg,#3e6b751a 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(90deg,transparent 0%,black 60%)}
-    .hero-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);gap:48px;align-items:center}
-    h1,h2,h3,h4,p{margin-top:0}
-    h1,h2,h3,h4{font-family:Manrope,system-ui,sans-serif;color:var(--white)}
-    h1{font-size:clamp(43px,4.6vw,68px);line-height:1.13;letter-spacing:-.062em;font-weight:800;margin:27px 0 22px}
-    .accent{color:#55d8ea}
-    .hero-copy{font-size:17px;color:#a9b9c0;line-height:1.83;max-width:552px;margin-bottom:32px}
-    .hero-cta{display:flex;flex-wrap:wrap;align-items:center;gap:13px}
-    .hero-cta .button{min-height:54px}
-    .hero-note{font-size:12px;color:#869ca8;margin-top:22px;display:flex;align-items:center;gap:8px}
-    .hero-note span{color:#69d8e5}
-    .device{position:relative;padding:16px;background:linear-gradient(136deg,#1d3b4a,#0a1922 62%);border:1px solid #456370;border-radius:19px;box-shadow:0 40px 90px #0008,0 0 72px #0c9dd21c;transform:perspective(1000px) rotateY(-5deg) rotateX(2deg)}
-    .device::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 1px 0 #ffffff28}
-    .screen{background:#081720;border:1px solid #28414e;border-radius:10px;overflow:hidden}
-    .screen-head{height:53px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid #253b46;background:#0b1e29}
-    .screen-name{display:flex;align-items:center;gap:9px;font-weight:800;font-size:10px;letter-spacing:.05em;color:#eef8fb}
-    .screen-name svg{width:21px;height:21px}.dots{display:flex;gap:5px}.dots span{width:5px;height:5px;border-radius:50%;background:#506b78}
-    .screen-content{padding:21px}
-    .screen-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px}
-    .screen-title strong{display:block;color:white;font-size:15px;font-family:Manrope}.screen-title small{color:#8198a5;font-size:9px}
-    .screen-tag{font-size:9px;border:1px solid #246174;color:#80ddeb;border-radius:6px;background:#122e3b;padding:6px 8px;white-space:nowrap}
-    .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
-    .stat{background:#102833;border:1px solid #274552;border-radius:9px;padding:13px 11px}
-    .stat small{display:block;color:#97aeb6;font-size:9px}.stat strong{color:#fff;display:block;font:800 21px Manrope,sans-serif;letter-spacing:-.04em;margin-top:7px}
-    .stat em{font-size:8px;color:#65d2cd;font-style:normal}
-    .graph{background:#0d212b;border:1px solid #294451;border-radius:10px;margin-top:10px;padding:17px 15px}
-    .graph-head{display:flex;align-items:center;justify-content:space-between;color:#dce8e8;font-size:10px;font-weight:700}
-    .bar-chart{height:116px;display:flex;align-items:end;gap:10px;padding:18px 2px 0;border-bottom:1px solid #2b4650;background:repeating-linear-gradient(0deg,transparent,transparent 29px,#35515a22 30px)}
-    .bar{flex:1;min-width:0;border-radius:4px 4px 0 0;background:linear-gradient(0deg,#177ca3,#49dfec);opacity:.8}
-    .mini-table{margin-top:10px;border:1px solid #294451;border-radius:10px;overflow:hidden}
-    .mini-row{display:grid;grid-template-columns:1.25fr .9fr .8fr;align-items:center;gap:5px;padding:12px 13px;border-bottom:1px solid #27414d;font-size:9px;color:#d4e4e8}
-    .mini-row:last-child{border-bottom:0}.mini-row.head{background:#142d39;font-size:8px;font-weight:800;color:#91acb8;text-transform:uppercase;letter-spacing:.04em}
-    .pill{width:fit-content;padding:4px 6px;border-radius:5px;background:#143e3b;color:#7ee0c9}.pill.blue{background:#17354b;color:#8ccaf9}.pill.amber{background:#42341e;color:#f0d49b}
-    .preview-label{position:absolute;right:18px;bottom:-22px;font-size:10px;color:#7c99a6}
-    .ribbon{border-bottom:1px solid #213b48;background:#0b1b25;padding:28px 0}
-    .ribbon-inner{display:flex;align-items:center;justify-content:space-between;gap:28px}
-    .ribbon-text{font-weight:700;color:#a6b7bd;font-size:13px;letter-spacing:.015em}
-    .ribbon-list{display:flex;gap:30px;align-items:center;flex-wrap:wrap}.ribbon-list span{display:flex;gap:9px;align-items:center;color:#dae6e8;font-size:12px;font-weight:700}
-    .ribbon-list b{color:#55d8ea}
-    .section{padding:112px 0}.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#68dbea;margin-bottom:17px}
-    .section-head{max-width:660px;margin-bottom:45px}.section-head h2,.split-content h2,.closing h2{font-size:clamp(31px,3.6vw,47px);line-height:1.17;letter-spacing:-.053em;font-weight:800;margin-bottom:18px}
-    .section-head p,.split-content p{font-size:15px;line-height:1.8;color:#9eafb8}
-    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-    .feature{position:relative;padding:28px;border:1px solid #2c4552;background:linear-gradient(145deg,#122631,#0d1c26);border-radius:16px;min-height:245px;transition:transform .2s,border-color .2s}
-    .feature:hover{transform:translateY(-5px);border-color:#41879d}
-    .feature-icon{width:45px;height:45px;display:grid;place-items:center;font:800 20px Manrope;border:1px solid #28576a;border-radius:12px;background:#1243545c;color:#67dff0;margin-bottom:22px}
-    .feature h3{font-size:17px;letter-spacing:-.025em;margin-bottom:10px}
-    .feature p{font-size:13px;color:#9fb0bb;line-height:1.75;margin:0}
-    .split-section{padding:85px 0 105px;background:#0b1c26;border-top:1px solid #203945;border-bottom:1px solid #203945}
-    .split-grid{display:grid;grid-template-columns:1fr 1fr;gap:78px;align-items:center}
-    .split-content p{max-width:480px}.check-list{padding:0;margin:27px 0 0;list-style:none;display:grid;gap:17px}
-    .check-list li{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:#d2dde2}.check-list span{color:#54e0cd;font-weight:900}
-    .flow-panel{border:1px solid #3a5663;padding:23px;border-radius:19px;background:radial-gradient(circle at 90% 10%,#1660763f,transparent 55%),#112a36;box-shadow:var(--shadow)}
-    .flow-panel-top{display:flex;align-items:center;justify-content:space-between;padding:1px 4px 17px;border-bottom:1px solid #304d59}
-    .flow-panel-top strong{color:#f3f8fa;font:800 13px Manrope}.flow-panel-top span{color:#84b5c3;font-size:10px}
-    .flow-row{padding:16px 8px;display:flex;align-items:center;gap:13px;border-bottom:1px solid #2a4652}
-    .flow-row:last-child{border:0}.flow-bubble{width:35px;height:35px;display:grid;place-items:center;border:1px solid #3b6777;background:#143748;border-radius:9px;color:#68e0ef;font-weight:800}
-    .flow-data{flex:1}.flow-data strong{color:white;display:block;font-size:12px}.flow-data small{font-size:10px;color:#8facb9}.flow-status{font-size:9px;color:#7fd8c3;padding:6px 8px;border-radius:7px;background:#17433f}.flow-status.dim{color:#accde3;background:#1b3d54}
-    .workflow-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-    .workflow-step{padding:28px;border-top:1px solid #34505e;position:relative}.step-no{font:800 44px Manrope;color:#275064;letter-spacing:-.06em}.workflow-step h3{font-size:19px;margin:14px 0 12px}.workflow-step p{font-size:13px;color:#9eb3bc;line-height:1.8}
-    .plans-section{padding:108px 0 116px;background:#0b1b25;border-top:1px solid #213945;border-bottom:1px solid #213945}
-    .plans-head{display:flex;justify-content:space-between;align-items:end;gap:20px}.plans-head .section-head{margin-bottom:43px}
-    .plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:19px;align-items:stretch}
-    .plan{display:flex;flex-direction:column;position:relative;padding:29px 26px;border:1px solid #344e5c;border-radius:17px;background:#112631}
-    .plan.recommended{background:linear-gradient(150deg,#183d4d,#112631 65%);border-color:#55d4e3;box-shadow:0 0 50px #17b3cc19}
-    .recommended-tag{position:absolute;right:23px;top:-14px;border-radius:100px;padding:8px 12px;background:#51d9e7;font-size:9px;font-weight:900;letter-spacing:.04em;color:#041720}
-    .plan-name{font:800 20px Manrope;color:white}.plan-desc{color:#a2b8c0;font-size:12px;line-height:1.7;min-height:62px;margin-top:10px}
-    .plan-price{font:800 30px Manrope;color:white;letter-spacing:-.055em;margin:10px 0 4px}.plan-price span{font-size:12px;letter-spacing:0;font-family:"DM Sans";color:#94a8b1;font-weight:600}
-    .plan-divider{border:0;border-top:1px solid #34505a;width:100%;margin:22px 0}
-    .plan ul{list-style:none;padding:0;margin:0 0 25px;display:grid;gap:15px}.plan li{font-size:12px;color:#cedce0;display:flex;gap:10px;line-height:1.45}.plan li span{color:#65dccd;font-weight:900}
-    .plan .button{margin-top:auto;width:100%}.plans-disclaimer{color:#7c949f;font-size:11px;margin:25px 0 0;line-height:1.6}
-    .closing{padding:94px 0}.closing-box{position:relative;overflow:hidden;padding:63px 75px;border-radius:24px;background:radial-gradient(circle at 87% 22%,#1c82945d,transparent 34%),linear-gradient(130deg,#153849,#0b2330 76%);border:1px solid #3b6a79;display:flex;justify-content:space-between;align-items:center;gap:32px}
-    .closing-box::after{content:"";position:absolute;width:320px;height:320px;border:1px solid #4ad9e333;border-radius:50%;right:-130px;top:-140px}
-    .closing h2{margin-bottom:12px;max-width:690px}.closing p{font-size:14px;color:#a8c4cd;margin:0}.closing .button{position:relative;z-index:1;white-space:nowrap}
-    .faq{padding:30px 0 110px}.faq-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:85px}.faq h2{font-size:38px;letter-spacing:-.05em;line-height:1.15}.faq-intro{font-size:14px;color:#9cb3bd;line-height:1.7}
-    details{border-bottom:1px solid #2b4653;padding:20px 0}summary{cursor:pointer;color:#e7f1f3;font-size:14px;font-weight:800;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:15px}summary::-webkit-details-marker{display:none}summary::after{content:"+";font-size:22px;color:#65d8e5;font-weight:400}details[open] summary::after{content:"−"}details p{font-size:13px;color:#9eb4bd;line-height:1.8;margin:14px 0 0}
-    footer{background:#081820;border-top:1px solid #2c414d;padding:55px 0 26px}.footer-grid{display:grid;grid-template-columns:1.6fr .7fr .7fr .9fr;gap:34px}.footer-brand p{font-size:12px;color:#8fa7b0;line-height:1.75;max-width:320px}
-    .footer-brand .brand{height:62px;margin-bottom:13px}footer h4{font-size:12px;margin:10px 0 20px}footer nav{display:grid;gap:12px}footer nav a,footer nav span{font-size:12px;color:#98acb6}footer nav a:hover{color:#d7fbff}
-    .footer-bottom{margin-top:52px;padding-top:23px;border-top:1px solid #2b404b;display:flex;justify-content:space-between;gap:20px;font-size:11px;color:#8096a1}
-    .modal{position:fixed;inset:0;z-index:100;display:none;justify-content:center;align-items:center;padding:20px;background:rgba(0,8,14,.82);backdrop-filter:blur(8px)}
-    .modal.visible{display:flex}.modal-card{width:min(570px,100%);max-height:min(90vh,850px);overflow:auto;border:1px solid #40606d;background:#112630;border-radius:18px;padding:32px;box-shadow:0 25px 100px #000a}
-    .modal-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.modal-top h2{font-size:24px;letter-spacing:-.04em;margin:7px 0 6px}.modal-top p{font-size:13px;line-height:1.6;color:#9fb3bc;margin:0 0 22px}
-    .close-modal{background:#203844;border:1px solid #3b5966;border-radius:10px;width:36px;height:36px;flex-shrink:0;color:white;font-size:22px;line-height:1}
-    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:11px;font-weight:800;color:#d4e1e4}
-    .field input,.field select,.field textarea{width:100%;min-height:44px;border:1px solid #40606f;border-radius:9px;background:#0a1d27;color:white;padding:11px 12px;font-size:13px;outline:none}
-    .field input:focus,.field select:focus,.field textarea:focus{border-color:#65dce9;box-shadow:0 0 0 3px #3bd7ec20}
-    .field textarea{min-height:76px;resize:vertical}.field input::placeholder,.field textarea::placeholder{color:#72909f}
-    .consent{display:flex;gap:10px;align-items:flex-start;margin:19px 0;color:#acbdc5;font-size:11px;line-height:1.6}.consent input{margin-top:2px;accent-color:#50d1e4}.consent a{color:#71e3f1;text-decoration:underline}
-    .form-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.form-actions .button{flex:1}.form-message{font-size:12px;line-height:1.5;color:#f1c79e;margin-top:13px;min-height:17px}.form-message.success{color:#74e6c6}
-    .hidden{display:none!important}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    .reveal{opacity:0;transform:translateY(13px);transition:opacity .6s,transform .6s}.reveal.in{opacity:1;transform:none}
-    @media(max-width:1080px){.nav{gap:18px}.header-actions{gap:12px}.hero-grid{gap:28px}h1{font-size:52px}.split-grid{gap:40px}.closing-box{padding:50px}}
-    @media(max-width:860px){.header-wrap{height:76px}.menu-toggle{display:block;margin-left:auto}.nav{display:none;position:absolute;left:0;right:0;top:76px;background:#0d222d;border-bottom:1px solid #335361;padding:24px 26px;flex-direction:column;align-items:flex-start;gap:21px;box-shadow:var(--shadow)}.nav.open{display:flex}.header-actions{margin-left:0}.header-actions .primary{display:none}.hero{padding:72px 0 92px}.hero-grid{grid-template-columns:1fr}.hero-copy{max-width:620px}.device{max-width:650px;margin:25px auto 0;transform:none}.ribbon-inner{display:block}.ribbon-list{margin-top:20px}.feature-grid{grid-template-columns:repeat(2,1fr)}.split-grid{grid-template-columns:1fr}.flow-panel{max-width:650px}.plans-grid{grid-template-columns:1fr 1fr}.plan:last-child{grid-column:1/-1}.faq-grid{gap:40px}.footer-grid{grid-template-columns:1.2fr 1fr 1fr}.footer-grid>div:last-child{grid-column:1/-1}.closing-box{display:block}.closing-box .button{margin-top:26px}}
-    @media(max-width:570px){.container{width:min(100% - 34px,1168px)}.header-wrap{gap:12px}.brand{width:158px;height:44px}.brand img{width:160px}.login-link{font-size:11px}.menu-toggle{order:3;margin-left:0}.header-actions{margin-left:auto}.hero{padding:63px 0 80px}h1{font-size:42px}.hero-copy{font-size:15px}.hero-cta{align-items:stretch}.hero-cta .button{width:100%}.device{padding:8px;border-radius:12px}.screen-content{padding:12px}.screen-head{padding:0 12px;height:43px}.stat{padding:9px 6px}.stat strong{font-size:17px}.stat small{font-size:8px}.stat em{font-size:7px}.bar-chart{height:90px;gap:7px}.mini-row{padding:9px 7px;font-size:8px}.section{padding:78px 0}.section-head h2,.split-content h2,.closing h2{font-size:32px}.feature-grid,.workflow-grid,.plans-grid{grid-template-columns:1fr}.plan:last-child{grid-column:auto}.feature{min-height:auto}.split-section{padding:78px 0}.plans-section{padding:80px 0}.closing{padding:74px 0}.closing-box{padding:35px 25px}.faq{padding-bottom:80px}.faq-grid{grid-template-columns:1fr;gap:16px}.footer-grid{grid-template-columns:1fr 1fr;gap:22px}.footer-brand{grid-column:1/-1}.footer-bottom{display:block}.footer-bottom span{display:block;margin-bottom:9px}.modal{padding:10px}.modal-card{padding:23px 17px;max-height:95vh}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
-    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important}.reveal{opacity:1;transform:none}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#06141B">
+<meta name="description" content="Sentinel Consig: plataforma para gestão de propostas, simulações bancárias, esteira, parceiros, relatórios e operações multiempresa. Conheça funcionalidades, planos e solicite uma demonstração.">
+<meta property="og:title" content="Sentinel Consig — Inteligência em cada operação.">
+<meta property="og:description" content="Organize propostas, simulações, equipes e indicadores com uma plataforma inteligente para operações de crédito.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="https://sentinelconsig.com.br/">
+<link rel="canonical" href="https://sentinelconsig.com.br/">
+<link rel="icon" href="/branding/favicon-v6.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<title>Sentinel Consig — Plataforma de Gestão para Crédito Consignado</title>
 </head>
 <body>
-  <a class="sr-only" href="#conteudo">Pular para o conteúdo</a>
-  <header class="header">
-    <div class="container header-wrap">
-      <a href="#inicio" class="brand" aria-label="Sentinel Consig — início"><img src="/branding/logo.svg" alt="Sentinel Consig" width="202" height="56"></a>
-      <nav class="nav" id="siteNav" aria-label="Navegação principal">
-        <a href="#plataforma">Plataforma</a><a href="#recursos">Recursos</a><a href="#como-funciona">Como funciona</a><a href="#planos">Planos</a><a href="#duvidas">Perguntas frequentes</a>
-      </nav>
-      <div class="header-actions">
-        <a href="https://app.sentinelconsig.com.br/" class="login-link">Acessar plataforma ↗</a>
-        <button type="button" class="button primary" data-open="demo">Agendar demonstração <span aria-hidden="true">↗</span></button>
+<a class="skip-link" href="#principal">Ir para o conteúdo principal</a>
+<header class="site-header" id="header">
+  <div class="container header-inner">
+    <a href="#inicio" class="brand" aria-label="Sentinel Consig: voltar ao início">
+      <img src="/branding/official-wordmark-v6.png" alt="Sentinel Consig" width="205" height="58" fetchpriority="high">
+      <small>Inteligência em cada operação.</small>
+    </a>
+    <nav class="main-nav" id="mainNav" aria-label="Navegação principal">
+      <a href="#plataforma">A solução</a><a href="#modulos">Módulos</a><a href="#seguranca">Multiempresa</a><a href="#planos">Planos</a><a href="#faq">Dúvidas</a>
+    </nav>
+    <div class="header-actions"><a class="access-link" href="https://app.sentinelconsig.com.br/" rel="noopener">Acessar plataforma ↗</a><button type="button" class="button button-primary" data-open="demo">Solicitar demonstração <span aria-hidden="true">↗</span></button></div>
+    <button type="button" class="menu-btn" id="menuBtn" aria-controls="mainNav" aria-expanded="false" aria-label="Abrir menu">☰</button>
+  </div>
+</header>
+<main id="principal">
+<section class="hero" id="inicio">
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="container hero-grid">
+    <div class="hero-content">
+      <div class="kicker"><span class="pulse-dot"></span> Tecnologia para operações de crédito</div>
+      <h1>Mais controle.<br>Mais resultado.<br><span class="gradient-text">Mais inteligência.</span></h1>
+      <p class="hero-description">O Sentinel Consig conecta propostas, simulações, esteira operacional, equipes, parceiros e indicadores em uma única plataforma. Sua operação ganha organização e uma visão mais clara do que acontece em cada etapa.</p>
+      <div class="hero-buttons">
+        <button type="button" class="button button-primary" data-open="demo">Explorar em uma demonstração <span aria-hidden="true">↗</span></button>
+        <a href="#modulos" class="button button-outline">Conhecer os módulos <span aria-hidden="true">↓</span></a>
       </div>
-      <button type="button" id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="siteNav" aria-label="Abrir menu">☰</button>
+      <div class="hero-proof"><span><b class="tick">✓</b> Propostas e esteira</span><span><b class="tick">✓</b> Simulações e integrações</span><span><b class="tick">✓</b> Gestão multiempresa</span></div>
     </div>
-  </header>
-  <main id="conteudo">
-    <section class="hero" id="inicio">
-      <div class="container hero-grid">
-        <div class="hero-left">
-          <span class="announcement">Plataforma inteligente para crédito consignado</span>
-          <h1>Sua operação no controle. <span class="accent">Seu negócio em evolução.</span></h1>
-          <p class="hero-copy">Centralize propostas, simulações bancárias, equipes e resultados em uma plataforma desenhada para quem vive o mercado de crédito todos os dias.</p>
-          <div class="hero-cta">
-            <button class="button primary" type="button" data-open="demo">Conhecer o Sentinel <span aria-hidden="true">↗</span></button>
-            <a href="#recursos" class="button outline">Explorar funcionalidades <span aria-hidden="true">↓</span></a>
+    <div class="hero-visual" aria-label="Painel ilustrativo das funcionalidades do Sentinel Consig">
+      <div class="glow-halo"></div>
+      <div class="product-frame"><div class="mockup">
+        <div class="mocktop"><div class="mock-brand"><img src="data:image/png;base64,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" alt="" width="26" height="26"> SENTINEL <span>CONSIG</span></div><div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div></div>
+        <div class="mock-inner">
+          <div class="mock-heading"><div><strong>Visão geral da operação</strong><small>Centro de controle • dados ilustrativos</small></div><span class="demo-label">● Exemplo visual</span></div>
+          <div class="kpi-row">
+            <div class="kpi"><span>Propostas registradas</span><strong>1.248</strong><em>Visão consolidada</em></div>
+            <div class="kpi"><span>Em andamento</span><strong>186</strong><em>Acompanhamento</em></div>
+            <div class="kpi"><span>Taxa de aprovação</span><strong>72%</strong><em>Indicador exemplo</em></div>
           </div>
-          <p class="hero-note"><span aria-hidden="true">✦</span> Inteligência em cada operação.</p>
-        </div>
-        <div class="device" role="img" aria-label="Representação ilustrativa do painel de gestão Sentinel Consig">
-          <div class="screen">
-            <div class="screen-head"><span class="screen-name"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 34 11v13c0 9-8 13-14 16C14 37 6 33 6 24V11z" stroke="#43d7ea" stroke-width="3" fill="none"/><path d="M25 12c-9-5-17 6-4 10 11 5 1 12-7 6" stroke="#67d5ec" stroke-width="4" fill="none" stroke-linecap="round"/></svg> SENTINEL <span style="color:#69d8e9">CONSIG</span></span><div class="dots" aria-hidden="true"><span></span><span></span><span></span></div></div>
-            <div class="screen-content">
-              <div class="screen-title"><div><strong>Visão geral da operação</strong><small>Painel estratégico • exemplo visual</small></div><span class="screen-tag">● Gestão centralizada</span></div>
-              <div class="stat-grid"><div class="stat"><small>Propostas</small><strong>1.248</strong><em>↗ Visão consolidada</em></div><div class="stat"><small>Em andamento</small><strong>186</strong><em>• Acompanhamento</em></div><div class="stat"><small>Indicador de aprovação</small><strong>72%</strong><em>↗ Performance</em></div></div>
-              <div class="graph"><div class="graph-head"><span>Evolução operacional</span><span style="color:#76d5e3;font-size:9px">Período ilustrativo</span></div><div class="bar-chart" aria-hidden="true"><span class="bar" style="height:39%"></span><span class="bar" style="height:53%"></span><span class="bar" style="height:46%"></span><span class="bar" style="height:67%"></span><span class="bar" style="height:58%"></span><span class="bar" style="height:78%"></span><span class="bar" style="height:63%"></span><span class="bar" style="height:88%"></span><span class="bar" style="height:73%"></span><span class="bar" style="height:94%"></span><span class="bar" style="height:81%"></span><span class="bar" style="height:97%"></span></div></div>
-              <div class="mini-table"><div class="mini-row head"><span>Fluxo</span><span>Instituição</span><span>Situação</span></div><div class="mini-row"><span>Nova proposta</span><span>Integração bancária</span><span class="pill">Em análise</span></div><div class="mini-row"><span>Portabilidade</span><span>Canal integrado</span><span class="pill blue">Em andamento</span></div><div class="mini-row"><span>Refinanciamento</span><span>Operação interna</span><span class="pill amber">Pendente</span></div></div>
-            </div>
+          <div class="mock-panels">
+            <div class="mock-panel"><div class="mock-panel-title"><span>Produção por período</span><span style="color:#7fe4e9">↗</span></div><div class="chart-bars" aria-hidden="true">
+              <span style="height:33%;--i:0"></span><span style="height:49%;--i:1"></span><span style="height:43%;--i:2"></span><span style="height:61%;--i:3"></span><span style="height:55%;--i:4"></span><span style="height:75%;--i:5"></span><span style="height:66%;--i:6"></span><span style="height:84%;--i:7"></span><span style="height:77%;--i:8"></span><span style="height:96%;--i:9"></span>
+            </div></div>
+            <div class="mock-panel"><div class="mock-panel-title"><span>Esteira</span><span style="color:#a9c4cf">Hoje</span></div><div class="mock-status"><span>Nova proposta</span><span class="status">Análise</span></div><div class="mock-status"><span>Portabilidade</span><span class="status blue">Fluxo</span></div><div class="mock-status"><span>Refinanciamento</span><span class="status wait">Pendente</span></div></div>
           </div>
-          <div class="preview-label">Painel demonstrativo. Dados fictícios.</div>
+          <div class="mock-footer"><span>Visão operacional integrada</span><b>Inteligência em cada operação.</b></div>
         </div>
+      </div></div>
+      <div class="float-note first" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#79e9cb" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><strong>Fluxos organizados</strong><small>Da entrada à conclusão</small></div></div>
+      <div class="float-note second" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#67d8ee" stroke-width="2"><path d="M4 18h16M6 14l5-5 4 3 4-6"/></svg><div><strong>Indicadores em um lugar</strong><small>Gestão mais informada</small></div></div>
+      <p class="visual-caption">Representação da interface. Métricas fictícias, não resultados de clientes.</p>
+    </div>
+  </div>
+</section>
+<div class="band"><div class="container band-inner"><span class="band-label">Do primeiro atendimento à gestão dos resultados.</span><div class="band-items"><span><b>✦</b> Operação centralizada</span><span><b>✦</b> Acessos por perfil</span><span><b>✦</b> Acompanhamento estruturado</span></div></div></div>
+<section class="section" id="plataforma">
+  <div class="container">
+    <div class="section-heading reveal"><div class="eyebrow">Por que o Sentinel Consig?</div><h2>Sua equipe cuida dos negócios.<br><span class="gradient-text">A plataforma organiza a operação.</span></h2><p>Planilhas isoladas, conversas espalhadas e status difíceis de acompanhar não precisam definir sua rotina. O Sentinel aproxima áreas, processos e informações dentro de uma mesma jornada operacional.</p></div>
+    <div class="problem-grid">
+      <div class="problem-card reveal"><div class="eyebrow" style="color:#d3a69e">O desafio</div><h3>Quando cada informação está em um lugar...</h3><ul><li><span class="badmark">×</span> Propostas e pendências se perdem entre canais</li><li><span class="badmark">×</span> A gestão não tem uma visão consolidada da equipe</li><li><span class="badmark">×</span> Acompanhamento depende de conferências manuais</li><li><span class="badmark">×</span> Crescer significa aumentar a complexidade operacional</li></ul></div>
+      <div class="problem-card good reveal"><div class="eyebrow">Com o Sentinel</div><h3>Informações conectadas. Decisões mais claras.</h3><ul><li><span class="goodmark">✓</span> Propostas organizadas por etapas e responsáveis</li><li><span class="goodmark">✓</span> Visibilidade da produção e dos fluxos de atendimento</li><li><span class="goodmark">✓</span> Equipes e parceiros trabalhando com acessos definidos</li><li><span class="goodmark">✓</span> Estrutura preparada para operações multiempresa</li></ul></div>
+    </div>
+  </div>
+</section>
+<section class="section modules" id="modulos">
+  <div class="container">
+    <div class="section-heading reveal"><div class="eyebrow">Conheça a plataforma</div><h2>Um sistema. <span class="gradient-text">Vários centros de inteligência.</span></h2><p>Selecione um módulo para explorar como as funcionalidades se conectam à rotina de uma promotora ou correspondente bancário.</p></div>
+    <div class="module-tabs" role="tablist" aria-label="Funcionalidades principais">
+      <button type="button" role="tab" id="tab-propostas" aria-selected="true" aria-controls="modulePanel" data-module="propostas">Propostas & Esteira</button>
+      <button type="button" role="tab" id="tab-simulacoes" aria-selected="false" aria-controls="modulePanel" data-module="simulacoes">Simulações</button>
+      <button type="button" role="tab" id="tab-parceiros" aria-selected="false" aria-controls="modulePanel" data-module="parceiros">Parceiros & Equipes</button>
+      <button type="button" role="tab" id="tab-indicadores" aria-selected="false" aria-controls="modulePanel" data-module="indicadores">Indicadores & BI</button>
+      <button type="button" role="tab" id="tab-administracao" aria-selected="false" aria-controls="modulePanel" data-module="administracao">Administração</button>
+    </div>
+    <div class="module-panel reveal" id="modulePanel" role="tabpanel" aria-labelledby="tab-propostas" tabindex="0">
+      <div class="module-copy">
+        <div class="eyebrow" id="moduleEyebrow">Controle operacional</div>
+        <h3 id="moduleTitle">Cada proposta no seu devido lugar.</h3>
+        <p id="moduleDescription">Registre, consulte e acompanhe a evolução das propostas com filtros, histórico de movimentações e organização por etapas do processo.</p>
+        <ul id="moduleList"><li>Visão centralizada da produção</li><li>Filtros por status e informações da operação</li><li>Esteira de pendências e acompanhamento</li></ul>
+        <button type="button" class="button-link" data-open="demo">Ver esta funcionalidade ao vivo <span aria-hidden="true">↗</span></button>
       </div>
-    </section>
-    <div class="ribbon"><div class="container ribbon-inner"><div class="ribbon-text">Tudo o que sua operação precisa, em um só lugar.</div><div class="ribbon-list"><span><b>✦</b> Gestão integrada</span><span><b>✦</b> Visibilidade operacional</span><span><b>✦</b> Controle multiempresa</span></div></div></div>
-    <section class="section" id="plataforma">
-      <div class="container">
-        <div class="section-head reveal"><div class="eyebrow">Uma nova forma de operar</div><h2>Menos sistemas dispersos.<br><span class="accent">Mais inteligência nas decisões.</span></h2><p>O Sentinel Consig conecta processos operacionais em uma experiência única, para equipes que precisam de organização, produtividade e agilidade.</p></div>
-        <div class="feature-grid" id="recursos">
-          <article class="feature reveal"><div class="feature-icon" aria-hidden="true">⌗</div><h3>Gestão de propostas</h3><p>Acompanhe operações, organize status e concentre informações em uma esteira de trabalho clara.</p></article>
-          <article class="feature reveal"><div class="feature-icon" aria-hidden="true">↔</div><h3>Simulações bancárias</h3><p>Reúna fluxos de simulação e consulta para avaliar alternativas e apoiar decisões comerciais.</p></article>
-          <article class="feature reveal"><div class="feature-icon" aria-hidden="true">▤</div><h3>Esteira e atendimento</h3><p>Centralize atividades, pendências e histórico de acompanhamento para reduzir a fragmentação da operação.</p></article>
-          <article class="feature reveal"><div class="feature-icon" aria-hidden="true">♙</div><h3>Gestão de equipes e parceiros</h3><p>Estruture acessos e responsabilidades para colaboradores, gestores e parceiros autorizados.</p></article>
-          <article class="feature reveal"><div class="feature-icon" aria-hidden="true">▥</div><h3>Relatórios e indicadores</h3><p>Visualize produção, acompanhe desempenho e encontre oportunidades com informações organizadas.</p></article>
-          <article class="feature reveal"><div class="feature-icon" aria-hidden="true">⬡</div><h3>Arquitetura multiempresa</h3><p>Uma estrutura preparada para empresas e perfis distintos, com controles de acesso por contexto.</p></article>
-        </div>
+      <div class="module-visual" aria-label="Ilustração do módulo selecionado">
+        <div class="visual-top"><span id="visualHeading">Esteira de propostas</span><small>Prévia ilustrativa</small></div>
+        <div class="visual-body" id="visualBody"><div class="visual-row"><div><strong>Operação 001 • Nova proposta</strong><small>Entrada registrada e disponível para acompanhamento</small></div><span class="visual-badge">Análise</span></div><div class="visual-row"><div><strong>Operação 002 • Portabilidade</strong><small>Etapa de consulta e validação</small></div><span class="visual-badge other">Em andamento</span></div><div class="visual-row"><div><strong>Operação 003 • Refinanciamento</strong><small>Processo acompanhado pela equipe</small></div><span class="visual-badge">Acompanhamento</span></div><div class="visual-meter"><span style="width:73%"></span></div></div>
       </div>
-    </section>
-    <section class="split-section">
-      <div class="container split-grid">
-        <div class="split-content reveal"><div class="eyebrow">Mais controle. Mais fluidez.</div><h2>O ritmo da operação muda. <span class="accent">Seu controle acompanha.</span></h2><p>Do primeiro contato à análise de resultados, o Sentinel reúne etapas importantes da rotina de crédito em uma plataforma voltada para equipes operacionais.</p><ul class="check-list"><li><span>✓</span> Organização por etapas e status</li><li><span>✓</span> Acessos diferenciados para cada perfil</li><li><span>✓</span> Acompanhamento de propostas e pendências</li><li><span>✓</span> Integrações conforme disponibilidade e contratação</li></ul></div>
-        <div class="flow-panel reveal" aria-label="Exemplo ilustrativo de etapas de uma operação">
-          <div class="flow-panel-top"><strong>Fluxo operacional</strong><span>Exemplo de acompanhamento</span></div>
-          <div class="flow-row"><span class="flow-bubble">01</span><div class="flow-data"><strong>Cadastro e entrada</strong><small>Informações organizadas desde o início</small></div><span class="flow-status">Organizado</span></div>
-          <div class="flow-row"><span class="flow-bubble">02</span><div class="flow-data"><strong>Simulação e análise</strong><small>Avaliação de alternativas disponíveis</small></div><span class="flow-status dim">Em processo</span></div>
-          <div class="flow-row"><span class="flow-bubble">03</span><div class="flow-data"><strong>Gestão de pendências</strong><small>Visibilidade do andamento da proposta</small></div><span class="flow-status dim">Monitoramento</span></div>
-          <div class="flow-row"><span class="flow-bubble">04</span><div class="flow-data"><strong>Indicadores e acompanhamento</strong><small>Informações para gestão e melhoria</small></div><span class="flow-status">Consolidado</span></div>
-        </div>
-      </div>
-    </section>
-    <section class="section" id="como-funciona">
-      <div class="container">
-        <div class="section-head reveal"><div class="eyebrow">Simples de começar</div><h2>Da demonstração à operação, <span class="accent">com um caminho claro.</span></h2><p>Um processo comercial pensado para entender o seu cenário antes de definir a implantação.</p></div>
-        <div class="workflow-grid"><article class="workflow-step reveal"><div class="step-no">01</div><h3>Conheça a solução</h3><p>Agende uma apresentação e descubra os principais recursos e fluxos da plataforma.</p></article><article class="workflow-step reveal"><div class="step-no">02</div><h3>Defina seu plano</h3><p>Alinhe módulos, equipe, integrações e condições conforme as necessidades da sua operação.</p></article><article class="workflow-step reveal"><div class="step-no">03</div><h3>Inicie sua jornada</h3><p>Após contratação e configuração, sua equipe recebe acesso ao ambiente operacional.</p></article></div>
-      </div>
-    </section>
-    <section class="plans-section" id="planos">
-      <div class="container">
-        <div class="plans-head"><div class="section-head reveal"><div class="eyebrow">Planos Sentinel</div><h2>Uma solução para cada <span class="accent">etapa do seu crescimento.</span></h2><p>Escolha o perfil que mais combina com sua operação. Nossa equipe apresenta uma proposta com recursos, valores e condições adequados ao seu cenário.</p></div></div>
-        <div class="plans-grid">
-          <article class="plan reveal"><div class="plan-name">Essencial</div><p class="plan-desc">Para operações que querem estruturar processos e centralizar o trabalho.</p><div class="plan-price">Sob consulta</div><span style="font-size:11px;color:#849eaa">Plano comercial personalizado</span><hr class="plan-divider"><ul><li><span>✓</span> Organização de propostas</li><li><span>✓</span> Acesso para equipe</li><li><span>✓</span> Gestão de atividades</li><li><span>✓</span> Implantação conforme proposta</li></ul><button type="button" class="button outline" data-open="contract" data-plan="Essencial">Solicitar proposta ↗</button></article>
-          <article class="plan recommended reveal"><div class="recommended-tag">PARA OPERAÇÕES EM EXPANSÃO</div><div class="plan-name">Pro</div><p class="plan-desc">Para equipes que buscam gestão avançada e mais visibilidade sobre os resultados.</p><div class="plan-price">Sob consulta</div><span style="font-size:11px;color:#9bcbd3">Plano comercial personalizado</span><hr class="plan-divider"><ul><li><span>✓</span> Gestão operacional ampliada</li><li><span>✓</span> Relatórios e indicadores</li><li><span>✓</span> Acompanhamento de parceiros</li><li><span>✓</span> Integrações conforme escopo</li></ul><button type="button" class="button primary" data-open="contract" data-plan="Pro">Quero conhecer o Pro ↗</button></article>
-          <article class="plan reveal"><div class="plan-name">Enterprise</div><p class="plan-desc">Para estruturas multiempresa e operações com necessidades específicas.</p><div class="plan-price">Sob consulta</div><span style="font-size:11px;color:#849eaa">Condições sob medida</span><hr class="plan-divider"><ul><li><span>✓</span> Estrutura multiempresa</li><li><span>✓</span> Perfis e responsabilidades</li><li><span>✓</span> Levantamento de integrações</li><li><span>✓</span> Implantação personalizada</li></ul><button type="button" class="button outline" data-open="contract" data-plan="Enterprise">Falar com especialista ↗</button></article>
-        </div>
-        <p class="plans-disclaimer">Os planos acima são referências comerciais. Recursos, usuários, integrações, preços e disponibilidade são definidos formalmente na proposta e no contrato. O envio do formulário não gera cobrança ou acesso automático.</p>
-      </div>
-    </section>
-    <section class="closing"><div class="container"><div class="closing-box reveal"><div><div class="eyebrow">Sua próxima evolução começa aqui</div><h2>Pronto para transformar sua operação financeira?</h2><p>Descubra como o Sentinel Consig pode fazer parte do seu dia a dia.</p></div><button class="button primary" type="button" data-open="demo">Agendar demonstração ↗</button></div></div></section>
-    <section class="faq" id="duvidas"><div class="container faq-grid"><div class="reveal"><div class="eyebrow">Perguntas frequentes</div><h2>Ficou alguma dúvida?</h2><p class="faq-intro">Veja as respostas mais importantes antes de conversar com nosso time comercial.</p></div><div class="reveal">
-      <details><summary>O Sentinel Consig é indicado para quais empresas?</summary><p>O foco são promotoras de crédito, correspondentes bancários e equipes que gerenciam operações financeiras, simulações, propostas e parceiros.</p></details>
-      <details><summary>Posso agendar uma demonstração antes de contratar?</summary><p>Sim. Envie uma solicitação indicando a data e o período de preferência. Nossa equipe entrará em contato para confirmar a disponibilidade e os detalhes.</p></details>
-      <details><summary>Os planos possuem preços fixos?</summary><p>Nesta fase, as condições são apresentadas sob consulta. Valores, usuários, módulos e integrações dependem da proposta comercial aprovada.</p></details>
-      <details><summary>As integrações bancárias estão disponíveis em todos os planos?</summary><p>Não necessariamente. A disponibilidade depende do escopo contratado, dos canais habilitados e das condições técnicas e comerciais de cada integração.</p></details>
-      <details><summary>Onde entro no sistema depois de contratar?</summary><p>O ambiente operacional estará disponível em <a style="color:#6addf0" href="https://app.sentinelconsig.com.br/">app.sentinelconsig.com.br</a>, após criação e liberação das credenciais.</p></details>
-    </div></div></section>
-  </main>
-  <footer><div class="container"><div class="footer-grid">
-    <div class="footer-brand"><a href="#inicio" class="brand" aria-label="Voltar ao início"><img src="/branding/logo.svg" width="202" height="56" alt="Sentinel Consig"></a><p>Plataforma de tecnologia para gestão operacional no mercado de crédito consignado.</p><p style="color:#67dbea;font-weight:700">Inteligência em cada operação.</p></div>
-    <div><h4>Plataforma</h4><nav><a href="#plataforma">Sobre</a><a href="#recursos">Funcionalidades</a><a href="#como-funciona">Como funciona</a><a href="#planos">Planos</a></nav></div>
-    <div><h4>Informações</h4><nav><a href="/politica-de-privacidade">Privacidade</a><a href="/condicoes-comerciais">Condições comerciais</a><a href="#duvidas">Perguntas frequentes</a></nav></div>
-    <div><h4>Fale conosco</h4><nav><a href="mailto:comercial@sentinelconsig.com.br">comercial@sentinelconsig.com.br</a><a href="mailto:suporte@sentinelconsig.com.br">suporte@sentinelconsig.com.br</a><a href="https://app.sentinelconsig.com.br/">Acessar plataforma ↗</a></nav></div>
-  </div><div class="footer-bottom"><span>© <span id="year">2026</span> Sentinel Consig. Todos os direitos reservados.</span><span>Uma nova era de inteligência operacional.</span></div></div></footer>
-  <div class="modal" id="leadModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
-    <div class="modal-card"><div class="modal-top"><div><div class="eyebrow" id="modalEyebrow">Contato comercial</div><h2 id="modalTitle">Agendar demonstração</h2><p id="modalDescription">Escolha uma data de preferência. Nossa equipe confirmará a disponibilidade.</p></div><button type="button" class="close-modal" id="closeModal" aria-label="Fechar formulário">×</button></div>
+    </div>
+  </div>
+</section>
+<section class="section" id="funcionalidades">
+  <div class="container">
+    <div class="section-heading reveal"><div class="eyebrow">Recursos para o dia a dia</div><h2>Do operacional ao estratégico, <span class="gradient-text">tudo faz parte da mesma solução.</span></h2><p>Ferramentas pensadas para equipes de crédito que precisam reduzir a fragmentação da rotina e acompanhar o trabalho de ponta a ponta.</p></div>
+    <div class="feature-grid">
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">▤</div><h3>Propostas e contratos</h3><p>Organização de propostas, status, dados operacionais, filtros de consulta e histórico de movimentações.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">↔</div><h3>Simulações por banco</h3><p>Fluxos de consulta e simulação conforme convênios, produtos, regras e integrações habilitados.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">⌁</div><h3>Esteira e Kanban</h3><p>Distribuição e acompanhamento das etapas de atendimento, com visibilidade das pendências.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">◎</div><h3>Cliente 360°</h3><p>Contextualização de informações, atividades e histórico para apoiar o atendimento autorizado.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">♧</div><h3>Parceiros e colaboradores</h3><p>Perfis distintos para gestão, suporte, digitação, simulação e parceiros comerciais.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">▥</div><h3>Relatórios e BI</h3><p>Produção, rankings, etapas, volumes e indicadores para gestão e acompanhamento.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">◇</div><h3>Administração</h3><p>Configuração de usuários, empresas, produtos, bancos, convênios e parâmetros de acesso.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">⊕</div><h3>Central de suporte</h3><p>Registro de solicitações, comentários e atualizações do fluxo operacional.</p></article>
+      <article class="feature reveal"><div class="feature-symbol" aria-hidden="true">⛶</div><h3>Ambiente responsivo</h3><p>Interface adaptável para diferentes tamanhos de tela e rotinas de trabalho.</p></article>
+    </div>
+  </div>
+</section>
+<section class="section" id="seguranca" style="background:#0c202b;border-block:1px solid #2b4b59">
+  <div class="container split">
+    <div class="reveal"><div class="eyebrow">Estrutura para crescer</div><h2>Várias equipes. Várias empresas. <span class="gradient-text">Mais governança.</span></h2><p>O Sentinel foi estruturado para operações multiempresa com separação de contexto e níveis de acesso. A organização não deve depender de compartilhar o mesmo perfil entre todos.</p>
+      <ul class="check-list"><li><span>✓</span> Empresas e usuários organizados por ambiente</li><li><span>✓</span> Atribuições e permissões por perfil</li><li><span>✓</span> Catálogos e configurações conforme o contexto operacional</li><li><span>✓</span> Controles orientados à proteção de dados e à LGPD</li></ul>
+    </div>
+    <div class="architecture reveal" aria-label="Diagrama conceitual de arquitetura multiempresa">
+      <div class="arch-title"><span>Estrutura operacional multiempresa</span><small>Representação conceitual</small></div>
+      <div class="arch-core">SENTINEL CONSIG<br><span style="color:#a8ced6;font-size:10px">Camada de gestão</span></div>
+      <div class="arch-line" aria-hidden="true"></div>
+      <div class="arch-tiers"><div class="arch-tenant">Empresa A<small>Equipe e acessos</small></div><div class="arch-tenant">Empresa B<small>Equipe e acessos</small></div><div class="arch-tenant">Empresa C<small>Equipe e acessos</small></div></div>
+      <div class="arch-foot"><span style="color:#74dfc7">◈</span> Separação lógica de dados e políticas de autorização por contexto.</div>
+    </div>
+  </div>
+</section>
+<section class="section coverage" id="integracoes">
+  <div class="container coverage-grid">
+    <div class="reveal"><div class="eyebrow">Operações e integrações</div><h2>Uma plataforma conectada à <span class="gradient-text">realidade do crédito.</span></h2><p>Fluxos que apoiam a jornada comercial e operacional em diferentes modalidades, conforme regras vigentes e habilitações das instituições.</p>
+      <div class="chips"><span>INSS</span><span>SIAPE</span><span>CLT</span><span>FGTS</span><span>Portabilidade</span><span>Refinanciamento</span><span>Cartão consignado</span></div>
+      <p class="coverage-note">* Modalidades, bancos, consultas, automações e APIs dependem de configuração, elegibilidade, credenciamento e disponibilidade no plano contratado. Não prometemos liberação universal de produtos.</p>
+    </div>
+    <div class="integration-grid reveal">
+      <div class="integration-card"><strong>Consultas e simulações</strong><p>Avalie alternativas disponíveis dentro dos fluxos e integrações autorizados.</p></div>
+      <div class="integration-card"><strong>Conectores bancários</strong><p>Arquitetura para consumir respostas e serviços de instituições integradas.</p></div>
+      <div class="integration-card"><strong>Regras operacionais</strong><p>Organização de produtos, convênios e parâmetros no contexto da empresa.</p></div>
+      <div class="integration-card"><strong>Acompanhamento da esteira</strong><p>Consolidação de etapas e retornos quando a integração contratada oferecer os dados.</p></div>
+    </div>
+  </div>
+</section>
+<section class="section" id="publico">
+  <div class="container"><div class="section-heading reveal"><div class="eyebrow">Para quem é</div><h2>Tecnologia para quem vive <span class="gradient-text">a operação financeira.</span></h2></div>
+    <div class="audience-grid">
+      <article class="audience-card reveal"><div class="num">01</div><h3>Promotoras e correspondentes</h3><p>Para organizar propostas, acompanhar a produção e centralizar atividades das equipes e dos parceiros.</p></article>
+      <article class="audience-card reveal"><div class="num">02</div><h3>Gestores e supervisores</h3><p>Para acompanhar indicadores, analisar gargalos e tomar decisões com mais visibilidade operacional.</p></article>
+      <article class="audience-card reveal"><div class="num">03</div><h3>Equipes de atendimento</h3><p>Para trabalhar com processos mais claros, informações acessíveis e responsabilidade definida por etapa.</p></article>
+    </div>
+  </div>
+</section>
+<section class="section" id="implantacao" style="border-top:1px solid #2e4652">
+  <div class="container"><div class="section-heading reveal"><div class="eyebrow">Como começar</div><h2>Do primeiro contato à implantação, <span class="gradient-text">uma jornada objetiva.</span></h2><p>A demonstração ajuda a definir o escopo correto antes de qualquer contratação.</p></div>
+    <div class="steps">
+      <div class="step reveal"><div class="step-num">01</div><h3>Conte sua necessidade</h3><p>Informe a empresa, modalidades e necessidades da equipe.</p></div>
+      <div class="step reveal"><div class="step-num">02</div><h3>Solicite a demonstração</h3><p>Escolha uma data e horário de preferência; a confirmação depende da agenda.</p></div>
+      <div class="step reveal"><div class="step-num">03</div><h3>Receba uma proposta</h3><p>Alinhe plano, módulos, usuários, integrações e condições comerciais.</p></div>
+      <div class="step reveal"><div class="step-num">04</div><h3>Ative sua operação</h3><p>Após formalização e configuração, sua equipe começa a utilizar a plataforma.</p></div>
+    </div>
+  </div>
+</section>
+<section class="section plans" id="planos">
+  <div class="container">
+    <div class="section-heading center reveal"><div class="eyebrow">Planos Sentinel Consig</div><h2>A estrutura certa para <span class="gradient-text">o momento da sua empresa.</span></h2><p>Compare os perfis de contratação. Valores, usuários, integrações e funcionalidades específicas são formalizados em proposta.</p></div>
+    <div class="plan-grid">
+      <article class="plan reveal"><h3 class="plan-name">Essencial</h3><p class="plan-subtitle">Comece a organizar a operação e substituir controles dispersos.</p><div class="plan-price">Sob consulta</div><div class="plan-price-note">Proposta conforme sua necessidade</div><ul><li>Organização de propostas</li><li>Acompanhamento de etapas</li><li>Perfis e acessos de equipe</li><li>Configurações conforme escopo</li></ul><button class="button button-outline" type="button" data-open="contract" data-plan="Essencial">Solicitar proposta ↗</button></article>
+      <article class="plan featured reveal"><div class="plan-badge">PARA OPERAÇÕES EM EXPANSÃO</div><h3 class="plan-name">Pro</h3><p class="plan-subtitle">Mais visibilidade gerencial, organização de parceiros e opções operacionais.</p><div class="plan-price">Sob consulta</div><div class="plan-price-note">Proposta conforme sua necessidade</div><ul><li>Gestão operacional ampliada</li><li>Indicadores e relatórios</li><li>Gestão de parceiros</li><li>Integrações conforme contratação</li></ul><button class="button button-primary" type="button" data-open="contract" data-plan="Pro">Conhecer o Pro ↗</button></article>
+      <article class="plan reveal"><h3 class="plan-name">Enterprise</h3><p class="plan-subtitle">Para empresas com processos, ambientes e necessidades específicas.</p><div class="plan-price">Sob consulta</div><div class="plan-price-note">Escopo sob medida</div><ul><li>Operação multiempresa</li><li>Perfis e permissões específicos</li><li>Análise de integrações</li><li>Implantação alinhada à estrutura</li></ul><button class="button button-outline" type="button" data-open="contract" data-plan="Enterprise">Conversar sobre Enterprise ↗</button></article>
+    </div>
+    <p class="plan-disclaimer">Os itens são exemplos de posicionamento comercial, não uma lista contratual exaustiva. Recursos disponíveis, quantidades, prazo, condições e suporte dependem da proposta e do contrato. O formulário não gera cobrança ou acesso automático.</p>
+  </div>
+</section>
+<section class="section" id="faq">
+  <div class="container faq-layout">
+    <div class="reveal"><div class="eyebrow">Perguntas frequentes</div><h2 style="font-size:clamp(30px,3.7vw,45px)">Tudo claro para a próxima etapa.</h2><p style="font-size:14px;color:#9bb6c1">Conheça o processo comercial e as condições gerais da plataforma.</p></div>
+    <div class="faq-list reveal">
+      <details><summary>O Sentinel Consig é um banco ou concede empréstimos?</summary><p>Não. O Sentinel Consig é um sistema de tecnologia e gestão operacional para empresas do mercado de crédito. Não oferece crédito diretamente neste website.</p></details>
+      <details><summary>O sistema atende diferentes modalidades de crédito?</summary><p>A plataforma contempla fluxos para modalidades como INSS, CLT, SIAPE e FGTS, conforme os módulos e integrações disponibilizados para a empresa.</p></details>
+      <details><summary>Posso cadastrar mais de uma empresa?</summary><p>A arquitetura do Sentinel permite diferentes empresas com contextos e acessos definidos. A configuração e as condições dependem do plano contratado.</p></details>
+      <details><summary>Quais bancos são integrados?</summary><p>As integrações variam conforme habilitação, APIs e condições técnicas de cada instituição. A relação aplicável será apresentada na demonstração e formalizada no escopo contratado.</p></details>
+      <details><summary>Posso solicitar uma demonstração sem contratar?</summary><p>Sim. Informe seus dados e escolha uma data e horário. A solicitação não constitui contratação nem reserva confirmada; o atendimento será confirmado pela equipe ou pela agenda integrada, quando habilitada.</p></details>
+      <details><summary>Uma demonstração solicitada já estará no Google Calendar?</summary><p>A integração com o Google Calendar depende de autorização da agenda e de disponibilidade. Enquanto não estiver configurada, o pedido permanece pendente de confirmação e não ocupa automaticamente um horário.</p></details>
+      <details><summary>Os planos têm preço fixo?</summary><p>Não há mensalidades publicadas nesta fase. A proposta considera equipe, funcionalidades, configuração e integrações necessárias.</p></details>
+      <details><summary>Onde acesso o Sentinel depois de contratar?</summary><p>O acesso operacional é realizado em <a href="https://app.sentinelconsig.com.br/" style="color:#80e9f2">app.sentinelconsig.com.br</a>, após criação e liberação das credenciais.</p></details>
+    </div>
+  </div>
+</section>
+<section class="section" id="contato" style="padding-top:25px">
+  <div class="container"><div class="cta-box reveal"><div><div class="eyebrow">Sua operação pode ir além</div><h2>Conheça o Sentinel Consig em uma demonstração.</h2><p>Conte seu cenário e descubra quais recursos fazem sentido para a sua equipe.</p></div><button type="button" class="button button-primary" data-open="demo">Solicitar demonstração ↗</button></div></div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="container"><div class="footer-grid">
+    <div class="footer-brand"><a href="#inicio" class="brand" aria-label="Sentinel Consig"><img src="/branding/official-wordmark-v6.png" width="205" height="58" alt="Sentinel Consig" loading="lazy"><small>Inteligência em cada operação.</small></a><p>Tecnologia para gestão de propostas, simulações, equipes, parceiros e resultados nas operações de crédito.</p></div>
+    <div><h4>Plataforma</h4><nav><a href="#plataforma">A solução</a><a href="#modulos">Módulos</a><a href="#funcionalidades">Recursos</a><a href="#seguranca">Multiempresa</a></nav></div>
+    <div><h4>Comercial</h4><nav><a href="#planos">Planos</a><a href="#implantacao">Implantação</a><a href="#faq">Perguntas frequentes</a><a href="/condicoes-comerciais">Condições comerciais</a></nav></div>
+    <div><h4>Fale com a equipe</h4><nav><a href="mailto:comercial@sentinelconsig.com.br">comercial@sentinelconsig.com.br</a><a href="mailto:suporte@sentinelconsig.com.br">suporte@sentinelconsig.com.br</a><a href="/politica-de-privacidade">Privacidade e LGPD</a><a href="https://app.sentinelconsig.com.br/">Acessar a plataforma ↗</a></nav></div>
+  </div><div class="footer-bottom"><span>© <span id="year">2026</span> Sentinel Consig. Todos os direitos reservados.</span><span>Inteligência em cada operação.</span></div></div>
+</footer>
+<div class="modal" id="leadModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+  <div class="modal-sheet">
+    <div class="modal-head"><div><div class="eyebrow" id="modalEyebrow">Contato comercial</div><h2 id="modalTitle">Solicitar demonstração</h2><p id="modalDescription">Escolha data e horário de preferência. O agendamento só será considerado confirmado após validação da agenda.</p></div><button class="close-modal" type="button" id="closeModal" aria-label="Fechar">×</button></div>
     <form id="leadForm" novalidate>
-      <input type="hidden" name="kind" id="leadKind" value="demo">
-      <div style="position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px" aria-hidden="true"><label for="website">Website</label><input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></div>
+      <input type="hidden" id="leadKind" name="kind" value="demo">
+      <div class="honeypot" aria-hidden="true"><label for="website">Website</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
       <div class="form-grid">
-        <div class="field"><label for="leadName">Seu nome *</label><input id="leadName" name="name" required autocomplete="name" maxlength="100" placeholder="Nome completo"></div>
-        <div class="field"><label for="leadCompany">Empresa *</label><input id="leadCompany" name="company" required maxlength="140" autocomplete="organization" placeholder="Nome da empresa"></div>
-        <div class="field"><label for="leadEmail">E-mail profissional *</label><input type="email" id="leadEmail" name="email" required maxlength="254" autocomplete="email" placeholder="voce@empresa.com.br"></div>
-        <div class="field"><label for="leadPhone">WhatsApp / telefone *</label><input type="tel" id="leadPhone" name="phone" required maxlength="35" autocomplete="tel" placeholder="(82) 99999-9999"></div>
-        <div class="field full"><label for="leadPlan">Plano de interesse</label><select name="plan" id="leadPlan"><option>A definir</option><option>Essencial</option><option>Pro</option><option>Enterprise</option></select></div>
-        <div class="field demo-field"><label for="leadDate">Data de preferência *</label><input type="date" name="date" id="leadDate"></div>
-        <div class="field demo-field"><label for="leadPeriod">Melhor período *</label><select id="leadPeriod" name="period"><option value="">Selecione</option><option>Manhã</option><option>Tarde</option><option>Indiferente</option></select></div>
-        <div class="field full"><label for="leadNotes">Conte um pouco sobre sua operação (opcional)</label><textarea name="notes" id="leadNotes" maxlength="1200" placeholder="Ex.: tamanho da equipe, principais necessidades..."></textarea></div>
+        <div class="field"><label for="leadName">Seu nome *</label><input id="leadName" name="name" required maxlength="100" autocomplete="name" placeholder="Nome completo"></div>
+        <div class="field"><label for="leadCompany">Nome da empresa *</label><input id="leadCompany" name="company" required maxlength="140" autocomplete="organization" placeholder="Sua empresa"></div>
+        <div class="field"><label for="leadEmail">E-mail *</label><input id="leadEmail" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="voce@empresa.com.br"></div>
+        <div class="field"><label for="leadPhone">WhatsApp ou telefone *</label><input id="leadPhone" name="phone" type="tel" required maxlength="35" autocomplete="tel" placeholder="(82) 99999-9999"></div>
+        <div class="field wide"><label for="leadPlan">Plano de interesse</label><select name="plan" id="leadPlan"><option>A definir</option><option>Essencial</option><option>Pro</option><option>Enterprise</option></select></div>
+        <div class="field demo-field"><label for="leadDate">Data de preferência *</label><input id="leadDate" name="date" type="date"></div>
+        <div class="field demo-field"><label for="leadTime">Horário de preferência *</label><select id="leadTime" name="time"><option value="">Selecione</option><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option><option value="14:00">14:00</option><option value="15:00">15:00</option><option value="16:00">16:00</option></select></div>
+        <div class="form-note demo-field">Demonstração prevista: 30 minutos. Horários de referência em Maceió (UTC−3), de segunda a sexta. A disponibilidade será verificada no Google Calendar somente após a autorização da integração.</div>
+        <div class="field wide"><label for="leadNotes">Sua operação (opcional)</label><textarea id="leadNotes" name="notes" maxlength="1200" placeholder="Tamanho da equipe, modalidades, bancos e principais necessidades..."></textarea></div>
       </div>
-      <label class="consent"><input id="leadConsent" name="consent" type="checkbox" required><span>Concordo com o uso dos meus dados para retorno sobre esta solicitação, conforme a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>. *</span></label>
-      <div class="form-actions"><button id="submitLead" class="button primary" type="submit">Enviar solicitação ↗</button></div><div id="formMessage" class="form-message" role="status" aria-live="polite"></div>
+      <label class="consent"><input id="leadConsent" type="checkbox" name="consent" required><span>Autorizo o tratamento dos dados para atendimento desta solicitação, conforme a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>. *</span></label>
+      <div class="form-actions"><button id="submitLead" class="button button-primary" type="submit">Enviar solicitação ↗</button><span style="font-size:11px;color:#9db5c0">Sem compromisso comercial.</span></div>
+      <div id="formMessage" class="form-message" role="status" aria-live="polite"></div>
     </form>
-  </div></div>
-  <script>
-    (function () {
-      var modal = document.getElementById("leadModal");
-      var form = document.getElementById("leadForm");
-      var message = document.getElementById("formMessage");
-      var submit = document.getElementById("submitLead");
-      var lastFocused = null;
-      var kind = document.getElementById("leadKind");
-      var plan = document.getElementById("leadPlan");
-      var date = document.getElementById("leadDate");
-      var period = document.getElementById("leadPeriod");
-      var nav = document.getElementById("siteNav");
-      var toggle = document.getElementById("menuToggle");
-      document.getElementById("year").textContent = String(new Date().getFullYear());
-      var current = new Date(); var today = current.getFullYear() + "-" + String(current.getMonth()+1).padStart(2,"0") + "-" + String(current.getDate()).padStart(2,"0"); date.min = today;
-      function openModal(type, selectedPlan) {
-        lastFocused = document.activeElement;
-        form.reset(); message.textContent = ""; message.classList.remove("success");
-        kind.value = type; plan.value = selectedPlan || "A definir";
-        var demo = type === "demo";
-        document.getElementById("modalTitle").textContent = demo ? "Agendar demonstração" : "Solicitar contratação";
-        document.getElementById("modalDescription").textContent = demo ? "Indique uma data de preferência. Nossa equipe confirmará a disponibilidade e os detalhes." : "Solicite uma proposta comercial sem compromisso. Nossa equipe entrará em contato para apresentar as condições.";
-        document.querySelectorAll(".demo-field").forEach(function (el) { el.classList.toggle("hidden", !demo); });
-        date.required = demo; period.required = demo;
-        modal.classList.add("visible"); modal.setAttribute("aria-hidden","false"); document.body.classList.add("modal-open");
-        document.getElementById("leadName").focus();
-      }
-      function closeModal() { modal.classList.remove("visible"); modal.setAttribute("aria-hidden","true"); document.body.classList.remove("modal-open"); if (lastFocused && lastFocused.focus) lastFocused.focus(); }
-      document.querySelectorAll("[data-open]").forEach(function (b) { b.addEventListener("click",function () { openModal(b.getAttribute("data-open"), b.getAttribute("data-plan")); }); });
-      document.getElementById("closeModal").addEventListener("click",closeModal);
-      modal.addEventListener("click",function (e) { if (e.target === modal) closeModal(); });
-      document.addEventListener("keydown",function (e) { if (!modal.classList.contains("visible")) return; if (e.key === "Escape") closeModal(); if(e.key==="Tab"){var els=Array.from(modal.querySelectorAll("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a")).filter(function(el){return el.offsetParent!==null && el.tabIndex!==-1;}); if(!els.length)return;var first=els[0],last=els[els.length-1];if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault();}else if(!e.shiftKey&&document.activeElement===last){first.focus();e.preventDefault();}}});
-      toggle.addEventListener("click",function(){var isOpen=nav.classList.toggle("open");toggle.setAttribute("aria-expanded",String(isOpen));toggle.setAttribute("aria-label",isOpen?"Fechar menu":"Abrir menu");toggle.textContent=isOpen?"×":"☰";});
-      nav.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){nav.classList.remove("open");toggle.setAttribute("aria-expanded","false");toggle.textContent="☰";});});
-      form.addEventListener("submit",async function(e){
-        e.preventDefault();message.classList.remove("success");message.textContent="";
-        if (!form.reportValidity()) return;
-        var data = Object.fromEntries(new FormData(form).entries()); data.consent = document.getElementById("leadConsent").checked;
-        submit.disabled=true;submit.textContent="Enviando...";
-        var controller = new AbortController(); var timer = setTimeout(function(){controller.abort();},12500);
-        try {
-          var response=await fetch("/api/lead",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),signal:controller.signal});
-          var json=await response.json().catch(function(){return {};});
-          if(!response.ok || !json.ok)throw Error(json.message || "Não foi possível enviar. Tente novamente.");
-          message.textContent=json.message || "Solicitação recebida!";message.classList.add("success");submit.textContent="Solicitação enviada ✓";form.reset();submit.disabled=true;
-        }catch(err){message.textContent=err.name==="AbortError"?"O envio excedeu o tempo limite. Tente novamente.":(err.message||"Falha ao enviar. Escreva para comercial@sentinelconsig.com.br.");submit.disabled=false;submit.textContent="Enviar solicitação ↗";}
-        finally{clearTimeout(timer);}
-      });
-      if ("IntersectionObserver" in window && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        var obs=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add("in");obs.unobserve(entry.target);}});},{threshold:.09});
-        document.querySelectorAll(".reveal").forEach(function(el){obs.observe(el);});
-      } else { document.querySelectorAll(".reveal").forEach(function(el){el.classList.add("in");}); }
-    })();
-  </script>
+  </div>
+</div>
+<script src="/app.js" defer></script>
 </body></html>
