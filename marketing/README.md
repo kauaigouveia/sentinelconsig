@@ -86,3 +86,6 @@ A integração não agenda eventos retroativamente de forma automática: pedidos
 
 **Validação obrigatória antes de habilitar agendamento automático:** configurar a autorização Google, enviar um agendamento sintético para calendário de teste, verificar convite, conflito de horário e consistência do D1, depois apontar para a agenda definitiva. Até lá, formulário funciona como solicitação, não reserva.
 
+
+## Painel administrativo de agendamentos
+URL: https://sentinelconsig.com.br/admin/agendamentos. Acesso com código de 8 dígitos enviado para o e-mail administrador cadastrado, expira em 10 minutos. Cookie HttpOnly Secure SameSite=Strict, sessão 12h, códigos com hash SHA-256, limitação de tentativas. Dados do D1 só retornam mediante sessão autenticada. Cloudflare Access está desabilitado; usado login próprio de e-mail. SQL: marketing/admin-auth-migration.sql.
