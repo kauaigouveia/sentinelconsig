@@ -105,3 +105,28 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
  expect(String(copied.mock.calls[0][0])).toContain('PORTABILIDADE');
  expect(String(copied.mock.calls[0][0])).toContain('Daycoval');
 });
+
+it('extrato sem empréstimos inicia apenas NOVO e não chama portabilidade dos bancos',async()=>{
+  const calls:Array<{url:string;body:any}>=[];
+  const fetchMock=vi.fn(async(url:string,init?:RequestInit)=>{
+    const body=init?.body?JSON.parse(String(init.body)):null;
+    calls.push({url,body});
+    if(url!=='/api/inss/statement/quote')
+      throw new Error('Consulta de portabilidade indevida em extrato sem contratos: '+url);
+    return new Response(JSON.stringify({offers:[{
+      provider:'C6',institution:'C6',table:'INSS NOVO real consultado',
+      amount:3000,installment:87.06,rate:1.85,term:108,source:'API',
+    }],notices:[]}),{status:200,headers:{'Content-Type':'application/json'}});
+  });
+  vi.stubGlobal('fetch',fetchMock);
+  render(<NossaFintechPortRefinSimulationModal
+    isOpen statement={{...fixture,contracts:[],loanMargin:'87.06',benefitContractCount:''}}
+    autoRunFromStatement onClose={()=>{}} onBack={()=>{}} partners={[]} onSuccess={()=>{}}/>);
+  await waitFor(()=>expect(calls.some(call=>call.body?.operation==='NEW')).toBe(true));
+  await waitFor(()=>expect(screen.getByRole('button',{name:/^NOVO \(1\)/})).toBeTruthy());
+  expect(screen.queryByRole('button',{name:/PORTABILIDADE \(/})).toBeNull();
+  expect(screen.getByText(/INSS · NOVO pela margem do extrato/)).toBeTruthy();
+  expect(screen.queryByText(/alternativas em 60 meses quando elegíveis/)).toBeNull();
+  expect(calls.every(call=>call.url==='/api/inss/statement/quote')).toBe(true);
+  expect(calls.every(call=>call.body?.operation==='NEW')).toBe(true);
+});
