@@ -111,9 +111,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       body: JSON.stringify({ ...(form.reviewMetadata??portabilityContext),originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: parseCurrency(form.lastDueBalance), installmentFaceValue: parseCurrency(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined }),
     });
     const result = await readJsonResponse(response);
-    if (response.status === 422) return [];
+    if (response.status === 422) throw new Error(result.error || 'Nossa Fintech: condição não elegível conforme as regras da instituição.');
     if (!response.ok || result.success === false) throw new Error(result.error || result.data?.message || `Nossa Fintech respondeu com HTTP ${result.status || response.status}.`);
-    if (result.data?.noEligibleTables) return [];
+    if (result.data?.noEligibleTables) throw new Error('Nossa Fintech: nenhuma tabela elegível para o banco de origem, idade, prazo e saldo informados.');
     if (!result.data?.results?.length && !result.data?.excludedTables?.length) throw new Error('Nossa Fintech não retornou tabelas compatíveis com a taxa, o prazo e o saldo escolhidos.');
     return [
       ...(result.data?.results || []).map((row: any) => ({ ...row, provider: 'Nossa Fintech', term: Number(form.numberOfInstallments), troco: row.success ? getNossaFintechTroco(row.data) : null })),
@@ -258,8 +258,15 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         const calls=await Promise.allSettled([calculateNossaFintech(snapshot),calculateFinanto(snapshot),calculateFacta(snapshot),calculateWorkbook('DAYCOVAL',snapshot),calculateWorkbook('C6',snapshot),calculateWorkbook('PARANA',snapshot),calculateAdditionalBanks(snapshot)]);
         calls.forEach((result,index)=>{
           const provider=['Nossa Fintech','FINANTO','FACTA','DAYCOVAL','C6','PARANA','HAPPY/BMG'][index];
-          if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot,originalInstallment:parseCurrency(snapshot.installmentFaceValue)??undefined,installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`,bankCode:contract.originLenderCode,contractSuffix:originContractSuffix(contract.originContractNumber)}))})));
-          else notes.push(`${label} · ${provider}: ${result.reason?.message||'não foi possível simular'}`);
+          if(result.status==='fulfilled'){
+            const providerRows=result.value;
+            combined.push(...providerRows.map(row=>({...row,contractLabel:label,sourceForm:snapshot,originalInstallment:parseCurrency(snapshot.installmentFaceValue)??undefined,installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`,bankCode:contract.originLenderCode,contractSuffix:originContractSuffix(contract.originContractNumber)}))})));
+            // A bank returning many rejected tables is NOT several executable offers.
+            if(!providerRows.some(row=>row.success&&!row.skipped&&Number(row.troco)>0)){
+              const reasons=[...new Set(providerRows.map(row=>row.error?.trim()).filter(Boolean))].slice(0,2);
+              notes.push(`${label} · ${provider}: ${reasons.join(' · ') || 'nenhuma cotação positiva disponível nas condições atuais.'}`);
+            }
+          }else notes.push(`${label} · ${provider}: ${String(result.reason?.message||'não foi possível simular').slice(0,220)}`);
         });
         if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
         setRows(combined.filter(row=>row.troco==null||row.troco>=0));setProviderNotes([...notes]);
@@ -575,7 +582,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {statement && <nav aria-label="Modalidade da simulação" className="sticky top-0 z-10 grid grid-cols-2 gap-2 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-2">
         <button type="button" aria-pressed={activeTab==='PORT'} onClick={()=>setActiveTab('PORT')}
           className={'rounded-lg px-3 py-3 text-sm font-bold '+(activeTab==='PORT'?'bg-[var(--action)] text-[var(--action-ink)]':'border border-[var(--field-border)] text-[var(--text-secondary)]')}>
-          PORTABILIDADE ({rows.filter(row=>row.success&&!row.skipped).length}) {selectedRows.length>0?' · '+selectedRows.length+' selecionadas':''}
+          PORTABILIDADE ({new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size} bancos · {rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).length} condições) {selectedRows.length>0?' · '+selectedRows.length+' selecionadas':''}
         </button>
         <button type="button" aria-pressed={activeTab==='NEW'} onClick={()=>setActiveTab('NEW')}
           className={'rounded-lg px-3 py-3 text-sm font-bold '+(activeTab==='NEW'?'bg-[var(--action)] text-[var(--action-ink)]':'border border-[var(--field-border)] text-[var(--text-secondary)]')}>
@@ -598,10 +605,10 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {(!statement||activeTab==='PORT')&&happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {(!statement||activeTab==='PORT')&&happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
       {statement && activeTab==='PORT' && !loading && <details className="mt-3 rounded-lg border border-[var(--field-border)] p-3 text-xs">
-        <summary className="cursor-pointer font-semibold">Bancos consultados e situações ({new Set(rows.filter(row=>row.success).map(row=>row.provider)).size} com ofertas)</summary>
+        <summary className="cursor-pointer font-semibold">Bancos consultados e situações ({new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size} com ofertas)</summary>
         <div className="mt-2 flex flex-wrap gap-2">
           {['DAYCOVAL','C6','PARANA','FINANTO','FACTA','Nossa Fintech','HAPPY','BMG'].map(bank=><span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
-            {bank==='PARANA'?'Paraná Banco':bank} · {rows.some(row=>row.provider===bank&&row.success)?'com condição':'sem oferta calculada'}
+            {bank==='PARANA'?'Paraná Banco':bank} · {rows.some(row=>row.provider===bank&&row.success&&!row.skipped&&Number(row.troco)>0)?'com condição':'sem oferta calculada'}
           </span>)}
         </div>
       </details>}
@@ -621,8 +628,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             Aumento projetado · +R$ 42,00 (2027)
           </button>
         </div>
-        {marginState==='loading' && <p role="status" className="text-xs">Consultando a margem disponível nos bancos…</p>}
-        {marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma cotação bancária disponível para a margem atual. Verifique as integrações habilitadas e as pendências.</p>}
+        {marginState==='loading' && <p role="status" className="text-xs">Consultando os bancos em prazos compatíveis com a idade…</p>}
+        {marginState==='ready' && marginOffers.length===0 && <p className="text-xs text-[var(--text-secondary)]">Nenhuma oferta válida nos prazos consultados. Veja o status dos bancos e os critérios de idade e prazo.</p>}
         {novoScenario==='CURRENT' && marginBest.length>0 && <div className="grid gap-2 sm:grid-cols-2">{marginBest.map(quote=>
           <div key={quote.index} className={'rounded-lg border p-3 text-xs '+(selectedMargin===quote.index?'border-[var(--action)] bg-[var(--bg-surface-elevated)]':'border-[var(--border-default)]')}>
             <div className="flex items-center justify-between gap-2"><strong>{quote.institution}</strong><span className="text-[var(--text-secondary)]">{quote.source==='API'?'API':'Planilha'}</span></div>
@@ -646,7 +653,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             </button>)}</div>
         </details>}
         {marginState==='ready' && <details className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
-          <summary className="cursor-pointer font-semibold">Status das integrações de NOVO</summary>
+          <summary className="cursor-pointer font-semibold">Status das integrações de NOVO · {inssNovoConsultationTerms(statement.customer.birthDate).join(', ')} meses consultados</summary>
           <div className="mt-2 flex flex-wrap gap-2">{['C6','FACTA','Nossa Fintech','FINANTO','HAPPY','BMG'].map(bank=>{
             const found=marginOffers.some(quote=>quote.provider.toUpperCase().includes(bank.toUpperCase()));
             return <span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
