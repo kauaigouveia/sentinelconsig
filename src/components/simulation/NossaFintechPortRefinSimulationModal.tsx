@@ -1,5 +1,5 @@
 import type { ReviewedInssStatement } from '../../lib/inssStatement';
-import {PortabilityResults} from './PortabilityResults';
+import {PortabilityResults, displayedPortabilityQuoteCount} from './PortabilityResults';
 import { portabilityQuoteCondition } from '../../lib/portRefinQuote';
 import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portRefinBreakdown';
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
@@ -88,7 +88,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [marginNote,setMarginNote]=useState('');
   const [selectedMargin,setSelectedMargin]=useState<number|null>(null);
   const [selectedProjected,setSelectedProjected]=useState<number|null>(null);
-  const [activeTab,setActiveTab]=useState<'PORT'|'NEW'>('PORT');
+  const [activeTab,setActiveTab]=useState<'PORT'|'NEW'>(statement?.contracts.length===0?'NEW':'PORT');
   const [novoScenario,setNovoScenario]=useState<'CURRENT'|'PROJECTED'>('CURRENT');
   const [shareStatus,setShareStatus]=useState('');
 
@@ -394,7 +394,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     if(!isOpen || !statement || !autoRunFromStatement || autoStarted.current)return;
     autoStarted.current=true;
     setStep(2);
-    void calculate({preventDefault:()=>{}} as React.FormEvent);
+    // A margin-only statement must not enter portability validation (zero contracts).
+    if(statement.contracts.length>0)void calculate({preventDefault:()=>{}} as React.FormEvent);
+    else {setRows([]);setProviderNotes([]);setActiveTab('NEW');}
     void loadStatementMargin();
   },[isOpen,statement,autoRunFromStatement]);
 
@@ -452,6 +454,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> =>
     portabilityQuoteCondition(row, parseCurrency(row.sourceForm?.installmentFaceValue ?? form.installmentFaceValue));
+  const visiblePortabilityCount = displayedPortabilityQuoteCount(rows, conditionFor);
   const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, ...(statement ? { illiterate: statement.illiterate } : {}), partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: String(selected?.term || form.numberOfInstallments) });
   const toggleQuote = (row:SimulationRow) => {
     if (loading || savedRows.includes(row)) return;
@@ -569,14 +572,16 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   if(!isOpen)return null;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
-      <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{statement?'INSS · Simulação completa por extrato':'INSS · Portabilidade + Refinanciamento'}</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
+      <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{statement?.contracts.length===0?'INSS · NOVO pela margem do extrato':statement?'INSS · Simulação completa por extrato':'INSS · Portabilidade + Refinanciamento'}</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement?.contracts.length===0?'Compare ofertas de NOVO com a margem disponível do extrato.':statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
       {!statement && <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>}
       {step===2 && (statement
         ? <section aria-label="Resumo dos contratos do extrato" className="flex flex-wrap gap-x-7 gap-y-2 border-b border-[var(--field-border)] px-5 py-3 text-xs">
             <span>Cliente: <strong>{form.name||'Benefício INSS'}</strong></span>
-            <span>Contratos: <strong>{contractQueue.length}</strong></span>
-            <span>Parcelas originais somadas: <strong>{currency(contractQueue.reduce((sum,item)=>sum+Number(parseCurrency(item.installmentFaceValue)||0),0))}</strong></span>
-            <span>Prazo de referência: <strong>{form.numberOfInstallments} meses</strong>{inssNovoConsultationTerms(form.birthDate).includes(60)&&Number(form.numberOfInstallments)>60?' · alternativas em 60 meses quando elegíveis':''}</span>
+            {contractQueue.length>0 && <>
+              <span>Contratos: <strong>{contractQueue.length}</strong></span>
+              <span>Parcelas originais somadas: <strong>{currency(contractQueue.reduce((sum,item)=>sum+Number(parseCurrency(item.installmentFaceValue)||0),0))}</strong></span>
+            </>}
+            <span>Prazo de referência: <strong>{form.numberOfInstallments} meses</strong></span>
           </section>
         : <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>)}
       <div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
@@ -619,11 +624,11 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {step===2&&!statement && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar ao contrato"/>}
       {step===2 && error && <p role="alert" className="my-3 rounded-lg bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)]">{error}</p>}
       <div hidden={step!==2}>
-      {statement && <nav aria-label="Modalidade da simulação" className="sticky top-0 z-10 grid grid-cols-2 gap-2 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-2">
-        <button type="button" aria-pressed={activeTab==='PORT'} onClick={()=>setActiveTab('PORT')}
+      {statement && <nav aria-label="Modalidade da simulação" className={'sticky top-0 z-10 grid gap-2 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 '+(statement.contracts.length>0?'grid-cols-2':'grid-cols-1')}>
+        {statement.contracts.length>0 && <button type="button" aria-pressed={activeTab==='PORT'} onClick={()=>setActiveTab('PORT')}
           className={'rounded-lg px-3 py-3 text-sm font-bold '+(activeTab==='PORT'?'bg-[var(--action)] text-[var(--action-ink)]':'border border-[var(--field-border)] text-[var(--text-secondary)]')}>
-          PORTABILIDADE ({new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size} bancos · {rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).length} condições) {selectedRows.length>0?' · '+selectedRows.length+' selecionadas':''}
-        </button>
+          PORTABILIDADE ({visiblePortabilityCount}) {selectedRows.length>0?' · '+selectedRows.length+' selecionadas':''}
+        </button>}
         <button type="button" aria-pressed={activeTab==='NEW'} onClick={()=>setActiveTab('NEW')}
           className={'rounded-lg px-3 py-3 text-sm font-bold '+(activeTab==='NEW'?'bg-[var(--action)] text-[var(--action-ink)]':'border border-[var(--field-border)] text-[var(--text-secondary)]')}>
           NOVO ({marginOffers.length}) {chosenMargin?' · 1 selecionada':''}
@@ -783,7 +788,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         </section>
       </details>}
       {(!statement||activeTab==='PORT')&&rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.contractLabel} · {row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
-      {(!statement||activeTab==='PORT')&&<BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />}
+      {(!statement||(activeTab==='PORT'&&statement.contracts.length>0))&&<BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />}
       </div>
       </div>
     </div>
