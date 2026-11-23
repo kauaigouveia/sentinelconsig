@@ -5,7 +5,7 @@ import {cleanup,render,screen} from '@testing-library/react';
 import {inssNovoConsultationTerms,normalizeInssNovoOffers,dedupeInssNovoOffers}
   from '../src/lib/inssNovoConsultationTerms';
 import {nossaFintechAgeError,finantoAgeError} from '../src/lib/inssEligibility';
-import {PortabilityResults} from '../src/components/simulation/PortabilityResults';
+import {PortabilityResults,displayedPortabilityQuoteCount} from '../src/components/simulation/PortabilityResults';
 import {readFileSync} from 'node:fs';
 
 afterEach(()=>cleanup());
@@ -67,7 +67,27 @@ describe('Extrato INSS — consulta por prazos sem suposições sobre os bancos'
     expect(source).toContain("numberOfInstallments:'60'");
     expect(source).toContain("term: String(selected?.term || form.numberOfInstallments)");
     expect(source).toContain("inssNovoConsultationTerms(statement.customer.birthDate)");
-    expect(source).toContain("PORTABILIDADE ({new Set(rows.filter(row=>row.success");
+    expect(source).toContain("PORTABILIDADE ({visiblePortabilityCount})");
+    expect(source).not.toContain("alternativas em 60 meses quando elegíveis");
     expect(source).toContain("calculateNossaFintech(alternate)");
   });
+});
+
+it('o indicador de PORT conta as mesmas duas ofertas apresentadas, não 27 linhas calculadas',()=>{
+  // Doze tabelas de cada instituição têm condições alternativas; o comparador
+  // mostra apenas uma opção preferencial por banco/contrato.
+  const rows=[
+    ...Array.from({length:14},(_,i)=>({
+      provider:'PARANA',contractLabel:'Contrato 2',success:true,skipped:false,
+      troco:10419-i*10,table:{name:'Paraná '+i},term:108,
+      data:{rate:1.85,installment:385},
+    })),
+    ...Array.from({length:13},(_,i)=>({
+      provider:'FACTA',contractLabel:'Contrato 2',success:true,skipped:false,
+      troco:5836-i*10,table:{name:'FACTA '+i},term:60,
+      data:{rate:1.85,installment:385},
+    })),
+  ];
+  expect(rows).toHaveLength(27);
+  expect(displayedPortabilityQuoteCount(rows,row=>({rate:row.data.rate,installment:row.data.installment}))).toBe(2);
 });
