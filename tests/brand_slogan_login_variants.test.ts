@@ -52,7 +52,8 @@ describe('Sentinel Consig — institutional slogan and separate login experience
       expect(content, file).toContain(slogan.replace(' em cada operação.', ''));
     }
     expect(read('src/lib/branding.ts')).toContain(`tagline: '${slogan}'`);
-    expect(read('index.html')).toContain(`Sentinel Consig | ${slogan}`);
+    expect(read('index.html')).toContain('<title>Sentinel Consig</title>');
+    expect(read('index.html')).toContain(slogan);
   });
 
   it('styles the partner login separately without affecting the employee login', () => {
