@@ -576,7 +576,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             <span>Cliente: <strong>{form.name||'Benefício INSS'}</strong></span>
             <span>Contratos: <strong>{contractQueue.length}</strong></span>
             <span>Parcelas originais somadas: <strong>{currency(contractQueue.reduce((sum,item)=>sum+Number(parseCurrency(item.installmentFaceValue)||0),0))}</strong></span>
-            <span>Prazo: <strong>{form.numberOfInstallments} meses</strong></span>
+            <span>Prazo de referência: <strong>{form.numberOfInstallments} meses</strong>{inssNovoConsultationTerms(form.birthDate).includes(60)&&Number(form.numberOfInstallments)>60?' · alternativas em 60 meses quando elegíveis':''}</span>
           </section>
         : <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>)}
       <div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
@@ -644,8 +644,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
       {(!statement||activeTab==='PORT')&&happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {(!statement||activeTab==='PORT')&&happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
-      {statement && activeTab==='PORT' && !loading && <details className="mt-3 rounded-lg border border-[var(--field-border)] p-3 text-xs">
-        <summary className="cursor-pointer font-semibold">Bancos consultados e situações ({new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size} com ofertas)</summary>
+      {statement && activeTab==='PORT' && !loading && <details open={new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size<=1} className="mt-3 rounded-lg border border-[var(--field-border)] p-3 text-xs">
+        <summary className="cursor-pointer font-semibold">Bancos e situação das cotações ({new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size} com ofertas)</summary>
         <div className="mt-2 flex flex-wrap gap-2">
           {['DAYCOVAL','C6','PARANA','FINANTO','FACTA','Nossa Fintech','HAPPY','BMG'].map(bank=><span key={bank} className="rounded-md border border-[var(--field-border)] px-2 py-1">
             {bank==='PARANA'?'Paraná Banco':bank} · {rows.some(row=>row.provider===bank&&row.success&&!row.skipped&&Number(row.troco)>0)?'com condição':'sem oferta calculada'}
@@ -692,7 +692,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
               <span className="mt-1 block text-[var(--text-secondary)]">{quote.table} · {quote.term||108} meses · {formatMonthlyRate(quote.rate)} · {selectedMargin===quote.index?'Selecionada':'Selecionar'}</span>
             </button>)}</div>
         </details>}
-        {marginState==='ready' && <details className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
+        {marginState==='ready' && <details open={marginOffers.length===0} className="rounded-lg border border-[var(--field-border)] p-3 text-xs">
           <summary className="cursor-pointer font-semibold">Status das integrações de NOVO · {inssNovoConsultationTerms(statement.customer.birthDate).join(', ')} meses consultados</summary>
           <div className="mt-2 flex flex-wrap gap-2">{['C6','FACTA','Nossa Fintech','FINANTO','HAPPY','BMG'].map(bank=>{
             const found=marginOffers.some(quote=>quote.provider.toUpperCase().includes(bank.toUpperCase()));
@@ -748,7 +748,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         </section>}
       </section>}
       {(!statement||activeTab==='PORT')&&rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
-      {(!statement||activeTab==='PORT')&&providerNotes.length > 0 && <details className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
+      {(!statement||activeTab==='PORT')&&providerNotes.length > 0 && <details open={Boolean(statement)&&new Set(rows.filter(row=>row.success&&!row.skipped&&Number(row.troco)>0).map(row=>row.provider)).size<=1} className="mt-4 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]"><summary className="cursor-pointer font-semibold">Pendências e orientações por banco ({new Set(providerNotes).size})</summary><div className="mt-3 space-y-2">{[...new Set(providerNotes)].map(note => <p key={note}>{note}</p>)}</div></details>}
       {/* Mantém montado o comparador para preservar aba de unificações, filtros,
           página e seleções quando o operador alterna para NOVO. */}
       {rows.some(row => !row.skipped) && <div className={statement&&activeTab==='NEW'?'hidden':''}>
