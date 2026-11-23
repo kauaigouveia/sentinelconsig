@@ -142,7 +142,9 @@ export class PartnerSimulationService {
           if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'UNSUPPORTED',message:'Integração FINANTO não habilitada ou não configurada nesta empresa.'});
           return;
         }
-        const startOffers=offers.length;
+        // Outras instituições rodam em paralelo: o contador global de ofertas
+        // não indica se a FINANTO calculou uma condição positiva.
+        const startOffers=offers.filter(offer=>offer.provider==='FINANTO').length;
         const ageError = finantoAgeError(input.birthDate, input.term,undefined,input.operation);
         if (ageError){
           if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',
@@ -165,12 +167,21 @@ export class PartnerSimulationService {
           rules.push(...page.filter(rule => ids.has(String(rule.product?.id))));
           if (page.length < 20) break;
         }
+        if (!rules.length) {
+          if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'UNSUPPORTED',message:'A FINANTO não retornou tabelas vinculadas ao produto INSS desta modalidade.'});
+          return;
+        }
         const jobs = rules.flatMap(rule => {
           if (finantoBenefitError(rule.name || '', input.benefitType) || (['PORT', 'PORT_REFIN'].includes(input.operation) && finantoInstallmentError(rule.name || '', input.originalInstallment,input.operation))) return [];
           const rates = input.rate ? [input.rate] : [...new Set<number>((rule.items || []).map((item: any) => Number(item.rate || item.maxRate)).filter((rate: number) => rate > 0))];
           const choices = input.operation === 'PORT_REFIN' ? finantoRefinancingChoices(rule, input.term, input.rate,input.operation) : rates.flatMap(rate => finantoRuleItem(rule, input.term, rate,input.operation) ? [{ rate }] : []);
           return choices.map(choice => ({ rule, choice }));
         });
+        if (!jobs.length) {
+          if(!isPortability)assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'INELIGIBLE',message:'Nenhuma tabela FINANTO atende simultaneamente à espécie do benefício, ao prazo e às taxas disponíveis.'});
+          return;
+        }
+        let calculationFailures=0;
         for (let index = 0; index < jobs.length; index += 4) {
           await Promise.all(jobs.slice(index, index + 4).map(async ({ rule, choice }) => {
             try {
@@ -193,12 +204,15 @@ export class PartnerSimulationService {
               if (finantoCashOutError(rule.name || '', data,input.operation)) return;
               const amount = finantoCashOut(data);
               if (amount && amount > 0) offers.push({ provider: 'FINANTO', institution: data.lender?.name || data.fund?.name || 'FINANTO', state: 'OFFER', code: String(rule.code || rule.id), name: finantoTableLabel(rule,input.operation), amount, contractAmount: input.operation==='PORT_REFIN'?data.refinancing?.loanValue:data.loanValue, installment: data.installmentValue || input.value, term: input.term, rate: choice.rate });
-            } catch (error: any) { notes.push(`FINANTO (${rule.name}): ${error.message}`); }
+            } catch (error: any) { calculationFailures++; notes.push(`FINANTO (${rule.name}): ${error.message}`); }
           }));
         }
-        if(!isPortability&&offers.length===startOffers){
-          assessments.push({provider:'FINANTO',institution:'FINANTO',state:'PENDING',outcome:'MISSING_DATA',
-            message:'A FINANTO não retornou uma cotação positiva para o prazo e os dados informados. Confira as tabelas e taxas ativas na integração.'});
+        if(!isPortability&&offers.filter(offer=>offer.provider==='FINANTO').length===startOffers){
+          const technical=calculationFailures>0;
+          assessments.push({provider:'FINANTO',institution:'FINANTO',state:technical?'ERROR':'PENDING',outcome:technical?'TECHNICAL_ERROR':'MISSING_DATA',
+            message:technical
+              ? `FINANTO: ${calculationFailures} de ${jobs.length} cálculos apresentaram erro na API. Confira os motivos por tabela e a conexão bancária.`
+              : 'A FINANTO concluiu as consultas sem retornar um valor líquido positivo para as tabelas e o prazo selecionados.'});
         }
       }),
     ];
