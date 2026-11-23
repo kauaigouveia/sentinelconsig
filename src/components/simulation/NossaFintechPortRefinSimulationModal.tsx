@@ -359,42 +359,46 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     if(!forecast||forecast.loanBlocked){setProjectedState('ready');return;}
     setProjectedState('loading');setProjectedNote('');setProjectedApiOffers([]);setSelectedProjected(null);
     void (async()=>{
-      try{
-        const response=await request('/api/inss/statement/quote',{
-          method:'POST',credentials:'same-origin',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            confirmedClientAuthorization:true,operation:'PROJECTED_NEW',forecastYear:2027,
-            cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
-            benefitNumber:statement.customer.benefitNumber,
-            benefitType:Number(statement.customer.benefitType),
-            birthDate:statement.customer.birthDate,benefitStartDate:statement.benefitStart,
-            illiterate:statement.illiterate,legalRepresentative:statement.legalRepresentative===true,
-            loanBlocked:statement.loanBlocked===true,loanMargin:parseCurrency(statement.loanMargin),
-            income:parseCurrency(statement.income),term:108,
-          }),
-        });
-        const data=await readJsonResponse(response);
-        if(!response.ok)throw Error(data.error||'Cenário bancário de 2027 indisponível.');
-        if(scope.current!==identity()||transport.current?.signal.aborted)return;
-        if(data.scenario!=='PROJECTED_2027'||data.officialMarginAvailable!==false)
-          throw Error('O servidor não confirmou que esta consulta é apenas uma projeção.');
-        const quotes=(Array.isArray(data.offers)?data.offers:[])
-          .filter((item:any)=>item.scenario==='PROJECTED_2027'&&item.nonBinding===true&&Number(item.amount)>0)
-          .map((item:any)=>({
-            provider:String(item.provider||item.institution||'Banco'),
-            institution:String(item.institution||item.provider||'Banco'),
-            table:String(item.table||'Condição INSS'),amount:Number(item.amount),
-            installment:42,term:Number(item.term)>0?Number(item.term):null,
-            rate:Number(item.rate)>0?Number(item.rate):null,
-            source:item.source==='PLANILHA'?'PLANILHA' as const:'API' as const,
-          }));
-        setProjectedApiOffers(quotes);
-        setProjectedNote((Array.isArray(data.notices)?data.notices:[]).join(' · ').slice(0,900));
-      }catch(error:any){
-        if(!transport.current?.signal.aborted)setProjectedNote(error.message||'O cenário de aumento não foi calculado nas APIs.');
-      }finally{
-        if(scope.current===identity()&&!transport.current?.signal.aborted)setProjectedState('ready');
+      const quotes:ReturnType<typeof normalizeInssNovoOffers>=[];
+      const notes:string[]=[];
+      for(const term of inssNovoConsultationTerms(statement.customer.birthDate)){
+        if(transport.current?.signal.aborted||scope.current!==identity())break;
+        try{
+          const response=await request('/api/inss/statement/quote',{
+            method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              confirmedClientAuthorization:true,operation:'PROJECTED_NEW',forecastYear:2027,
+              cpf:normalizeCpf(statement.customer.cpf),name:statement.customer.name,
+              benefitNumber:statement.customer.benefitNumber,
+              benefitType:Number(statement.customer.benefitType),
+              birthDate:statement.customer.birthDate,benefitStartDate:statement.benefitStart,
+              illiterate:statement.illiterate,legalRepresentative:statement.legalRepresentative===true,
+              loanBlocked:statement.loanBlocked===true,loanMargin:parseCurrency(statement.loanMargin),
+              income:parseCurrency(statement.income),term,
+            }),
+          });
+          const data=await readJsonResponse(response);
+          if(!response.ok)throw Error(data.error||'Cenário bancário de 2027 indisponível.');
+          if(scope.current!==identity()||transport.current?.signal.aborted)break;
+          if(data.scenario!=='PROJECTED_2027'||data.officialMarginAvailable!==false)
+            throw Error('O servidor não confirmou que esta consulta é apenas uma projeção.');
+          const found=normalizeInssNovoOffers(data,term,true);
+          quotes.push(...found);
+          setProjectedApiOffers(dedupeInssNovoOffers(quotes));
+          if(!found.length){
+            const warnings=(Array.isArray(data.notices)?data.notices:[]).slice(0,3).map((note:unknown)=>String(note).slice(0,180));
+            notes.push(`${term} meses: ${warnings.join(' · ')||'Nenhuma condição retornada.'}`);
+          }
+        }catch(error:any){
+          if(transport.current?.signal.aborted)break;
+          notes.push(`${term} meses: ${String(error?.message||'Consulta indisponível.').slice(0,180)}`);
+        }
+      }
+      if(scope.current===identity()&&!transport.current?.signal.aborted){
+        setProjectedApiOffers(dedupeInssNovoOffers(quotes));
+        setProjectedNote(notes.join(' · ').slice(0,1500));
+        setProjectedState('ready');
       }
     })();
   },[isOpen,statement,autoRunFromStatement,novoScenario,projectedState]);
