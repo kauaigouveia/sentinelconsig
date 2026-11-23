@@ -53,12 +53,12 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
   const [providerFilter, setProviderFilter] = useState('');
   const [page, setPage] = useState(0);
   const [copyStatus, setCopyStatus] = useState('');
-  const available = rows.filter(row => !row.skipped);
+  const available = rows.filter(row => row.success && !row.skipped && positive(row.troco));
   const providers = [...new Set(available.map(row => row.provider))].sort();
   const grouped = useMemo(() => {
     const byContract = new Map<string,Map<string,T[]>>();
-    for (const row of rows) {
-      if (row.skipped || Boolean(row.unified) !== unified || (providerFilter && row.provider !== providerFilter)) continue;
+    for (const row of available) {
+      if (Boolean(row.unified) !== unified || (providerFilter && row.provider !== providerFilter)) continue;
       const label = row.contractLabel || 'Contrato informado';
       if (!byContract.has(label)) byContract.set(label, new Map());
       const byProvider = byContract.get(label)!;
