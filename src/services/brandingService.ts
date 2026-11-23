@@ -1,4 +1,4 @@
-import { SYSTEM_IDENTITY } from '../lib/branding';
+import { browserBrandTitle, SYSTEM_IDENTITY } from '../lib/branding';
 
 export interface TenantBranding {
   companyName: string;
@@ -59,7 +59,7 @@ export class BrandingService {
 
   public static applyBrandingToDocument(branding: TenantBranding): void {
     const tenantName = branding.companyName || SYSTEM_IDENTITY.name;
-    document.title = `${tenantName} | Sentinel Consig`;
+    document.title = browserBrandTitle(window.location.pathname, tenantName);
 
     {
       let iconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
@@ -70,7 +70,7 @@ export class BrandingService {
       }
       iconLink.removeAttribute('type');
       const favicon = branding.faviconUrl || branding.logoUrl;
-      iconLink.href = !favicon || favicon.startsWith('/branding/sentinel-') ? '/branding/sentinel-favicon-v6-32.png' : favicon;
+      iconLink.href = !favicon || favicon.startsWith('/branding/sentinel-') ? SYSTEM_IDENTITY.defaultFavicon : favicon;
     }
   }
 }
