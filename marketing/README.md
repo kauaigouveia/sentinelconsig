@@ -50,3 +50,7 @@ ORDER BY created_at DESC LIMIT 100;
 ## Validações pendentes
 
 O upload do Worker, as rotas e o DNS foram confirmados pela API Cloudflare; testes de navegador externo e entrega efetiva de e-mails dependem de uma verificação posterior. A proposta comercial define valores, usuários, recursos e contratos; não há checkout nem assinatura automática nesta versão.
+
+## Identidade e animações (23/11/2026)
+
+Website agora usa o arquivo **oficial da aplicação** `public/branding/sentinel-wordmark-dark-v6.png` (SHA de blob reutilizado no diretório `marketing/branding/official-wordmark-v6.png`), com favicon `sentinel-favicon-v6-32.png`. Não redesenhar nem gerar outra marca. A Cloudflare entrega cópia binária exata no Worker e reflete a versão atual de `marketing/index.html`. Animações de hero, glow, painel, barras e estados; `prefers-reduced-motion` respeitado. Indicadores são fictícios e continuam identificados como ilustrativos.

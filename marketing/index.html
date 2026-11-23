@@ -11,7 +11,7 @@
   <meta property="og:description" content="Sua operação financeira mais organizada, conectada e inteligente.">
   <meta property="og:url" content="https://sentinelconsig.com.br/">
   <link rel="canonical" href="https://sentinelconsig.com.br/">
-  <link rel="icon" type="image/svg+xml" href="/branding/favicon.svg">
+  <link rel="icon" type="image/png" href="/branding/favicon-v6.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -138,6 +138,66 @@
     @media(max-width:1080px){.nav{gap:18px}.header-actions{gap:12px}.hero-grid{gap:28px}h1{font-size:52px}.split-grid{gap:40px}.closing-box{padding:50px}}
     @media(max-width:860px){.header-wrap{height:76px}.menu-toggle{display:block;margin-left:auto}.nav{display:none;position:absolute;left:0;right:0;top:76px;background:#0d222d;border-bottom:1px solid #335361;padding:24px 26px;flex-direction:column;align-items:flex-start;gap:21px;box-shadow:var(--shadow)}.nav.open{display:flex}.header-actions{margin-left:0}.header-actions .primary{display:none}.hero{padding:72px 0 92px}.hero-grid{grid-template-columns:1fr}.hero-copy{max-width:620px}.device{max-width:650px;margin:25px auto 0;transform:none}.ribbon-inner{display:block}.ribbon-list{margin-top:20px}.feature-grid{grid-template-columns:repeat(2,1fr)}.split-grid{grid-template-columns:1fr}.flow-panel{max-width:650px}.plans-grid{grid-template-columns:1fr 1fr}.plan:last-child{grid-column:1/-1}.faq-grid{gap:40px}.footer-grid{grid-template-columns:1.2fr 1fr 1fr}.footer-grid>div:last-child{grid-column:1/-1}.closing-box{display:block}.closing-box .button{margin-top:26px}}
     @media(max-width:570px){.container{width:min(100% - 34px,1168px)}.header-wrap{gap:12px}.brand{width:158px;height:44px}.brand img{width:160px}.login-link{font-size:11px}.menu-toggle{order:3;margin-left:0}.header-actions{margin-left:auto}.hero{padding:63px 0 80px}h1{font-size:42px}.hero-copy{font-size:15px}.hero-cta{align-items:stretch}.hero-cta .button{width:100%}.device{padding:8px;border-radius:12px}.screen-content{padding:12px}.screen-head{padding:0 12px;height:43px}.stat{padding:9px 6px}.stat strong{font-size:17px}.stat small{font-size:8px}.stat em{font-size:7px}.bar-chart{height:90px;gap:7px}.mini-row{padding:9px 7px;font-size:8px}.section{padding:78px 0}.section-head h2,.split-content h2,.closing h2{font-size:32px}.feature-grid,.workflow-grid,.plans-grid{grid-template-columns:1fr}.plan:last-child{grid-column:auto}.feature{min-height:auto}.split-section{padding:78px 0}.plans-section{padding:80px 0}.closing{padding:74px 0}.closing-box{padding:35px 25px}.faq{padding-bottom:80px}.faq-grid{grid-template-columns:1fr;gap:16px}.footer-grid{grid-template-columns:1fr 1fr;gap:22px}.footer-brand{grid-column:1/-1}.footer-bottom{display:block}.footer-bottom span{display:block;margin-bottom:9px}.modal{padding:10px}.modal-card{padding:23px 17px;max-height:95vh}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+
+    /* Sentinel Consig V6 identity: original application artwork, no re-created wordmark. */
+    .container{width:min(1336px,calc(100% - 64px))}
+    .header-wrap{gap:23px}
+    .brand{width:224px;height:75px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;overflow:visible}
+    .brand img{display:block;width:207px;height:66px;max-width:100%;object-fit:contain;transform:none;animation:brandArrival .9s ease both}
+    .brand-tagline{font-size:9px;line-height:1;color:#a7c4d0;white-space:nowrap;margin:-5px 0 0 5px;letter-spacing:.015em;font-weight:600}
+    .brand:hover img{filter:drop-shadow(0 0 12px rgba(75,214,229,.25));transform:translateY(-1px)}
+    .brand img{transition:filter .25s,transform .25s}
+    .nav{gap:23px}
+    footer .brand{height:84px}
+    footer .brand img{width:217px;height:72px}
+    footer .brand-tagline{margin-top:-5px}
+    .hero{overflow:hidden}
+    .hero-grid{gap:58px}
+    .hero-aura{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;filter:blur(34px);opacity:.6}
+    .aura-left{width:390px;height:390px;left:-210px;top:60%;background:radial-gradient(circle,#16677d66,transparent 69%);animation:auraLeft 22s ease-in-out infinite alternate}
+    .aura-right{width:580px;height:580px;right:-110px;top:-105px;background:radial-gradient(circle,#20b0c73b,transparent 67%);animation:auraRight 19s ease-in-out infinite alternate}
+    .hero::after{animation:gridMove 28s linear infinite}
+    .hero-left .announcement{animation:heroEnter .85s .05s both}
+    .hero-left h1{animation:heroEnter .85s .14s both}
+    .hero-left .hero-copy{animation:heroEnter .85s .27s both}
+    .hero-left .hero-cta{animation:heroEnter .85s .39s both}
+    .hero-left .hero-note{animation:heroEnter .85s .51s both}
+    .hero h1 .accent{background:linear-gradient(105deg,#49cfe0 0%,#9ceaff 38%,#3bb8d3 68%,#49cfe0 100%);background-size:210% 100%;background-clip:text;-webkit-background-clip:text;color:transparent;animation:accentFlow 9s ease-in-out infinite alternate}
+    .device{animation:dashboardFloat 8s ease-in-out infinite;will-change:transform;box-shadow:0 40px 92px #0009,0 0 68px #0c9dd21c}
+    .device::before{content:"";position:absolute;z-index:-1;inset:-15px;border-radius:26px;pointer-events:none;background:linear-gradient(115deg,transparent 10%,#26ccf01b 46%,transparent 80%);filter:blur(19px);animation:deviceHalo 7s ease-in-out infinite alternate}
+    .screen-head .dots span{animation:signalBlink 2.8s ease-in-out infinite}
+    .screen-head .dots span:nth-child(2){animation-delay:.45s}
+    .screen-head .dots span:nth-child(3){animation-delay:.9s}
+    .stat{animation:statEnter .7s both}
+    .stat:nth-child(1){animation-delay:.3s}.stat:nth-child(2){animation-delay:.46s}.stat:nth-child(3){animation-delay:.62s}
+    .bar-chart{overflow:hidden}
+    .bar{transform-origin:center bottom;animation:barGrow 1s cubic-bezier(.2,.85,.25,1.12) both;animation-delay:calc(.5s + var(--bar-index,0) * 90ms)}
+    .graph{position:relative;overflow:hidden}
+    .graph::after{content:"";position:absolute;pointer-events:none;width:80px;height:180%;top:-35%;left:-90px;transform:rotate(15deg);background:linear-gradient(90deg,transparent,#63e8ef10,transparent);animation:graphSweep 9s ease-in-out infinite}
+    .screen-tag{animation:tagPulse 4s ease-in-out infinite}
+    .feature{will-change:auto}
+    .feature-icon{transition:transform .35s ease,box-shadow .35s ease}
+    .feature:hover .feature-icon{transform:translateY(-4px) rotate(-4deg);box-shadow:0 0 28px #3acadc1c}
+    .button{position:relative;overflow:hidden}
+    .button.primary::after{content:"";position:absolute;top:-50%;bottom:-50%;width:80px;left:-120px;background:linear-gradient(90deg,transparent,#fff5,transparent);transform:skewX(-22deg);transition:left .7s ease;pointer-events:none}
+    .button.primary:hover::after{left:calc(100% + 120px)}
+    @keyframes brandArrival{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes heroEnter{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes accentFlow{from{background-position:0% 50%}to{background-position:100% 50%}}
+    @keyframes gridMove{from{background-position:0 0}to{background-position:48px 48px}}
+    @keyframes auraLeft{from{transform:translate(0,0) scale(.9);opacity:.3}to{transform:translate(100px,-55px) scale(1.15);opacity:.65}}
+    @keyframes auraRight{from{transform:translate(0,0) scale(1);opacity:.38}to{transform:translate(-65px,80px) scale(1.1);opacity:.7}}
+    @keyframes dashboardFloat{0%,100%{transform:perspective(1000px) rotateY(-4deg) rotateX(2deg) translateY(0)}50%{transform:perspective(1000px) rotateY(-2.5deg) rotateX(1deg) translateY(-11px)}}
+    @keyframes mobileDashboardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+    @keyframes deviceHalo{from{opacity:.35}to{opacity:.86}}
+    @keyframes signalBlink{0%,100%{background:#506b78;box-shadow:none}45%{background:#5ce0e9;box-shadow:0 0 10px #47d9df}}
+    @keyframes statEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes barGrow{from{transform:scaleY(.04);opacity:.24}to{transform:scaleY(1);opacity:.86}}
+    @keyframes graphSweep{0%,17%{left:-120px;opacity:0}35%{opacity:1}54%,100%{left:calc(100% + 120px);opacity:0}}
+    @keyframes tagPulse{0%,100%{border-color:#246174;box-shadow:none}50%{border-color:#48a4bd;box-shadow:0 0 13px #12c7e21f}}
+    @media(max-width:1060px){.brand{width:189px}.brand img{width:187px}.nav{gap:14px}.header-actions{gap:10px}.hero-grid{gap:36px}}
+    @media(max-width:860px){.container{width:calc(100% - 38px)}.brand{width:204px}.brand img{width:197px}.device{animation:mobileDashboardFloat 7.5s ease-in-out infinite}}
+    @media(max-width:570px){.container{width:calc(100% - 34px)}.brand{width:158px;height:64px}.brand img{width:155px;height:54px}.brand-tagline{font-size:7.5px;margin-top:-7px;margin-left:5px}.header-wrap{gap:10px}.hero-grid{gap:32px}.hero h1{font-size:clamp(38px,10vw,44px)}.aura-right{right:-330px}.device{animation:mobileDashboardFloat 8s ease-in-out infinite}footer .brand{width:220px;height:83px}footer .brand img{width:208px;height:70px}footer .brand-tagline{font-size:9px;margin-top:-6px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important}.reveal{opacity:1;transform:none}}
   </style>
 </head>
@@ -145,7 +205,7 @@
   <a class="sr-only" href="#conteudo">Pular para o conteúdo</a>
   <header class="header">
     <div class="container header-wrap">
-      <a href="#inicio" class="brand" aria-label="Sentinel Consig — início"><img src="/branding/logo.svg" alt="Sentinel Consig" width="202" height="56"></a>
+      <a href="#inicio" class="brand" aria-label="Sentinel Consig — início"><img src="/branding/official-wordmark-v6.png" alt="Sentinel Consig" width="202" height="56"><span class="brand-tagline">Inteligência em cada operação.</span></a>
       <nav class="nav" id="siteNav" aria-label="Navegação principal">
         <a href="#plataforma">Plataforma</a><a href="#recursos">Recursos</a><a href="#como-funciona">Como funciona</a><a href="#planos">Planos</a><a href="#duvidas">Perguntas frequentes</a>
       </nav>
@@ -158,6 +218,7 @@
   </header>
   <main id="conteudo">
     <section class="hero" id="inicio">
+      <div class="hero-aura aura-left" aria-hidden="true"></div><div class="hero-aura aura-right" aria-hidden="true"></div>
       <div class="container hero-grid">
         <div class="hero-left">
           <span class="announcement">Plataforma inteligente para crédito consignado</span>
@@ -236,7 +297,7 @@
     </div></div></section>
   </main>
   <footer><div class="container"><div class="footer-grid">
-    <div class="footer-brand"><a href="#inicio" class="brand" aria-label="Voltar ao início"><img src="/branding/logo.svg" width="202" height="56" alt="Sentinel Consig"></a><p>Plataforma de tecnologia para gestão operacional no mercado de crédito consignado.</p><p style="color:#67dbea;font-weight:700">Inteligência em cada operação.</p></div>
+    <div class="footer-brand"><a href="#inicio" class="brand" aria-label="Voltar ao início"><img src="/branding/official-wordmark-v6.png" width="202" height="56" alt="Sentinel Consig"><span class="brand-tagline">Inteligência em cada operação.</span></a><p>Plataforma de tecnologia para gestão operacional no mercado de crédito consignado.</p><p style="color:#67dbea;font-weight:700">Inteligência em cada operação.</p></div>
     <div><h4>Plataforma</h4><nav><a href="#plataforma">Sobre</a><a href="#recursos">Funcionalidades</a><a href="#como-funciona">Como funciona</a><a href="#planos">Planos</a></nav></div>
     <div><h4>Informações</h4><nav><a href="/politica-de-privacidade">Privacidade</a><a href="/condicoes-comerciais">Condições comerciais</a><a href="#duvidas">Perguntas frequentes</a></nav></div>
     <div><h4>Fale conosco</h4><nav><a href="mailto:comercial@sentinelconsig.com.br">comercial@sentinelconsig.com.br</a><a href="mailto:suporte@sentinelconsig.com.br">suporte@sentinelconsig.com.br</a><a href="https://app.sentinelconsig.com.br/">Acessar plataforma ↗</a></nav></div>
@@ -274,6 +335,7 @@
       var nav = document.getElementById("siteNav");
       var toggle = document.getElementById("menuToggle");
       document.getElementById("year").textContent = String(new Date().getFullYear());
+      document.querySelectorAll(".bar-chart .bar").forEach(function(el,index){el.style.setProperty("--bar-index",String(index));});
       var current = new Date(); var today = current.getFullYear() + "-" + String(current.getMonth()+1).padStart(2,"0") + "-" + String(current.getDate()).padStart(2,"0"); date.min = today;
       function openModal(type, selectedPlan) {
         lastFocused = document.activeElement;
