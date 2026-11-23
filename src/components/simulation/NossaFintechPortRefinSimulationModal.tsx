@@ -396,7 +396,12 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     setStep(2);
     // A margin-only statement must not enter portability validation (zero contracts).
     if(statement.contracts.length>0)void calculate({preventDefault:()=>{}} as React.FormEvent);
-    else {setRows([]);setProviderNotes([]);setActiveTab('NEW');}
+    else {
+      // NOVO-only still needs a cancellable request if the user closes the modal
+      // or the active tenant/session changes mid-consultation.
+      transport.current=new AbortController();
+      setRows([]);setProviderNotes([]);setActiveTab('NEW');
+    }
     void loadStatementMargin();
   },[isOpen,statement,autoRunFromStatement]);
 
