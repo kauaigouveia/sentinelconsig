@@ -123,7 +123,7 @@ export function NexusHome({rows,role,permissions=[],navigate,openProposal,newPro
       <div className="nx-ops-filter-main">
         <label>Data inicial<input type="date" value={start} onChange={e=>{setStart(e.target.value);resetPage();}}/></label>
         <label>Data final<input type="date" value={end} onChange={e=>{setEnd(e.target.value);resetPage();}}/></label>
-        <label className="nx-ops-search">Busca<div><Search size={17}/><input aria-label="Buscar movimentação" placeholder="Buscar parceiro, cliente, CPF, ADE ou convênio" value={query} onChange={e=>{setQuery(e.target.value);resetPage();}}/>{query&&<button type="button" aria-label="Limpar busca" onClick={()=>{setQuery('');resetPage();}}><X size={16}/></button>}</div></label>
+        <div className="nx-ops-search"><label htmlFor="nx-ops-search-input">Busca</label><div><Search size={17} aria-hidden="true"/><input id="nx-ops-search-input" aria-label="Buscar movimentação" placeholder="Buscar parceiro, cliente, CPF, ADE ou convênio" value={query} onChange={e=>{setQuery(e.target.value);resetPage();}}/>{query&&<button type="button" aria-label="Limpar busca" onClick={()=>{setQuery('');resetPage();}}><X size={16} aria-hidden="true"/></button>}</div></div>
       </div>
       <div className="nx-ops-filter-extra">
         <label>Banco<select value={bank} onChange={e=>{setBank(e.target.value);resetPage();}}><option value="">Todos os bancos</option>{options(portfolio.map(r=>r.bank)).map(v=><option key={v}>{v}</option>)}</select></label>
