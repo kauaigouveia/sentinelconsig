@@ -76,14 +76,14 @@
 /* Compact navigation only while the main dashboard is visible. Keep mobile navigation, permissions and routes intact. */
 @media(min-width:981px){
  .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard){grid-template-columns:200px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) auto}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.nx-sidebar{padding:13px 9px;background:#11212d;border-right-color:#253745}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.nx-sidebar{padding:13px 9px;background:var(--sc-nav-bg);border-right-color:var(--sc-nav-border)}
  .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.sentinel-header{height:56px;min-height:56px}
  .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.sentinel-main{padding:16px 18px 24px}
- .s6-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-brand{padding:5px 8px 15px}
- .s6-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-tagline{font-size:9px!important}
- .s6-root .sentinel-stage:has(.nx-ops-dashboard) .nx-quick-nav a{min-height:36px;gap:8px;padding:0 9px;border-radius:7px;font-size:11px}
- .s6-root .sentinel-stage:has(.nx-ops-dashboard) .nx-group>button{min-height:35px;gap:8px;font-size:11px}
- .s6-root .sentinel-stage:has(.nx-ops-dashboard) .nx-group-links a{font-size:11px;padding:7px 8px}
- .s6-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-rule{margin:12px 8px}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-brand{padding:5px 8px 15px}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-tagline{font-size:9px!important}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-quick-nav a{min-height:36px;gap:8px;padding:0 9px;border-radius:7px;font-size:11px}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-group>button{min-height:35px;gap:8px;font-size:11px}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-group-links a{font-size:11px;padding:7px 8px}
+ .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-rule{margin:12px 8px}
 }
 @media(prefers-reduced-motion:reduce){.s6-root .nx-ops-dashboard button{transition:none!important}}
