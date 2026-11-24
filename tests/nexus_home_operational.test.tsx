@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import {readFileSync} from 'node:fs';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,within,waitFor} from '@testing-library/react';
 import {NexusHome} from '../src/components/nexus/NexusHome';
@@ -74,4 +75,23 @@ it('não apresenta uma falha de consulta como zero simulações',async()=>{
   render(<NexusHome {...props}/>);
   await waitFor(()=>expect(screen.getByText('Simulações salvas').closest('article')?.textContent).toContain('fonte indisponível'));
   expect(screen.getByText('Simulações salvas').closest('article')?.textContent).toContain('—');
+});
+
+it('mantém a busca em um único campo com rótulo e limpeza independentes',()=>{
+  render(<NexusHome {...props} demo/>);
+  const input=screen.getByRole('textbox',{name:'Buscar movimentação'});
+  expect(screen.getByText('Busca',{selector:'label'}).getAttribute('for')).toBe(input.id);
+  expect(input.closest('label')).toBeNull();
+  fireEvent.change(input,{target:{value:'Cliente Sintético'}});
+  fireEvent.click(screen.getByRole('button',{name:'Limpar busca'}));
+  expect((input as HTMLInputElement).value).toBe('');
+});
+it('compartilha dimensões do shell entre rotas e impede que o input cubra a borda',()=>{
+  const home=readFileSync('src/components/nexus/nexus-home.css','utf8');
+  const shell=readFileSync('src/styles/sentinel-clarity.css','utf8');
+  expect(home).not.toContain('.sentinel-stage:has(.nx-ops-dashboard)');
+  expect(shell).toContain('.sentinel-stage{grid-template-columns:200px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) auto}');
+  expect(shell).toContain('scrollbar-gutter:stable');
+  expect(home).toContain('background:transparent!important;box-shadow:none!important');
+  expect(home).toContain('flex:1 1 0;outline:none!important');
 });
