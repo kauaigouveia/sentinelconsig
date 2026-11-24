@@ -414,3 +414,27 @@
 @media(prefers-reduced-motion:reduce){
   .s6-root.s4-root.s3-root .nx-pendency-toggle:before{transition:none;}
 }
+
+/* Shared shell dimensions: independent of the mounted operational route.
+   Keep the dashboard's compact proportions across every S6 workspace module. */
+@media(min-width:981px){
+ .s6-root.s4-root.s3-root .sentinel-stage{grid-template-columns:200px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) auto}
+ .s6-root.s4-root.s3-root .sentinel-stage>.nx-sidebar{padding:13px 9px}
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-header{height:56px;min-height:56px}
+ .s6-root.s4-root.s3-root .sentinel-stage>.sentinel-main{padding:16px 18px 24px;min-width:0;scrollbar-gutter:stable}
+ .s6-root.s4-root.s3-root .nx-sidebar-brand{padding:5px 8px 15px}
+ .s6-root.s4-root.s3-root .nx-sidebar-brand .nx-sidebar-tagline{font-size:9px!important}
+ .s6-root.s4-root.s3-root .nx-quick-nav a{min-height:36px;gap:8px;padding:0 9px;border-radius:7px;font-size:12px}
+ .s6-root.s4-root.s3-root .nx-group>button{min-height:35px;gap:8px;padding:0 9px;font-size:12px}
+ .s6-root.s4-root.s3-root .nx-group-links a{font-size:11px;padding:7px 8px}
+ .s6-root.s4-root.s3-root .nx-sidebar-rule{margin:12px 8px}
+ .s6-root.s4-root.s3-root .nx-sidebar-all-apps{min-height:38px;padding:8px 9px;font-size:11px;gap:7px}
+}
+.s6-root.s4-root.s3-root .sentinel-view-body{width:100%;max-width:none;min-width:0}
+.s6-root.s4-root.s3-root .nx-page-context{margin-bottom:12px;padding-bottom:10px;gap:10px}
+.s6-root.s4-root.s3-root .sentinel-main :is(.ui-page-header,.module-command-header) h1,
+.s6-root.s4-root.s3-root .sentinel-main .nx-ops-heading h1{font-size:23px;font-weight:780;line-height:1.25;letter-spacing:-.035em}
+@media(max-width:640px){
+ .s6-root.s4-root.s3-root .sentinel-main :is(.ui-page-header,.module-command-header) h1,
+ .s6-root.s4-root.s3-root .sentinel-main .nx-ops-heading h1{font-size:21px}
+}
