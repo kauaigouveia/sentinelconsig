@@ -14,7 +14,12 @@ export type PreviewRow = {
   bank: string;
   bankId?: string;
   partner: string;
+  partnerId?: string;
   product: string;
+  convenio?: string;
+  statusCode?: string;
+  statusCategory?: string;
+  debt?: number | null;
   status: string;
   statusId: string;
   color: string;
@@ -60,6 +65,11 @@ export function readPreviewRows(): PreviewRow[] {
         partnerIndex.get(proposal.partnerId)?.fullName ||
         proposal.partnerCode ||
         "Não informado",
+      partnerId: proposal.partnerId,
+      convenio: proposal.convenioName || proposal.convenio?.name || "Não informado",
+      statusCode: status?.code || proposal.statusCode,
+      statusCategory: status?.standardCategory,
+      debt: proposal.debtBalance == null && proposal.contractBalance == null ? null : Number(proposal.debtBalance ?? proposal.contractBalance),
       product:
         proposal.productName ||
         productIndex.get(proposal.productId)?.name ||
