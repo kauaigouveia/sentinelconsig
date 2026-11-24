@@ -17,10 +17,13 @@
 .s6-root .nx-ops-filter-extra{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:9px;align-items:end}
 .s6-root .nx-ops-filters label{min-width:0;display:grid;gap:4px;font-size:10px;font-weight:700;color:var(--text-secondary)}
 .s6-root .nx-ops-filters :is(input,select){min-width:0;width:100%;height:35px;padding:0 9px;border:1px solid var(--field-border);border-radius:6px;background:var(--bg-canvas);color:var(--text-primary);font:inherit;font-size:11px;font-weight:500}
-.s6-root .nx-ops-search>div{height:35px;display:flex;align-items:center;gap:7px;padding:0 9px;border:1px solid var(--field-border);border-radius:6px;background:var(--bg-canvas)}
-.s6-root .nx-ops-search>div>svg{flex-shrink:0;color:var(--text-secondary)}
-.s6-root .nx-ops-search>div>input{border:0;background:transparent;padding:0;flex:1}
-.s6-root .nx-ops-search>div>button{padding:0!important;min-height:24px!important;border:0!important;background:transparent!important}
+.s6-root .nx-ops-search{display:grid;gap:4px;min-width:0}
+.s6-root .nx-ops-search>div{height:35px;min-width:0;display:flex;align-items:center;gap:7px;padding:0 9px;border:1px solid var(--field-border);border-radius:6px;background:var(--bg-canvas);overflow:hidden}
+.s6-root .nx-ops-search>div:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.s6-root .nx-ops-search>div>svg{flex:0 0 17px;color:var(--text-secondary)}
+.s6-root.s4-root.s3-root .sentinel-main .nx-ops-search>div>input{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:0!important;margin:0!important;min-width:0;width:0;height:100%;min-height:0;max-height:100%;flex:1 1 0;outline:none!important;outline-offset:0;line-height:normal}
+.s6-root .nx-ops-search>div>button{flex:0 0 24px;width:24px;height:24px;padding:0!important;min-height:24px!important;border:0!important;background:transparent!important}
+.s6-root .nx-ops-search>div>button:focus-visible{outline-offset:-2px}
 .s6-root .nx-ops-date-actions{align-self:end;justify-content:flex-end}
 .s6-root .nx-ops-invalid{font-size:11px;color:var(--danger-text);margin:0}
 .s6-root .nx-ops-metrics,.s6-root .nx-ops-statuses{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
@@ -73,17 +76,4 @@
 @container (max-width:780px){.s6-root .nx-ops-statuses{grid-template-columns:repeat(3,minmax(0,1fr))}.s6-root .nx-ops-filter-main{grid-template-columns:repeat(2,minmax(0,1fr))}.s6-root .nx-ops-search{grid-column:1/-1}.s6-root .nx-ops-filter-extra{grid-template-columns:repeat(2,minmax(0,1fr))}.s6-root .nx-ops-table{min-width:0;display:block}.s6-root .nx-ops-table thead{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}.s6-root .nx-ops-table tbody{display:grid;gap:9px;padding:9px}.s6-root .nx-ops-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--border-default);border-radius:8px;padding:6px;gap:0}.s6-root .nx-ops-table td{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;max-width:none;border:0;padding:8px;font-size:11px}.s6-root .nx-ops-table td[data-label]::before{content:attr(data-label);font-size:9px;text-transform:uppercase;color:var(--text-secondary);font-weight:700}.s6-root .nx-ops-table td:first-child{grid-column:1/-1;border-bottom:1px solid var(--border-subtle)}.s6-root .nx-ops-table td:last-child{align-items:flex-end;justify-content:center}.s6-root .nx-ops-metric>strong{font-size:19px}}
 @container (max-width:480px){.s6-root .nx-ops-metrics,.s6-root .nx-ops-statuses{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.s6-root .nx-ops-metric,.s6-root .nx-ops-status{padding:11px;min-height:100px}.s6-root .nx-ops-status{min-height:80px}.s6-root .nx-ops-heading{align-items:flex-start}.s6-root .nx-ops-heading h1{font-size:21px}.s6-root .nx-ops-actions{width:100%}.s6-root .nx-ops-actions button{flex:1}.s6-root .nx-ops-table-actions{width:100%}.s6-root .nx-ops-table-actions [role=group]{flex:1}.s6-root .nx-ops-table-actions [role=group] button{flex:1}.s6-root .nx-ops-table-scroll{min-height:180px}}
 @container (max-width:310px){.s6-root .nx-ops-metrics,.s6-root .nx-ops-statuses{grid-template-columns:1fr}.s6-root .nx-ops-filter-main,.s6-root .nx-ops-filter-extra{grid-template-columns:1fr}.s6-root .nx-ops-table tr{grid-template-columns:1fr}}
-/* Compact navigation only while the main dashboard is visible. Keep mobile navigation, permissions and routes intact. */
-@media(min-width:981px){
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard){grid-template-columns:200px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) auto}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.nx-sidebar{padding:13px 9px;background:var(--sc-nav-bg);border-right-color:var(--sc-nav-border)}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.sentinel-header{height:56px;min-height:56px}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard)>.sentinel-main{padding:16px 18px 24px}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-brand{padding:5px 8px 15px}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-tagline{font-size:9px!important}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-quick-nav a{min-height:36px;gap:8px;padding:0 9px;border-radius:7px;font-size:11px}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-group>button{min-height:35px;gap:8px;font-size:11px}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-group-links a{font-size:11px;padding:7px 8px}
- .s6-root.s4-root.s3-root .sentinel-stage:has(.nx-ops-dashboard) .nx-sidebar-rule{margin:12px 8px}
-}
 @media(prefers-reduced-motion:reduce){.s6-root .nx-ops-dashboard button{transition:none!important}}
