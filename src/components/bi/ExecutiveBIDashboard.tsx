@@ -60,6 +60,7 @@ import {biRequestsForTab,type BIDataSet,type BITabId} from '../../lib/biRequestP
 import { RealtimeService } from '../../services/realtimeService';
 import { formatCurrency } from '../../lib/utils';
 import { BIFilterBar } from './BIFilterBar';
+import { EvolveExtractPanel } from './EvolveExtractPanel';
 import { toastService } from '../ui/toastService';
 
 type BITab=BITabId;
@@ -340,6 +341,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-12 animate-fadeIn select-none p2-bi-workspace">
+      <EvolveExtractPanel />
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>

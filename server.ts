@@ -1,6 +1,7 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
+import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,type ExternalRow} from './server/services/evolveBIBridge.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
@@ -11872,6 +11873,40 @@ async function auditAndEnsureMasterUser() {
     }
     return filters;
   };
+
+
+  // Read-only WorkBank/EVOLVE extract. Never use request-supplied tenant or secrets.
+  app.get('/api/bi/evolve-extract', async (req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try {
+      const session=await getAuthSession(req);
+      if(!session)return res.status(401).json({error:'Autenticação necessária.'});
+      const tenantId=process.env.EVOLVE_BI_TENANT_ID;
+      const actor=await prisma.user.findUnique({where:{id:session.user.id},select:{tenantId:true,role:true,active:true,deletedAt:true}});
+      if(!allowedBridge(session,tenantId,process.env.EVOLVE_BI_MANAGER_IDS,actor)||
+        !hasPermission(session.user.role as Role,session.user.customPermissions,'dashboard.view')||
+        !hasPermission(session.user.role as Role,session.user.customPermissions,'financial.view')){
+        return res.status(403).json({error:'Integração indisponível neste perfil ou empresa.'});
+      }
+      const tenant=await prisma.tenant.findUnique({where:{id:tenantId!},select:{status:true,deletedAt:true}});
+      if(!tenant||tenant.deletedAt||tenant.status!=='ACTIVE')return res.status(403).json({error:'Empresa indisponível.'});
+      const token=process.env.EVOLVE_BI_TOKEN;
+      if(!token||token.length<48)return res.status(503).json({error:'Integração ainda não configurada.'});
+      const month=req.query.month;
+      if(!validEvolveMonth(month))return res.status(400).json({error:'Mês inválido.'});
+      const url=new URL('https://www.evolvepromotora.com.br/api/bi');url.searchParams.set('op','sentinel-read');url.searchParams.set('month',month);
+      const upstream=await fetch(url,{headers:{Authorization:'Bearer '+token,'X-Sentinel-Tenant':tenantId!},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000)});
+      if(!upstream.ok)return res.status(502).json({error:'Não foi possível consultar o extrator. Verifique a integração.'});
+      const payload=await upstream.json();
+      if(payload?.version!==1||payload.month!==month||!Array.isArray(payload.records)||payload.records.length>20000)return res.status(502).json({error:'Resposta inválida do extrator.'});
+      const rows=payload.records as ExternalRow[];
+      if(!rows.every(r=>r&&typeof r.id==='string'&&typeof r.partner==='string'&&typeof r.bank==='string'&&typeof r.category==='string'&&r.created?.startsWith(month)&&[r.gross,r.net,r.commission].every(v=>v===null||(typeof v==='number'&&Number.isFinite(v)))))return res.status(502).json({error:'Dados inválidos do extrator.'});
+      const {start,next}=monthRange(month);
+      const local=await prisma.proposal.findMany({where:{tenantId:tenantId!,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,standardCategory:true,contractValue:true,partner:{select:{code:true}},bank:{select:{name:true}}},take:20001});
+      if(local.length>20000)return res.status(413).json({error:'Volume de propostas acima do limite.'});
+      return res.json({month,importedAt:typeof payload.importedAt==='string'?payload.importedAt:null,...reconcile(rows,local)});
+    }catch{return res.status(502).json({error:'Não foi possível consultar a integração.'});}
+  });
 
   // 1. GET /api/bi/overview - Strategic Overview KPIs
   app.get('/api/bi/overview', async (req, res) => {
