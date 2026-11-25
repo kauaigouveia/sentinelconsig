@@ -34,7 +34,7 @@ export function getBIConnector(tenantId:string|undefined,env:Record<string,strin
   if(!v||typeof v!=='object')return false;
   const x=v as BIConnector;
   if(typeof x.name!=='string'||!x.name.trim()||x.name.length>100||typeof x.token!=='string'||x.token.length<48||typeof x.managerIds!=='string'||typeof x.url!=='string')return false;
-  try{const u=new URL(x.url);const allowed=['www.evolvepromotora.com.br',...(env.BI_CONNECTOR_ALLOWED_HOSTS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean)];return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/api/bi'&&allowed.includes(u.hostname)&&/^[a-z0-9.-]+\.[a-z]{2,}$/.test(u.hostname);}catch{return false;}
+  const m=/^https:\/\/([a-z0-9.-]+\.[a-z]{2,})\/api\/bi$/.exec(x.url);const allowed=['www.evolvepromotora.com.br',...(env.BI_CONNECTOR_ALLOWED_HOSTS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean)];return Boolean(m&&allowed.includes(m[1]));
  };
  if(env.BI_CONNECTORS_JSON){try{const map=JSON.parse(env.BI_CONNECTORS_JSON);if(!map||typeof map!=='object'||Array.isArray(map))return null;if(Object.prototype.hasOwnProperty.call(map,tenantId)){const x=map[tenantId];return valid(x)?x:null;}}catch{return null;}}
  if(tenantId!==env.EVOLVE_BI_TENANT_ID)return null;
