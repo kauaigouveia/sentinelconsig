@@ -2,7 +2,6 @@ import {randomUUID} from 'node:crypto';
 import {Prisma, PrismaClient, StandardStatusCategory} from '@prisma/client';
 import {isValidCpf} from '../../src/lib/utils.js';
 import {AuditLogService} from './auditLogService.js';
-import {getPartnerAliases} from './evolveBIBridge.js';
 
 const norm=(x:unknown)=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,' ');
 const nameKey=(x:unknown)=>norm(x).replace(/^EVOLVE\s*-\s*/,'');
@@ -36,11 +35,13 @@ export function rowIssue(x:any):string|null{
  return null;
 }
 type Partner={id:string;code:string;name:string;deletedAt:Date|null;status:string;promoterId:string|null};
-export function resolveInboundPartner<T extends Partner>(list:T[],code:string,name:string,aliases:Record<string,string>=Object.create(null)):{match:T|null;conflict:boolean}{
- const k=norm(code),n=nameKey(name);
- const mapped=aliases[k];const direct=list.filter(p=>norm(p.code)===k||norm(p.code).split('@').pop()===k);const candidates=mapped?list.filter(p=>norm(p.code)===norm(mapped)):direct;if(mapped&&(candidates.length!==1||direct.some(p=>p.id!==candidates[0].id)))return {match:null,conflict:true};
- if(candidates.length===1){const p=candidates[0];return {match:!p.deletedAt&&p.status==='ATIVO'&&nameKey(p.name)===n?p:null,conflict:!!p.deletedAt||p.status!=='ATIVO'||nameKey(p.name)!==n};}
- return {match:null,conflict:candidates.length>1||list.some(p=>nameKey(p.name)===n)};
+export function resolveInboundPartner<T extends Partner>(list:T[],code:string,name:string):{match:T|null;conflict:boolean}{
+ const n=nameKey(name);if(!n)return {match:null,conflict:true};
+ const candidates=list.filter(p=>nameKey(p.name)===n);
+ if(candidates.length===1){const p=candidates[0];return {match:!p.deletedAt&&p.status==='ATIVO'?p:null,conflict:!!p.deletedAt||p.status!=='ATIVO'};}
+ if(candidates.length>1)return {match:null,conflict:true};
+ // The code is only a uniqueness guard when creating a NEW partner, never a match criterion.
+ return {match:null,conflict:list.some(p=>norm(p.code)===norm(code))};
 }
 export async function processInbound(prisma:PrismaClient,tenantId:string,batch:Batch):Promise<Result>{
  return prisma.$transaction(async tx=>{
@@ -65,7 +66,7 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    tx.proposal.count({where:{tenantId,deletedAt:null}})
   ]);
   const pendingPartners:Prisma.PartnerCreateManyInput[]=[],pendingClients:Prisma.ClientCreateManyInput[]=[],pendingProposals:Prisma.ProposalCreateManyInput[]=[],pendingHistory:Prisma.StatusHistoryCreateManyInput[]=[];
-  const aliases=getPartnerAliases(tenantId);const partnerList:Partner[]=[...partners];const clientMap=new Map(clients.map(c=>[c.cpf,c]));
+  const partnerList:Partner[]=[...partners];const clientMap=new Map(clients.map(c=>[c.cpf,c]));
   const exact=(v:unknown,w:unknown)=>norm(v)===norm(w);
   for(const r of checked){
    if((seen.get(norm(r.id))||0)>1){mark('conflicts','Proposta repetida no lote');continue;}
@@ -81,8 +82,8 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    if(convMatch.length!==1){mark('conflicts','Convênio não identificado ou ambíguo');continue;}
    const convenio=convMatch[0];
    if(product.convenioIds.length&&!product.convenioIds.includes(convenio.id)){mark('conflicts','Produto incompatível com convênio');continue;}
-   const p=resolveInboundPartner(partnerList,r.partner,r.producer,aliases);
-   if(p.conflict){mark('conflicts','Código ou nome do parceiro divergente');continue;}
+   const p=resolveInboundPartner(partnerList,r.partner,r.producer);
+   if(p.conflict){mark('conflicts','Nome do parceiro ambíguo, inativo ou código ocupado para novo cadastro');continue;}
    const local=existing.filter(x=>exact(x.proposalNumber,r.id));
    if(local.length){
     const x=local[0];
