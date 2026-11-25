@@ -571,6 +571,7 @@ async function auditAndEnsureMasterUser() {
       const digest=(v:string)=>crypto.createHash('sha256').update(v).digest();
       if(!crypto.timingSafeEqual(digest(auth.slice(7)),digest(connector.token)))return res.status(403).json({error:'Integração não autorizada.'});
       if(!validateInboundBatch(req.body))return res.status(400).json({error:'Lote inválido.'});
+      if(req.body.rows.some((row: any)=>row && Object.prototype.hasOwnProperty.call(row,'portabilityProposalNumber')) && (tenantId!==process.env.EVOLVE_BI_TENANT_ID || tenantId!=='cmwwf76ef0000jm074ydgay0f'))return res.status(403).json({error:'Conciliação manual exclusiva da EVOLVE PROMOTORA.'});
       const allowed=(process.env.BI_EXTRACTOR_IMPORT_APPLY_TENANTS||'').split(',').map(s=>s.trim()).filter(Boolean);
       if(req.body.mode==='apply'&&!allowed.includes(tenantId))return res.status(403).json({error:'Gravação de propostas ainda não habilitada.'});
       const tenant=await prisma.tenant.findFirst({where:{id:tenantId,status:'ACTIVE',deletedAt:null},select:{id:true}});
