@@ -3,6 +3,7 @@ import type { Express, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { buildLogoBlobPath, downloadBlob, uploadBlob } from './azureBlobStorage.js';
 import { logger } from '../logger.js';
+import { DB_LOGO_FILE, LogoStorageLimitError, type TenantLogoStore } from './tenantLogoStore.js';
 
 const MAX_LOGO_SIZE = 2 * 1024 * 1024;
 const MAX_BASE64_LENGTH = Math.ceil(MAX_LOGO_SIZE / 3) * 4;
@@ -19,11 +20,12 @@ export interface TenantLogoRouteDependencies {
   tenantExists: (tenantId: string) => Promise<boolean>;
   upload?: typeof uploadBlob;
   download?: typeof downloadBlob;
+  logoStore?: TenantLogoStore;
 }
 
 type ImageMime = keyof typeof ACCEPTED_MIMES;
 
-type UploadStage = 'session' | 'tenant' | 'parse' | 'azure_upload';
+type UploadStage = 'session' | 'tenant' | 'parse' | 'azure_upload' | 'database_upload';
 
 /**
  * Report safe diagnostic categories only. Never serialize Azure errors,
@@ -99,8 +101,8 @@ export function parseTenantLogoUpload(body: unknown):
 }
 
 /**
- * Rotas de logo do White-Label: gravam imagens com nome aleatório na Azure
- * e permitem somente leitura pública de arquivos dentro de logos/{tenantId}.
+ * Rotas de logo do White-Label: novos uploads usam o armazenamento de marca
+ * persistente por tenant; URLs antigas da Azure continuam compatíveis.
  * A identidade/escopo do tenant vem exclusivamente da sessão validada.
  */
 export function registerTenantLogoRoutes(app: Express, deps: TenantLogoRouteDependencies): void {
@@ -141,7 +143,12 @@ export function registerTenantLogoRoutes(app: Express, deps: TenantLogoRouteDepe
       const parsed = parseTenantLogoUpload(req.body);
       if (!parsed.ok) return res.status(400).json({ error: parsed.reason });
 
-      // Do not trust client-side filenames; use a random, unique stored name.
+      if (deps.logoStore) {
+        stage = 'database_upload';
+        const storedName = await deps.logoStore.upload(tenantId, parsed.data, parsed.mime);
+        return res.status(201).json({ logoUrl: `/api/public/logos/${tenantId}/${storedName}` });
+      }
+      // Legacy storage adapter for existing deployments and compatibility tests.
       const { blobPath } = buildLogoBlobPath(tenantId, `${crypto.randomUUID()}.${parsed.extension}`);
       const storedName = blobPath.slice(blobPath.lastIndexOf('/') + 1);
       stage = 'azure_upload';
@@ -158,9 +165,11 @@ export function registerTenantLogoRoutes(app: Express, deps: TenantLogoRouteDepe
         storageCode: diagnosis.providerCode,
         durationMs: Date.now() - started,
       }, '[WHITELABEL] Upload failed');
-      const responseStatus = stage === 'azure_upload' ? 503 : 500;
+      if (err instanceof LogoStorageLimitError) return res.status(429).json({error:'Limite temporário de versões da logomarca atingido. Use a imagem já enviada ou tente novamente amanhã.'});
+      const storageFailure = stage === 'azure_upload' || stage === 'database_upload';
+      const responseStatus = storageFailure ? 503 : 500;
       return res.status(responseStatus).json({
-        error: stage === 'azure_upload'
+        error: storageFailure
           ? 'Não foi possível conectar ao armazenamento da logomarca. Contate o administrador.'
           : 'Erro interno ao preparar o upload. Contate o administrador.',
       });
@@ -169,11 +178,15 @@ export function registerTenantLogoRoutes(app: Express, deps: TenantLogoRouteDepe
 
   app.get('/api/public/logos/:tenantId/:fileName', async (req, res) => {
     const { tenantId, fileName } = req.params;
-    if (!SAFE_TENANT_ID.test(tenantId) || !SAFE_STORED_FILE.test(fileName))
+    if (!SAFE_TENANT_ID.test(tenantId) || (!SAFE_STORED_FILE.test(fileName) && !DB_LOGO_FILE.test(fileName)))
       return res.status(404).end();
 
     try {
-      const { buffer, contentType } = await (deps.download ?? downloadBlob)(`logos/${tenantId}/${fileName}`);
+      const image = DB_LOGO_FILE.test(fileName)
+        ? await deps.logoStore?.download(tenantId, fileName)
+        : await (deps.download ?? downloadBlob)(`logos/${tenantId}/${fileName}`);
+      if (!image) return res.status(404).end();
+      const { buffer, contentType } = image;
       if (!contentType || !(contentType in ACCEPTED_MIMES) || buffer.length > MAX_LOGO_SIZE)
         return res.status(404).end();
       res.setHeader('Content-Type', contentType);
