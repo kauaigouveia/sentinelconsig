@@ -1,7 +1,7 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
-import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,getPartnerAliases,externalPartnerCode,externalBIBank,type ExternalRow} from './server/services/evolveBIBridge.js';
+import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,externalBIBank,type ExternalRow} from './server/services/evolveBIBridge.js';
 import {validateInboundBatch,processInbound,resolveInboundPartner} from './server/services/extractorInbound.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
@@ -11988,8 +11988,7 @@ async function auditAndEnsureMasterUser() {
         const rows=await prisma.proposal.findMany({where:{tenantId,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,createdAt:true,standardCategory:true,type:true,contractValue:true,releasedValue:true,partner:{select:{tenantId:true,code:true,name:true,deletedAt:true}},bank:{select:{tenantId:true,name:true}}},take:5001,orderBy:{proposalNumber:'asc'}});
         if(rows.length>5000)return res.status(413).json({error:'Limite de 5.000 propostas por mês.'});
         if(rows.some(p=>!p.partner||p.partner.tenantId!==tenantId||p.partner.deletedAt||!p.bank||p.bank.tenantId!==tenantId))return res.status(409).json({error:'Existem propostas sem parceiro ou banco válido. Corrija antes do envio; o lote anterior foi preservado.'});
-        const aliases=getPartnerAliases(tenantId);
-        const records=rows.map(p=>({id:p.proposalNumber,partner:externalPartnerCode(p.partner!.code,aliases),producer:p.partner!.name,bank:externalBIBank(p.bank!.name),created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
+        const records=rows.map(p=>({id:p.proposalNumber,partner:p.partner!.code,producer:p.partner!.name,bank:externalBIBank(p.bank!.name),created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
         url.searchParams.set('op','sentinel-stage');
         const upstream=await fetch(url,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({month,records}),redirect:'error',signal:AbortSignal.timeout(25000)});
         if(!upstream.ok)return res.status(502).json({error:'BI recusou o envio. Verifique a integração e os dados.'});
