@@ -11882,7 +11882,8 @@ async function auditAndEnsureMasterUser() {
       const session=await getAuthSession(req);
       if(!session)return res.status(401).json({error:'Autenticação necessária.'});
       const tenantId=process.env.EVOLVE_BI_TENANT_ID;
-      if(!allowedBridge(session,tenantId,process.env.EVOLVE_BI_MANAGER_IDS)||
+      const actor=await prisma.user.findUnique({where:{id:session.user.id},select:{tenantId:true,role:true,active:true,deletedAt:true}});
+      if(!allowedBridge(session,tenantId,process.env.EVOLVE_BI_MANAGER_IDS,actor)||
         !hasPermission(session.user.role as Role,session.user.customPermissions,'dashboard.view')||
         !hasPermission(session.user.role as Role,session.user.customPermissions,'financial.view')){
         return res.status(403).json({error:'Integração indisponível neste perfil ou empresa.'});
