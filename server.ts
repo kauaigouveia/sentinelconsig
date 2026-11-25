@@ -3,6 +3,7 @@ import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/serv
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
+import { createTenantLogoStore } from './server/services/tenantLogoStore.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
@@ -7266,6 +7267,7 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   registerTenantLogoRoutes(app, {
     getAuthSession,
+    logoStore: createTenantLogoStore(prisma),
     tenantExists: async tenantId =>
       Boolean(await prisma.tenant.findFirst({
         where: { id: tenantId, deletedAt: null },
