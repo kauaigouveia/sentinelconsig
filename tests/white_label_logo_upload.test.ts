@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import express from 'express';
+import {createTenantLogoStore,LogoStorageLimitError} from '../server/services/tenantLogoStore';
+import type {PrismaClient} from '@prisma/client';
 import request from 'supertest';
 import { classifyLogoUploadFailure, parseTenantLogoUpload, registerTenantLogoRoutes } from '../server/services/tenantLogoRoutes';
 
@@ -138,5 +140,59 @@ describe('White-Label tenant logo upload and public serving', () => {
     expect(parseTenantLogoUpload({ fileBase64: `data:image/webp;base64,${webp.toString('base64')}`, mimeType: 'image/webp' }).ok).toBe(true);
     const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a]);
     expect(parseTenantLogoUpload({ fileBase64: `data:image/jpeg;base64,${jpeg.toString('base64')}`, mimeType: 'image/jpeg' }).ok).toBe(true);
+  });
+});
+
+describe('Persistent PostgreSQL branding storage',()=>{
+  function database(){
+    const rows=new Map<string,{id:string;tenantId:string;configKey:string;configValue:string;updatedAt:Date}>();
+    const labels=new Map<string,{logoUrl:string|null;faviconUrl:string|null}>();
+    const index=(tenantId:string,configKey:string)=>tenantId+'|'+configKey;
+    const db:any={
+      tenant:{findFirst:vi.fn(async ({where}:any)=>({id:where.id,whiteLabel:labels.get(where.id)||null}))},
+      systemConfig:{
+        findUnique:vi.fn(async ({where}:any)=>rows.get(index(where.tenantId_configKey.tenantId,where.tenantId_configKey.configKey))||null),
+        findFirst:vi.fn(async ({where}:any)=>rows.get(index(where.tenantId,where.configKey))||null),
+        count:vi.fn(async ({where}:any)=>[...rows.values()].filter(r=>r.tenantId===where.tenantId&&r.configKey.startsWith(where.configKey.startsWith)).length),
+        deleteMany:vi.fn(async ({where}:any)=>{for(const [k,r] of rows)if(r.tenantId===where.tenantId&&r.configKey.startsWith(where.configKey.startsWith)&&!where.configKey.notIn.includes(r.configKey)&&r.updatedAt<where.updatedAt.lt)rows.delete(k);}),
+        upsert:vi.fn(async ({create}:any)=>rows.set(index(create.tenantId,create.configKey),{...create,id:index(create.tenantId,create.configKey),updatedAt:new Date()})),
+      },
+    };
+    db.$transaction=vi.fn(async (fn:any)=>fn(db));
+    return {db:db as PrismaClient,rows,labels};
+  }
+  it('persists and serves logos without Azure, validates hash and isolates tenants',async()=>{
+    const {db,rows}=database();
+    const store=createTenantLogoStore(db);
+    const legacyUpload=vi.fn().mockRejectedValue(Object.assign(Error('DNS failure'),{code:'ENOTFOUND'}));
+    const legacyDownload=vi.fn().mockResolvedValue({buffer:PNG,contentType:'image/png'});
+    const app=express();app.use(express.json({limit:'4mb'}));
+    registerTenantLogoRoutes(app,{getAuthSession:async()=>({user:{role:'PLATFORM_MASTER'}}),tenantExists:async()=>true,logoStore:store,upload:legacyUpload,download:legacyDownload});
+    const uploaded=await request(app).post('/api/upload/logo').send(UPLOAD);
+    expect(uploaded.status).toBe(201);
+    expect(uploaded.body.logoUrl).toMatch(/^\/api\/public\/logos\/tenant-a\/db_[a-f0-9]{64}\.png$/);
+    const image=await request(app).get(uploaded.body.logoUrl);
+    expect(image.status).toBe(200);expect(image.body).toEqual(PNG);
+    expect(legacyUpload).not.toHaveBeenCalled();expect(legacyDownload).not.toHaveBeenCalled();
+    expect((await request(app).get(uploaded.body.logoUrl.replace('tenant-a','tenant-b'))).status).toBe(404);
+    expect((await request(app).post('/api/upload/logo').send(UPLOAD)).body.logoUrl).toBe(uploaded.body.logoUrl);
+    expect(rows.size).toBe(1);
+    const stored=[...rows.values()][0];stored.configValue=Buffer.from('corrupt').toString('base64');
+    expect((await request(app).get(uploaded.body.logoUrl)).status).toBe(404);
+    expect((await request(app).get('/api/public/logos/tenant-a/1795629100000_12345678-1234-1234-1234-123456789012.png')).status).toBe(200);
+    expect(legacyDownload).toHaveBeenCalledTimes(1);
+  });
+  it('preserves the saved logo, expires abandoned drafts, and bounds storage',async()=>{
+    const {db,rows,labels}=database();const store=createTenantLogoStore(db);
+    const first=await store.upload('tenant-a',PNG,'image/png');
+    labels.set('tenant-a',{logoUrl:'/api/public/logos/tenant-a/'+first,faviconUrl:null});
+    const draft=await store.upload('tenant-a',Buffer.concat([PNG,Buffer.from('draft')]),'image/png');
+    for(const row of rows.values())row.updatedAt=new Date(0);
+    await store.upload('tenant-a',Buffer.concat([PNG,Buffer.from('new')]),'image/png');
+    expect(await store.download('tenant-a',first)).not.toBeNull();
+    expect(await store.download('tenant-a',draft)).toBeNull();
+    for(let i=0;i<18;i++)await store.upload('tenant-a',Buffer.concat([PNG,Buffer.from('test'+i)]),'image/png');
+    await expect(store.upload('tenant-a',Buffer.concat([PNG,Buffer.from('limit')]),'image/png')).rejects.toBeInstanceOf(LogoStorageLimitError);
+    expect(rows.size).toBe(20);
   });
 });
