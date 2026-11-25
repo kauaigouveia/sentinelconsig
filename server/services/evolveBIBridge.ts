@@ -50,16 +50,6 @@ export function partnerCandidates(rows:unknown){
  return {rows:[...out].filter(([k])=>!conflicts.has(k)).map(([,v])=>v),ambiguous:conflicts.size};
 }
 
-// Explicit tenant-owned correspondence. Invalid or ambiguous mappings fail closed.
-export function getPartnerAliases(tenantId:string,env:Record<string,string|undefined>=process.env):Record<string,string>{
- const raw=env.BI_PARTNER_ALIASES_JSON;if(!raw)return Object.create(null);
- const all=JSON.parse(raw);const entries=all?.[tenantId];const out:Record<string,string>=Object.create(null);
- if(entries===undefined)return out;
- if(!entries||typeof entries!=='object'||Array.isArray(entries)||Object.keys(entries).length>5000)throw Error('Mapeamento inválido.');
- const used=new Set<string>();for(const [external,local] of Object.entries(entries)){if(!/^[A-Za-z0-9._@-]{1,100}$/.test(external)||typeof local!=='string'||!/^[A-Za-z0-9._@-]{1,100}$/.test(local)||used.has(normalize(local)))throw Error('Mapeamento ambíguo.');used.add(normalize(local));out[normalize(external)]=local;}
- return out;
-}
-export function externalPartnerCode(local:string,aliases:Record<string,string>){return Object.keys(aliases).find(k=>normalize(aliases[k])===normalize(local))||local;}
 const bankAliases:Record<string,string>={'BANCO DAYCOVAL S.A.':'DAYCOVAL','FACTA FINANCEIRA S.A':'FACTA FINANCEIRA','BANCO CREFISA S.A.':'CREFISA','BRB - BANCO DE BRASILIA':'BRB','ICRED - CREDITO INTELIGENTE':'ICRED'};
 export function canonicalBIBank(v:unknown){const n=normalize(v);return Object.prototype.hasOwnProperty.call(bankAliases,n)?bankAliases[n]:n;}
 export function externalBIBank(v:string){const names:Record<string,string>={'DAYCOVAL':'BANCO DAYCOVAL S.A.','FACTA FINANCEIRA':'FACTA FINANCEIRA S.A','CREFISA':'BANCO CREFISA S.A.','BRB':'BRB - BANCO DE BRASÍLIA','ICRED':'ICRED - CRÉDITO INTELIGENTE'};return names[canonicalBIBank(v)]||v;}
