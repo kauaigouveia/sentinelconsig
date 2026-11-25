@@ -704,7 +704,7 @@ function AppMainContent() {
               {effectiveView === 'torre-controle' && newUI && <HomeComponent onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
               {effectiveView === 'tv-monitor' && <TVOperationsMonitor />}
 
-              {effectiveView === 'dashboard-executivo' && <ExecutiveBIDashboard key={preferenceKey} externalBIEnabled={(adminContext?.targetTenantId || StorageService.getCurrentTenantId() || activeUser?.tenantId)==='cmwwf76ef0000jm074ydgay0f'} />}
+              {effectiveView === 'dashboard-executivo' && <ExecutiveBIDashboard key={preferenceKey} />}
 
               {effectiveView === 'radar-comercial' && <CommercialRadarView />}
 

@@ -60,7 +60,6 @@ import {biRequestsForTab,type BIDataSet,type BITabId} from '../../lib/biRequestP
 import { RealtimeService } from '../../services/realtimeService';
 import { formatCurrency } from '../../lib/utils';
 import { BIFilterBar } from './BIFilterBar';
-import { EvolveExtractPanel } from './EvolveExtractPanel';
 import { toastService } from '../ui/toastService';
 
 type BITab=BITabId;
@@ -103,7 +102,7 @@ const getInitialFilters = (): BIFilterState => {
   };
 };
 
-export const ExecutiveBIDashboard: React.FC<{externalBIEnabled?:boolean}> = ({externalBIEnabled=false}) => {
+export const ExecutiveBIDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<BITab>('visao-geral');
   const [filters, setFilters] = useState<BIFilterState>(getInitialFilters);
 
@@ -341,7 +340,6 @@ export const ExecutiveBIDashboard: React.FC<{externalBIEnabled?:boolean}> = ({ex
 
   return (
     <div className="space-y-4 pb-12 animate-fadeIn select-none p2-bi-workspace">
-      {externalBIEnabled && <EvolveExtractPanel />}
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
