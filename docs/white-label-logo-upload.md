@@ -40,3 +40,11 @@ Nenhuma credencial foi lida, alterada ou copiada. Nenhum registro DNS ou banco d
 **Importante:** sem uma imagem de teste e sessão autorizada não é possível verificar
 um upload real do Azure apenas pelo build. Os testes usam dependências de armazenamento simuladas
 e não escrevem dados de clientes.
+
+## Correção 25/11/2026 — falha DNS da Azure
+
+O log de produção de 25/11 às 14:51 (Maceió) registrou `WHITE_LABEL_LOGO_UPLOAD_FAILED`, fase `azure_upload`, categoria `network`, código `ENOTFOUND`. A API e a validação chegaram à etapa de armazenamento. Não foi possível determinar se o hostname estava incorreto ou se a conta de storage havia sido removida.
+
+Uploads novos são persistidos no PostgreSQL já usado pelo aplicativo, na tabela existente `system_configs` com chave reservada `branding:logo:v1:`, escopo de tenant e hash SHA-256. Não há migração, novo serviço pago, alteração nas credenciais Azure ou na rotina de documentos. A URL pública tem nome `db_<sha256>.<ext>`; arquivos antigos mantêm o leitor Azure (cujo DNS ainda pode falhar). Arquivos novos são limitados a 2 MiB e deduplicados por conteúdo; até 20 versões por empresa, com limpeza de rascunhos não referenciados há mais de 24 horas durante um novo upload. Logo e favicon atuais são preservados. Salve o formulário após enviar a imagem. O limite aplica-se somente a logomarcas, não a documentos.
+
+O teste automatizado usa um adaptador de banco simulado e verifica upload/leitura sem Azure, segregação por tenant, integridade, deduplicação e retenção. Homologação real: testar upload de imagem e salvar no modal da empresa, recarregar e verificar o subdomínio autenticado.
