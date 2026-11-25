@@ -1,7 +1,7 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
-import {validateInboundBatch,processInbound,resolveInboundPartner} from './server/services/extractorInbound.js';
+import {validateInboundBatch,processInbound} from './server/services/extractorInbound.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
