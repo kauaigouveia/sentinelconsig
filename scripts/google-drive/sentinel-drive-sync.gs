@@ -1,6 +1,6 @@
 // Google Apps Script independente do EVOLVE BI. Ative o serviço avançado Drive API (v3).
-// Propriedades: SENTINEL_DRIVE_SYNC_TOKEN (mesmo segredo do Sentinel), SENTINEL_DRIVE_MODE=preview.
-// Após conferência completa, habilite apply também na Vercel e mude a propriedade para apply.
+// Propriedades: SENTINEL_DRIVE_SYNC_TOKEN (mesmo segredo do Sentinel), SENTINEL_DRIVE_MODE=preview ou auto.
+// Modo auto confere cada nova versão antes de aplicar; habilite apply também na Vercel.
 const SENTINEL_DRIVE_FOLDER_ID='1Ee1lA31ykwFvDTV-TgETFR8ug6CePZsA';
 const SENTINEL_DRIVE_URL='https://evolve.sentinelconsig.com.br/api/drive/extractor-inbound';
 function hexDrive_(bytes){return bytes.map(b=>('0'+(b&255).toString(16)).slice(-2)).join('');}
@@ -8,15 +8,16 @@ function syncSentinelDrive(){
  const lock=LockService.getScriptLock();if(!lock.tryLock(1000))return {ok:false,code:'busy'};
  let temporary=null;
  try{
-  const p=PropertiesService.getScriptProperties(),token=(p.getProperty('SENTINEL_DRIVE_SYNC_TOKEN')||'').trim(),mode=p.getProperty('SENTINEL_DRIVE_MODE')||'preview';
-  if(token.length<48||!['preview','apply'].includes(mode))throw Error('Configure as propriedades do Sentinel.');
+  const p=PropertiesService.getScriptProperties(),token=(p.getProperty('SENTINEL_DRIVE_SYNC_TOKEN')||'').trim(),requestedMode=p.getProperty('SENTINEL_DRIVE_MODE')||'preview';
+  if(token.length<48||!['preview','apply','auto'].includes(requestedMode))throw Error('Configure as propriedades do Sentinel.');
   const files=DriveApp.getFolderById(SENTINEL_DRIVE_FOLDER_ID).getFiles();let latest=null;
   while(files.hasNext()){const f=files.next();if(/\.xlsx$/i.test(f.getName())&&(!latest||f.getLastUpdated().getTime()>latest.getLastUpdated().getTime()))latest=f;}
   if(!latest)return {ok:false,code:'empty'};
   if(latest.getSize()>4*1024*1024)throw Error('Extrator acima de 4 MB.');
   const blob=latest.getBlob(),hash=hexDrive_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,blob.getBytes()));
-  const key='SENTINEL_DRIVE_'+mode.toUpperCase(),prior=JSON.parse(p.getProperty(key)||'{}');
   const preview=JSON.parse(p.getProperty('SENTINEL_DRIVE_PREVIEW')||'{}');
+  const mode=requestedMode==='auto'?(preview.hash===hash&&preview.offset===null?'apply':'preview'):requestedMode;
+  const key='SENTINEL_DRIVE_'+mode.toUpperCase(),prior=JSON.parse(p.getProperty(key)||'{}');
   if(mode==='apply'&&(preview.hash!==hash||preview.offset!==null))return {ok:false,code:'preview_required'};
   if(prior.hash===hash&&prior.offset===null)return {ok:true,skipped:true};
   let state=prior.hash===hash?prior:{hash,offset:0,total:0,eligible:0,created:0,existing:0,conflicts:0,invalid:0,reasons:{}};
