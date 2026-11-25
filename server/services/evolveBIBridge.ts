@@ -26,3 +26,26 @@ export function reconcile(rows:ExternalRow[],local:LocalRow[]){
  for(const g of Object.values(groups)){g.gross/=100;g.commission/=100;}
  return {total:rows.length,gross:gross/100,paid:groups.paid.count,paidGross:paidGross/100,conversion:rows.length?groups.paid.count*100/rows.length:0,commission:commissionKnown?commission/100:null,paidCommission:paidKnown?paidCommission/100:null,lostCommission:groups.cancel.known?groups.cancel.commission:null,groups,banks:[...banks.values()].sort((a,b)=>b.gross-a.gross).slice(0,10).map(b=>({...b,gross:b.gross/100})),reconciliation:{matched,statusDifferences,valueDifferences,ambiguous,externalUnmatched:rows.length-matched-ambiguous,localTotal:local.length}};
 }
+
+export type BIConnector={name:string;url:string;token:string;managerIds:string};
+export function getBIConnector(tenantId:string|undefined,env:Record<string,string|undefined>=process.env):BIConnector|null{
+ if(!tenantId)return null;
+ const valid=(v:unknown):v is BIConnector=>{
+  if(!v||typeof v!=='object')return false;
+  const x=v as BIConnector;
+  if(typeof x.name!=='string'||!x.name.trim()||x.name.length>100||typeof x.token!=='string'||x.token.length<48||typeof x.managerIds!=='string'||typeof x.url!=='string')return false;
+  const m=/^https:\/\/([a-z0-9.-]+\.[a-z]{2,})\/api\/bi$/.exec(x.url);const allowed=['www.evolvepromotora.com.br',...(env.BI_CONNECTOR_ALLOWED_HOSTS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean)];return Boolean(m&&allowed.includes(m[1]));
+ };
+ if(env.BI_CONNECTORS_JSON){try{const map=JSON.parse(env.BI_CONNECTORS_JSON);if(!map||typeof map!=='object'||Array.isArray(map))return null;if(Object.prototype.hasOwnProperty.call(map,tenantId)){const x=map[tenantId];return valid(x)?x:null;}}catch{return null;}}
+ if(tenantId!==env.EVOLVE_BI_TENANT_ID)return null;
+ const legacy={name:env.EVOLVE_BI_NAME||'EVOLVE BI',url:'https://www.evolvepromotora.com.br/api/bi',token:env.EVOLVE_BI_TOKEN||'',managerIds:env.EVOLVE_BI_MANAGER_IDS||''};
+ return valid(legacy)?legacy:null;
+}
+export function partnerCandidates(rows:unknown){
+ if(!Array.isArray(rows)||rows.length>5000)throw Error('Catálogo de parceiros inválido.');
+ const out=new Map<string,{code:string;name:string}>(),conflicts=new Set<string>();
+ for(const row of rows){if(!row||typeof row.code!=='string'||typeof row.name!=='string')throw Error('Parceiro inválido.');
+ const code=row.code.trim(),name=row.name.trim();if(!code||code.length>100||!name||name.length>250||/[\x00-\x1f\x7f]/.test(code+name))throw Error('Parceiro inválido.');
+ const k=code.toUpperCase(),old=out.get(k);if(old&&(old.code!==code||old.name!==name))conflicts.add(k);else out.set(k,{code,name});}
+ return {rows:[...out].filter(([k])=>!conflicts.has(k)).map(([,v])=>v),ambiguous:conflicts.size};
+}
