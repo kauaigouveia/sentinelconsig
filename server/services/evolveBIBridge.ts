@@ -29,7 +29,8 @@ export function reconcile(rows:ExternalRow[],local:LocalRow[]){
 
 export type BIConnector={name:string;url:string;token:string;managerIds:string};
 export function getBIConnector(tenantId:string|undefined,env:Record<string,string|undefined>=process.env):BIConnector|null{
- if(!tenantId)return null;
+ // External BI is temporarily an EVOLVE-only capability; no connector configuration can override this boundary.
+ if(tenantId!=='cmwwf76ef0000jm074ydgay0f'||tenantId!==env.EVOLVE_BI_TENANT_ID)return null;
  const valid=(v:unknown):v is BIConnector=>{
   if(!v||typeof v!=='object')return false;
   const x=v as BIConnector;
