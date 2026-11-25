@@ -11990,7 +11990,7 @@ async function auditAndEnsureMasterUser() {
         if(rows.some(p=>!p.partner||p.partner.tenantId!==tenantId||p.partner.deletedAt||!p.bank||p.bank.tenantId!==tenantId))return res.status(409).json({error:'Existem propostas sem parceiro ou banco válido. Corrija antes do envio; o lote anterior foi preservado.'});
         const records=rows.map(p=>({id:p.proposalNumber,partner:p.partner!.code,producer:p.partner!.name,bank:externalBIBank(p.bank!.name),created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
         url.searchParams.set('op','sentinel-stage');
-        const upstream=await fetch(url,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({month,records}),redirect:'error',signal:AbortSignal.timeout(25000)});
+        const upstream=await fetch(url,{method:'POST',headers:{...headers,'Content-Type':'application/json','X-BI-Request':'1'},body:JSON.stringify({month,records}),redirect:'error',signal:AbortSignal.timeout(25000)});
         if(!upstream.ok)return res.status(502).json({error:'BI recusou o envio. Verifique a integração e os dados.'});
         const result=await upstream.json();
         if(!Number.isSafeInteger(result?.count)||result.count!==records.length||!Number.isSafeInteger(result.pending)||!Number.isSafeInteger(result.conflicts))return res.status(502).json({error:'Resposta de envio inválida.'});
