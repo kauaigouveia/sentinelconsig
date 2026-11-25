@@ -103,7 +103,7 @@ const getInitialFilters = (): BIFilterState => {
   };
 };
 
-export const ExecutiveBIDashboard: React.FC = () => {
+export const ExecutiveBIDashboard: React.FC<{externalBIEnabled?:boolean}> = ({externalBIEnabled=false}) => {
   const [activeTab, setActiveTab] = useState<BITab>('visao-geral');
   const [filters, setFilters] = useState<BIFilterState>(getInitialFilters);
 
@@ -341,7 +341,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-12 animate-fadeIn select-none p2-bi-workspace">
-      <EvolveExtractPanel />
+      {externalBIEnabled && <EvolveExtractPanel />}
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>

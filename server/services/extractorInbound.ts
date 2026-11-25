@@ -16,7 +16,7 @@ export function inboundCategory(s:string):StandardStatusCategory|null {
  if(['ANALISE BANCO','ANALISE NA EMPRESA','AUTORREGULACAO'].includes(v))return 'ANDAMENTO';
  return null;
 }
-type Row={line:number;id:string;cpf:string;clientName:string;partner:string;producer:string;bank:string;modality:string;convenio:string;status:string;created:string;gross:number;net:number;installment:number;term:number;debt:number|null;commissionRate:number|null};
+type Row={line:number;id:string;cpf:string;clientName:string;partner:string;producer:string;bank:string;modality:string;convenio:string;status:string;created:string;gross:number;net:number;installment:number;term:number;debt:number|null;commissionRate:number|null;portabilityProposalNumber?:string};
 type Batch={version:1;mode:'preview'|'apply';hash:string;offset:number;rows:unknown[]};
 type Result={eligible:number;created:number;existing:number;conflicts:number;invalid:number;reasons:Record<string,number>};
 const isText=(x:unknown,max:number):x is string=>typeof x==='string'&&x.trim().length>0&&x.length<=max&&!/[\x00-\x1f\x7f]/.test(x)&&!/^([=+@]|-\s*[A-Z])/i.test(x.trim());
@@ -28,6 +28,7 @@ export function validateInboundBatch(x:any):x is Batch{
 export function rowIssue(x:any):string|null{
  if(!x||typeof x!=='object'||Array.isArray(x))return 'Registro inválido';
  if(!isText(x.id,150)||!isText(x.partner,100)||!isText(x.producer,250)||!isText(x.clientName,250))return 'Identificação incompleta';
+ if(x.portabilityProposalNumber!==undefined&&!isText(x.portabilityProposalNumber,150))return 'Vínculo de portabilidade inválido';
  if(typeof x.cpf!=='string'||!/^\d{11}$/.test(x.cpf)||!isValidCpf(x.cpf))return 'CPF inválido';
  if(!isText(x.bank,250)||!isText(x.modality,100)||!isText(x.convenio,150)||!isText(x.status,150))return 'Catálogo ou situação ausente';
  if(typeof x.created!=='string'||!/^20\d{2}-\d{2}-\d{2}$/.test(x.created)||!Number.isFinite(Date.parse(x.created+'T00:00:00Z'))||new Date(x.created+'T00:00:00Z').toISOString().slice(0,10)!==x.created||x.created>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()))return 'Data inválida';
@@ -53,7 +54,8 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
   const checked:Row[]=[];const seen=new Map<string,number>();
   for(const x of batch.rows){const issue=rowIssue(x);if(issue){mark('invalid',issue);continue;}const r=x as Row;checked.push(r);const k=norm(r.id);seen.set(k,(seen.get(k)||0)+1);}
   const validIds=checked.map(r=>r.id),cpfs=[...new Set(checked.map(r=>r.cpf))];
-  const [banks,partners,products,convenios,statuses,promoters,bankPromoters,existing,clients,activeCount]=await Promise.all([
+  const linkedNumbers=[...new Set(checked.flatMap(r=>r.portabilityProposalNumber?[r.portabilityProposalNumber]:[]))];
+  const [banks,partners,products,convenios,statuses,promoters,bankPromoters,existing,clients,activeCount,linkedPorts]=await Promise.all([
    tx.bank.findMany({where:{tenantId,status:'ATIVO'},select:{id:true,name:true}}),
    tx.partner.findMany({where:{tenantId},select:{id:true,code:true,name:true,deletedAt:true,status:true,promoterId:true}}),
    tx.product.findMany({where:{active:true,OR:[{tenantId},{tenantId:null,scope:'GLOBAL'}]},select:{id:true,name:true,type:true,convenioIds:true,requiresPortabilityRelation:true}}),
@@ -61,9 +63,10 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    tx.proposalStatus.findMany({where:{tenantId,active:true},select:{id:true,name:true,standardCategory:true}}),
    tx.promoter.findMany({where:{tenantId,status:'ATIVO'},select:{id:true}}),
    tx.bankPromoter.findMany({where:{tenantId,status:'ATIVO'},select:{bankId:true,promoterId:true}}),
-   tx.proposal.findMany({where:{tenantId,proposalNumber:{in:validIds,mode:'insensitive'}},select:{id:true,proposalNumber:true,deletedAt:true,contractValue:true,releasedValue:true,installmentValue:true,installmentsCount:true,standardCategory:true,type:true,client:{select:{tenantId:true,cpf:true,deletedAt:true}},partner:{select:{tenantId:true,code:true,deletedAt:true}},bank:{select:{tenantId:true,name:true}}}}),
+   tx.proposal.findMany({where:{tenantId,proposalNumber:{in:validIds,mode:'insensitive'}},select:{id:true,proposalNumber:true,deletedAt:true,contractValue:true,releasedValue:true,installmentValue:true,installmentsCount:true,standardCategory:true,type:true,relatedPortabilityId:true,client:{select:{tenantId:true,cpf:true,deletedAt:true}},partner:{select:{tenantId:true,code:true,deletedAt:true}},bank:{select:{tenantId:true,name:true}}}}),
    tx.client.findMany({where:{tenantId,cpf:{in:cpfs}},select:{id:true,cpf:true,fullName:true,deletedAt:true}}),
-   tx.proposal.count({where:{tenantId,deletedAt:null}})
+   tx.proposal.count({where:{tenantId,deletedAt:null}}),
+   tx.proposal.findMany({where:{tenantId,deletedAt:null,type:'PORTABILIDADE',proposalNumber:{in:linkedNumbers,mode:'insensitive'}},select:{id:true,proposalNumber:true,bankId:true,partnerId:true,createdAt:true,client:{select:{tenantId:true,cpf:true,deletedAt:true}}}})
   ]);
   const pendingPartners:Prisma.PartnerCreateManyInput[]=[],pendingClients:Prisma.ClientCreateManyInput[]=[],pendingProposals:Prisma.ProposalCreateManyInput[]=[],pendingHistory:Prisma.StatusHistoryCreateManyInput[]=[];
   const partnerList:Partner[]=[...partners];const clientMap=new Map(clients.map(c=>[c.cpf,c]));
@@ -87,11 +90,17 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    const local=existing.filter(x=>exact(x.proposalNumber,r.id));
    if(local.length){
     const x=local[0];
-    if(local.length!==1||x.deletedAt||x.client.tenantId!==tenantId||x.client.deletedAt||x.client.cpf!==r.cpf||!p.match||x.partner?.tenantId!==tenantId||x.partner.deletedAt||!exact(x.partner.code,p.match.code)||x.bank?.tenantId!==tenantId||!exact(inboundBankKey(x.bank.name),inboundBankKey(bank.name))||x.standardCategory!==cat||x.type!==product.type||Math.abs(Number(x.contractValue)-r.gross)>0.005||Math.abs(Number(x.releasedValue)-r.net)>0.005||Math.abs(Number(x.installmentValue)-r.installment)>0.005||x.installmentsCount!==r.term){mark('conflicts','Proposta existente com divergência; preservada');}
+    if(local.length!==1||x.deletedAt||x.client.tenantId!==tenantId||x.client.deletedAt||x.client.cpf!==r.cpf||!p.match||x.partner?.tenantId!==tenantId||x.partner.deletedAt||!exact(x.partner.code,p.match.code)||x.bank?.tenantId!==tenantId||!exact(inboundBankKey(x.bank.name),inboundBankKey(bank.name))||x.standardCategory!==cat||x.type!==product.type||(r.portabilityProposalNumber!==undefined&&!linkedPorts.some(port=>port.id===x.relatedPortabilityId&&exact(port.proposalNumber,r.portabilityProposalNumber)))||Math.abs(Number(x.contractValue)-r.gross)>0.005||Math.abs(Number(x.releasedValue)-r.net)>0.005||Math.abs(Number(x.installmentValue)-r.installment)>0.005||x.installmentsCount!==r.term){mark('conflicts','Proposta existente com divergência; preservada');}
     else result.existing++;
     continue;
    }
-   if(product.requiresPortabilityRelation){mark('conflicts','Refinanciamento exige vínculo de portabilidade');continue;}
+   let relatedPortabilityId:string|null=null;
+   if(product.requiresPortabilityRelation){
+    if(!r.portabilityProposalNumber){mark('conflicts','Refinanciamento exige vínculo de portabilidade');continue;}
+    const matching=linkedPorts.filter(x=>exact(x.proposalNumber,r.portabilityProposalNumber)&&x.client.tenantId===tenantId&&!x.client.deletedAt&&x.client.cpf===r.cpf&&x.bankId===bank.id&&p.match&&x.partnerId===p.match.id&&x.createdAt<=new Date(r.created+'T23:59:59-03:00'));
+    if(matching.length!==1){mark('conflicts','Portabilidade selecionada ainda não importada ou incompatível');continue;}
+    relatedPortabilityId=matching[0].id;
+   }else if(r.portabilityProposalNumber){mark('conflicts','Vínculo não permitido para esta modalidade');continue;}
    const oldClient=clientMap.get(r.cpf);
    if(oldClient&&(oldClient.deletedAt||!exact(oldClient.fullName,r.clientName))){mark('conflicts','Cliente existente com divergência; preservado');continue;}
    if(activeCount+pendingProposals.length>=tenant.maxProposals){mark('conflicts','Limite do plano');continue;}
@@ -104,8 +113,8 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    const categoryStatuses=statuses.filter(s=>s.standardCategory===cat);
    const statusId=exactStatus.length===1?exactStatus[0].id:categoryStatuses.length===1?categoryStatuses[0].id:null;
    const id=randomUUID();
-   pendingProposals.push({id,tenantId,proposalNumber:r.id.trim(),clientId:client.id,partnerId:partner.id,bankId:bank.id,promoterId,productId:product.id,convenioId:convenio.id,type:product.type,statusId,standardCategory:cat,contractValue:r.gross,releasedValue:r.net,installmentValue:r.installment,installmentsCount:r.term,debtBalance:r.debt,commissionRate:r.commissionRate,createdAt:new Date(r.created+'T00:00:00-03:00')});
-   pendingHistory.push({tenantId,proposalId:id,statusId,statusName:r.status,notes:'Situação original informada pelo extrator de produção.'});
+   pendingProposals.push({id,tenantId,proposalNumber:r.id.trim(),clientId:client.id,partnerId:partner.id,bankId:bank.id,promoterId,productId:product.id,convenioId:convenio.id,type:product.type,relatedPortabilityId,statusId,standardCategory:cat,contractValue:r.gross,releasedValue:r.net,installmentValue:r.installment,installmentsCount:r.term,debtBalance:r.debt,commissionRate:r.commissionRate,createdAt:new Date(r.created+'T00:00:00-03:00')});
+   pendingHistory.push({tenantId,proposalId:id,statusId,statusName:r.status,notes:relatedPortabilityId?'Situação original informada pelo extrator; portabilidade selecionada manualmente pelo gestor no BI.':'Situação original informada pelo extrator de produção.'});
    if(batch.mode==='preview')result.eligible++;else result.created++;
   }
   if(batch.mode==='apply'){
