@@ -1,8 +1,8 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
-import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,type ExternalRow} from './server/services/evolveBIBridge.js';
-import {validateInboundBatch,processInbound} from './server/services/extractorInbound.js';
+import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,getPartnerAliases,externalPartnerCode,externalBIBank,type ExternalRow} from './server/services/evolveBIBridge.js';
+import {validateInboundBatch,processInbound,resolveInboundPartner} from './server/services/extractorInbound.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
@@ -11931,7 +11931,7 @@ async function auditAndEnsureMasterUser() {
       const {start,next}=monthRange(month);
       const local=await prisma.proposal.findMany({where:{tenantId:tenantId!,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,standardCategory:true,contractValue:true,partner:{select:{code:true}},bank:{select:{name:true}}},take:20001});
       if(local.length>20000)return res.status(413).json({error:'Volume de propostas acima do limite.'});
-      return res.json({month,integrationName:connector.name,canImportPartners:hasPermission(session.activeRole as Role,session.activePermissions,'partners.create'),canExport:hasPermission(session.activeRole as Role,session.activePermissions,'proposals.view'),importedAt:typeof payload.importedAt==='string'?payload.importedAt:null,...reconcile(rows,local)});
+      return res.json({month,integrationName:connector.name,canImportPartners:hasPermission(session.activeRole as Role,session.activePermissions,'partners.create'),canExport:hasPermission(session.activeRole as Role,session.activePermissions,'proposals.view'),importedAt:typeof payload.importedAt==='string'?payload.importedAt:null,...reconcile(rows,local,getPartnerAliases(tenantId!))});
     }catch{return res.status(502).json({error:'Não foi possível consultar a integração.'});}
   });
 
@@ -11962,14 +11962,16 @@ async function auditAndEnsureMasterUser() {
         const candidates=partnerCandidates(x.partners);
         const result=await prisma.$transaction(async tx=>{
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'bi_partners_'+tenantId}));`;
-          const existing=await tx.partner.findMany({where:{tenantId},select:{code:true,name:true,deletedAt:true}});
+          const existing=await tx.partner.findMany({where:{tenantId},select:{id:true,code:true,name:true,deletedAt:true,status:true,promoterId:true}});
+          const aliases=getPartnerAliases(tenantId);
           const codes=new Map(existing.map(p=>[p.code.trim().toUpperCase(),p]));
           const names=new Set(existing.map(p=>p.name.trim().toUpperCase()));
           let preserved=0,conflicts=x.ambiguous+candidates.ambiguous;
           const pending:{tenantId:string;code:string;name:string;status:string}[]=[];
           for(const p of candidates.rows){
-            const old=codes.get(p.code.toUpperCase());
-            if(old){if(old.deletedAt||old.code!==p.code)conflicts++;else preserved++;continue;}
+            const linked=resolveInboundPartner(existing,p.code,p.name,aliases);
+            if(linked.match){preserved++;continue;}
+            if(linked.conflict){conflicts++;continue;}
             const n=p.name.toUpperCase();
             if(names.has(n)){conflicts++;continue;}
             names.add(n);pending.push({tenantId,code:p.code,name:p.name,status:'ATIVO'});
@@ -11989,7 +11991,8 @@ async function auditAndEnsureMasterUser() {
         const rows=await prisma.proposal.findMany({where:{tenantId,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,createdAt:true,standardCategory:true,type:true,contractValue:true,releasedValue:true,partner:{select:{tenantId:true,code:true,name:true,deletedAt:true}},bank:{select:{tenantId:true,name:true}}},take:5001,orderBy:{proposalNumber:'asc'}});
         if(rows.length>5000)return res.status(413).json({error:'Limite de 5.000 propostas por mês.'});
         if(rows.some(p=>!p.partner||p.partner.tenantId!==tenantId||p.partner.deletedAt||!p.bank||p.bank.tenantId!==tenantId))return res.status(409).json({error:'Existem propostas sem parceiro ou banco válido. Corrija antes do envio; o lote anterior foi preservado.'});
-        const records=rows.map(p=>({id:p.proposalNumber,partner:p.partner!.code,producer:p.partner!.name,bank:p.bank!.name,created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
+        const aliases=getPartnerAliases(tenantId);
+        const records=rows.map(p=>({id:p.proposalNumber,partner:externalPartnerCode(p.partner!.code,aliases),producer:p.partner!.name,bank:externalBIBank(p.bank!.name),created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
         url.searchParams.set('op','sentinel-stage');
         const upstream=await fetch(url,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({month,records}),redirect:'error',signal:AbortSignal.timeout(25000)});
         if(!upstream.ok)return res.status(502).json({error:'BI recusou o envio. Verifique a integração e os dados.'});
