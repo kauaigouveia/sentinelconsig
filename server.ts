@@ -11936,6 +11936,7 @@ async function auditAndEnsureMasterUser() {
         if(x?.version!==1||!Number.isSafeInteger(x.ambiguous)||x.ambiguous<0)return res.status(502).json({error:'Catálogo inválido.'});
         const candidates=partnerCandidates(x.partners);
         const result=await prisma.$transaction(async tx=>{
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'bi_partners_'+tenantId}));`;
           const existing=await tx.partner.findMany({where:{tenantId},select:{code:true,name:true,deletedAt:true}});
           const codes=new Map(existing.map(p=>[p.code.trim().toUpperCase(),p]));
           const names=new Set(existing.map(p=>p.name.trim().toUpperCase()));
@@ -11948,9 +11949,9 @@ async function auditAndEnsureMasterUser() {
             if(names.has(n)){conflicts++;continue;}
             names.add(n);pending.push({tenantId,code:p.code,name:p.name,status:'ATIVO'});
           }
-          const saved=await tx.partner.createMany({data:pending,skipDuplicates:true});
+          const saved=pending.length?await tx.partner.createMany({data:pending,skipDuplicates:true}):{count:0};
           conflicts+=pending.length-saved.count;
-          await AuditLogService.record(tx as any,{tenantId,userId:session.user.id,action:'BI_PARTNERS_IMPORT',entity:'Partner',newData:{created:saved.count,preserved,conflicts,source:connector.name},req});
+          await AuditLogService.recordBatch(tx,[{tenantId,userId:session.user.id,action:'BI_PARTNERS_IMPORT',entity:'Partner',newData:{created:saved.count,preserved,conflicts,source:connector.name},req}]);
           return {created:saved.count,preserved,conflicts};
         },{timeout:20000});
         return res.json(result);
