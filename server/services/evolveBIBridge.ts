@@ -1,7 +1,7 @@
-export type ExternalRow={id:string;partner:string;bank:string;created:string;category:string;gross:number|null;net:number|null;commission:number|null};
-export type LocalRow={proposalNumber:string;partner:{code:string}|null;bank:{name:string}|null;standardCategory:string;contractValue:unknown};
+export type ExternalRow={id:string;partner:string;producer?:string;bank:string;created:string;category:string;gross:number|null;net:number|null;commission:number|null};
+export type LocalRow={proposalNumber:string;partner:{code:string;name?:string}|null;bank:{name:string}|null;standardCategory:string;contractValue:unknown};
 const normalize=(v:unknown)=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,' ');
-const key=(id:unknown,partner:unknown,bank:unknown)=>{const i=normalize(id),p=normalize(partner),b=normalize(bank);return i&&p&&b?JSON.stringify([i,p,b]):null;};
+const key=(id:unknown,partner:unknown,bank:unknown)=>{const i=normalize(id),p=normalize(partner).replace(/^EVOLVE\s*-\s*/,'').trim(),b=canonicalBIBank(bank);return i&&p&&b?JSON.stringify([i,p,b]):null;};
 const cents=(v:unknown)=>Number.isFinite(Number(v))?Math.round(Number(v)*100):0;
 const localStatus=(v:string)=>({PAGO:'paid',PENDENTE:'pending',ANDAMENTO:'progress',ESTEIRA:'progress',CANCELADO:'cancel',RECUSADO:'cancel'} as Record<string,string>)[v]||'other';
 export function validMonth(v:unknown):v is string{return typeof v==='string'&&/^20\d{2}-(0[1-9]|1[0-2])$/.test(v);}
@@ -19,8 +19,8 @@ export function reconcile(rows:ExternalRow[],local:LocalRow[]){
  const banks=new Map<string,{name:string;count:number;paid:number;gross:number}>();
  const ext=new Map<string,ExternalRow[]>(),inside=new Map<string,LocalRow[]>();
  let gross=0,paidGross=0,commission=0,paidKnown=0,paidCommission=0,commissionKnown=0;
- for(const r of rows){const cat=Object.prototype.hasOwnProperty.call(groups,r.category)?r.category:'other',g=groups[cat],v=cents(r.gross);g.count++;g.gross+=v;gross+=v;if(r.commission!==null&&Number.isFinite(r.commission)){const c=cents(r.commission);g.commission+=c;g.known++;commission+=c;commissionKnown++;if(cat==='paid'){paidCommission+=c;paidKnown++;}}if(cat==='paid')paidGross+=v;const name=r.bank||'Não informado',b=banks.get(name)||{name,count:0,paid:0,gross:0};b.count++;if(cat==='paid'){b.paid++;b.gross+=v;}banks.set(name,b);const k=key(r.id,r.partner,r.bank);if(k)ext.set(k,[...(ext.get(k)||[]),r]);}
- for(const r of local){const k=key(r.proposalNumber,r.partner?.code,r.bank?.name);if(k)inside.set(k,[...(inside.get(k)||[]),r]);}
+ for(const r of rows){const cat=Object.prototype.hasOwnProperty.call(groups,r.category)?r.category:'other',g=groups[cat],v=cents(r.gross);g.count++;g.gross+=v;gross+=v;if(r.commission!==null&&Number.isFinite(r.commission)){const c=cents(r.commission);g.commission+=c;g.known++;commission+=c;commissionKnown++;if(cat==='paid'){paidCommission+=c;paidKnown++;}}if(cat==='paid')paidGross+=v;const name=r.bank||'Não informado',b=banks.get(name)||{name,count:0,paid:0,gross:0};b.count++;if(cat==='paid'){b.paid++;b.gross+=v;}banks.set(name,b);const k=key(r.id,r.producer,r.bank);if(k)ext.set(k,[...(ext.get(k)||[]),r]);}
+ for(const r of local){const k=key(r.proposalNumber,r.partner?.name,r.bank?.name);if(k)inside.set(k,[...(inside.get(k)||[]),r]);}
  let matched=0,statusDifferences=0,valueDifferences=0,ambiguous=0;
  for(const [k,rs] of ext){const ls=inside.get(k);if(!ls)continue;if(rs.length!==1||ls.length!==1){ambiguous+=rs.length;continue;}matched++;if(rs[0].category!==localStatus(ls[0].standardCategory))statusDifferences++;if(rs[0].gross!==null&&cents(rs[0].gross)!==cents(ls[0].contractValue))valueDifferences++;}
  for(const g of Object.values(groups)){g.gross/=100;g.commission/=100;}
@@ -49,3 +49,7 @@ export function partnerCandidates(rows:unknown){
  const k=code.toUpperCase(),old=out.get(k);if(old&&(old.code!==code||old.name!==name))conflicts.add(k);else out.set(k,{code,name});}
  return {rows:[...out].filter(([k])=>!conflicts.has(k)).map(([,v])=>v),ambiguous:conflicts.size};
 }
+
+const bankAliases:Record<string,string>={'BANCO DAYCOVAL S.A.':'DAYCOVAL','FACTA FINANCEIRA S.A':'FACTA FINANCEIRA','BANCO CREFISA S.A.':'CREFISA','BRB - BANCO DE BRASILIA':'BRB','ICRED - CREDITO INTELIGENTE':'ICRED'};
+export function canonicalBIBank(v:unknown){const n=normalize(v);return Object.prototype.hasOwnProperty.call(bankAliases,n)?bankAliases[n]:n;}
+export function externalBIBank(v:string){const names:Record<string,string>={'DAYCOVAL':'BANCO DAYCOVAL S.A.','FACTA FINANCEIRA':'FACTA FINANCEIRA S.A','CREFISA':'BANCO CREFISA S.A.','BRB':'BRB - BANCO DE BRASÍLIA','ICRED':'ICRED - CRÉDITO INTELIGENTE'};return names[canonicalBIBank(v)]||v;}

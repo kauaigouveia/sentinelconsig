@@ -1,7 +1,8 @@
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
-import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,type ExternalRow} from './server/services/evolveBIBridge.js';
+import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,externalBIBank,type ExternalRow} from './server/services/evolveBIBridge.js';
+import {validateInboundBatch,processInbound,resolveInboundPartner} from './server/services/extractorInbound.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
@@ -558,6 +559,30 @@ async function auditAndEnsureMasterUser() {
   app.use(express.json({ limit: '21mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());
+
+  // Server-to-server only. Register before browser CSRF middleware; never accept session cookies.
+  app.post('/api/bi/extractor-inbound',rateLimit({windowMs:15*60*1000,max:120,standardHeaders:true,legacyHeaders:false}),async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try {
+      const tenantId=req.headers['x-sentinel-tenant'],auth=req.headers.authorization;
+      if(typeof tenantId!=='string'||typeof auth!=='string'||!auth.startsWith('Bearer ')||req.headers.cookie||req.headers.origin)return res.status(403).json({error:'Integração não autorizada.'});
+      const connector=getBIConnector(tenantId);
+      if(!connector)return res.status(403).json({error:'Integração não autorizada.'});
+      const digest=(v:string)=>crypto.createHash('sha256').update(v).digest();
+      if(!crypto.timingSafeEqual(digest(auth.slice(7)),digest(connector.token)))return res.status(403).json({error:'Integração não autorizada.'});
+      if(!validateInboundBatch(req.body))return res.status(400).json({error:'Lote inválido.'});
+      const allowed=(process.env.BI_EXTRACTOR_IMPORT_APPLY_TENANTS||'').split(',').map(s=>s.trim()).filter(Boolean);
+      if(req.body.mode==='apply'&&!allowed.includes(tenantId))return res.status(403).json({error:'Gravação de propostas ainda não habilitada.'});
+      const tenant=await prisma.tenant.findFirst({where:{id:tenantId,status:'ACTIVE',deletedAt:null},select:{id:true}});
+      if(!tenant)return res.status(403).json({error:'Empresa indisponível.'});
+      const result=await processInbound(prisma,tenantId,req.body);
+      return res.json(result);
+    } catch {
+      // No CPF, name, raw workbook or error payload in logs.
+      return res.status(503).json({error:'Lote não concluído. Reexecute para conciliar sem duplicidade.'});
+    }
+  });
+
   app.use(createCsrfMiddleware(prisma));
 
   // Rate Limiter for Authentication Endpoints (Brute Force Guard)
@@ -11904,7 +11929,7 @@ async function auditAndEnsureMasterUser() {
       const rows=payload.records as ExternalRow[];
       if(!rows.every(r=>r&&typeof r.id==='string'&&typeof r.partner==='string'&&typeof r.bank==='string'&&typeof r.category==='string'&&r.created?.startsWith(month)&&[r.gross,r.net,r.commission].every(v=>v===null||(typeof v==='number'&&Number.isFinite(v)))))return res.status(502).json({error:'Dados inválidos do extrator.'});
       const {start,next}=monthRange(month);
-      const local=await prisma.proposal.findMany({where:{tenantId:tenantId!,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,standardCategory:true,contractValue:true,partner:{select:{code:true}},bank:{select:{name:true}}},take:20001});
+      const local=await prisma.proposal.findMany({where:{tenantId:tenantId!,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,standardCategory:true,contractValue:true,partner:{select:{code:true,name:true}},bank:{select:{name:true}}},take:20001});
       if(local.length>20000)return res.status(413).json({error:'Volume de propostas acima do limite.'});
       return res.json({month,integrationName:connector.name,canImportPartners:hasPermission(session.activeRole as Role,session.activePermissions,'partners.create'),canExport:hasPermission(session.activeRole as Role,session.activePermissions,'proposals.view'),importedAt:typeof payload.importedAt==='string'?payload.importedAt:null,...reconcile(rows,local)});
     }catch{return res.status(502).json({error:'Não foi possível consultar a integração.'});}
@@ -11937,17 +11962,16 @@ async function auditAndEnsureMasterUser() {
         const candidates=partnerCandidates(x.partners);
         const result=await prisma.$transaction(async tx=>{
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'bi_partners_'+tenantId}));`;
-          const existing=await tx.partner.findMany({where:{tenantId},select:{code:true,name:true,deletedAt:true}});
-          const codes=new Map(existing.map(p=>[p.code.trim().toUpperCase(),p]));
-          const names=new Set(existing.map(p=>p.name.trim().toUpperCase()));
+          const existing=await tx.partner.findMany({where:{tenantId},select:{id:true,code:true,name:true,deletedAt:true,status:true,promoterId:true}});
+
           let preserved=0,conflicts=x.ambiguous+candidates.ambiguous;
           const pending:{tenantId:string;code:string;name:string;status:string}[]=[];
           for(const p of candidates.rows){
-            const old=codes.get(p.code.toUpperCase());
-            if(old){if(old.deletedAt||old.code!==p.code)conflicts++;else preserved++;continue;}
-            const n=p.name.toUpperCase();
-            if(names.has(n)){conflicts++;continue;}
-            names.add(n);pending.push({tenantId,code:p.code,name:p.name,status:'ATIVO'});
+            const linked=resolveInboundPartner(existing,p.code,p.name);
+            if(linked.match){preserved++;continue;}
+            if(linked.conflict){conflicts++;continue;}
+            pending.push({tenantId,code:p.code,name:p.name,status:'ATIVO'});
+            existing.push({id:'pending-'+p.code,code:p.code,name:p.name,status:'ATIVO',deletedAt:null,promoterId:null});
           }
           const saved=pending.length?await tx.partner.createMany({data:pending,skipDuplicates:true}):{count:0};
           conflicts+=pending.length-saved.count;
@@ -11964,9 +11988,9 @@ async function auditAndEnsureMasterUser() {
         const rows=await prisma.proposal.findMany({where:{tenantId,deletedAt:null,createdAt:{gte:start,lt:next}},select:{proposalNumber:true,createdAt:true,standardCategory:true,type:true,contractValue:true,releasedValue:true,partner:{select:{tenantId:true,code:true,name:true,deletedAt:true}},bank:{select:{tenantId:true,name:true}}},take:5001,orderBy:{proposalNumber:'asc'}});
         if(rows.length>5000)return res.status(413).json({error:'Limite de 5.000 propostas por mês.'});
         if(rows.some(p=>!p.partner||p.partner.tenantId!==tenantId||p.partner.deletedAt||!p.bank||p.bank.tenantId!==tenantId))return res.status(409).json({error:'Existem propostas sem parceiro ou banco válido. Corrija antes do envio; o lote anterior foi preservado.'});
-        const records=rows.map(p=>({id:p.proposalNumber,partner:p.partner!.code,producer:p.partner!.name,bank:p.bank!.name,created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
+        const records=rows.map(p=>({id:p.proposalNumber,partner:p.partner!.code,producer:p.partner!.name,bank:externalBIBank(p.bank!.name),created:new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Maceio',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.createdAt),status:p.standardCategory,modality:p.type,gross:Number(p.contractValue),net:Number(p.releasedValue)}));
         url.searchParams.set('op','sentinel-stage');
-        const upstream=await fetch(url,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({month,records}),redirect:'error',signal:AbortSignal.timeout(25000)});
+        const upstream=await fetch(url,{method:'POST',headers:{...headers,'Content-Type':'application/json','X-BI-Request':'1'},body:JSON.stringify({month,records}),redirect:'error',signal:AbortSignal.timeout(25000)});
         if(!upstream.ok)return res.status(502).json({error:'BI recusou o envio. Verifique a integração e os dados.'});
         const result=await upstream.json();
         if(!Number.isSafeInteger(result?.count)||result.count!==records.length||!Number.isSafeInteger(result.pending)||!Number.isSafeInteger(result.conflicts))return res.status(502).json({error:'Resposta de envio inválida.'});
