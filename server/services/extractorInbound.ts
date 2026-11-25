@@ -46,7 +46,7 @@ export function resolveInboundPartner<T extends Partner>(list:T[],code:string,na
 }
 export async function processInbound(prisma:PrismaClient,tenantId:string,batch:Batch):Promise<Result>{
  return prisma.$transaction(async tx=>{
-  if(batch.mode==='apply')await tx.$executeRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))','bi_extractor_'+tenantId);
+  if(batch.mode==='apply')await tx.$executeRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))','drive_extractor_'+tenantId);
   const tenant=await tx.tenant.findFirst({where:{id:tenantId,status:'ACTIVE',deletedAt:null},select:{maxProposals:true}});
   if(!tenant)throw Error('Empresa indisponível');
   const result:Result={eligible:0,created:0,existing:0,conflicts:0,invalid:0,reasons:{}};
@@ -114,7 +114,7 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    const statusId=exactStatus.length===1?exactStatus[0].id:categoryStatuses.length===1?categoryStatuses[0].id:null;
    const id=randomUUID();
    pendingProposals.push({id,tenantId,proposalNumber:r.id.trim(),clientId:client.id,partnerId:partner.id,bankId:bank.id,promoterId,productId:product.id,convenioId:convenio.id,type:product.type,relatedPortabilityId,statusId,standardCategory:cat,contractValue:r.gross,releasedValue:r.net,installmentValue:r.installment,installmentsCount:r.term,debtBalance:r.debt,commissionRate:r.commissionRate,createdAt:new Date(r.created+'T00:00:00-03:00')});
-   pendingHistory.push({tenantId,proposalId:id,statusId,statusName:r.status,notes:relatedPortabilityId?'Situação original informada pelo extrator; portabilidade selecionada manualmente pelo gestor no BI.':'Situação original informada pelo extrator de produção.'});
+   pendingHistory.push({tenantId,proposalId:id,statusId,statusName:r.status,notes:relatedPortabilityId?'Situação original informada pelo extrator; portabilidade vinculada no extrator.':'Situação original informada pelo extrator de produção.'});
    if(batch.mode==='preview')result.eligible++;else result.created++;
   }
   if(batch.mode==='apply'){
@@ -122,7 +122,7 @@ export async function processInbound(prisma:PrismaClient,tenantId:string,batch:B
    if(pendingClients.length)await tx.client.createMany({data:pendingClients});
    if(pendingProposals.length)await tx.proposal.createMany({data:pendingProposals});
    if(pendingHistory.length)await tx.statusHistory.createMany({data:pendingHistory});
-   await AuditLogService.recordBatch(tx,[{tenantId,action:'BI_EXTRACTOR_IMPORT',entity:'Proposal',newData:{hash:batch.hash,offset:batch.offset,created:result.created,existing:result.existing,invalid:result.invalid,conflicts:result.conflicts,reasons:result.reasons,partners:pendingPartners.length,clients:pendingClients.length}}]);
+   await AuditLogService.recordBatch(tx,[{tenantId,action:'DRIVE_EXTRACTOR_IMPORT',entity:'Proposal',newData:{hash:batch.hash,offset:batch.offset,created:result.created,existing:result.existing,invalid:result.invalid,conflicts:result.conflicts,reasons:result.reasons,partners:pendingPartners.length,clients:pendingClients.length}}]);
   }
   return result;
  },{timeout:20000,isolationLevel:batch.mode==='apply'?Prisma.TransactionIsolationLevel.Serializable:Prisma.TransactionIsolationLevel.RepeatableRead});
