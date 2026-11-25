@@ -2,6 +2,7 @@ import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuar
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
 import {allowedBridge,validMonth as validEvolveMonth,monthRange,reconcile,getBIConnector,partnerCandidates,type ExternalRow} from './server/services/evolveBIBridge.js';
+import {validateInboundBatch,processInbound} from './server/services/extractorInbound.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
@@ -558,6 +559,30 @@ async function auditAndEnsureMasterUser() {
   app.use(express.json({ limit: '21mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());
+
+  // Server-to-server only. Register before browser CSRF middleware; never accept session cookies.
+  app.post('/api/bi/extractor-inbound',rateLimit({windowMs:15*60*1000,max:120,standardHeaders:true,legacyHeaders:false}),async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try {
+      const tenantId=req.headers['x-sentinel-tenant'],auth=req.headers.authorization;
+      if(typeof tenantId!=='string'||typeof auth!=='string'||!auth.startsWith('Bearer ')||req.headers.cookie||req.headers.origin)return res.status(403).json({error:'Integração não autorizada.'});
+      const connector=getBIConnector(tenantId);
+      if(!connector)return res.status(403).json({error:'Integração não autorizada.'});
+      const digest=(v:string)=>crypto.createHash('sha256').update(v).digest();
+      if(!crypto.timingSafeEqual(digest(auth.slice(7)),digest(connector.token)))return res.status(403).json({error:'Integração não autorizada.'});
+      if(!validateInboundBatch(req.body))return res.status(400).json({error:'Lote inválido.'});
+      const allowed=(process.env.BI_EXTRACTOR_IMPORT_APPLY_TENANTS||'').split(',').map(s=>s.trim()).filter(Boolean);
+      if(req.body.mode==='apply'&&!allowed.includes(tenantId))return res.status(403).json({error:'Gravação de propostas ainda não habilitada.'});
+      const tenant=await prisma.tenant.findFirst({where:{id:tenantId,status:'ACTIVE',deletedAt:null},select:{id:true}});
+      if(!tenant)return res.status(403).json({error:'Empresa indisponível.'});
+      const result=await processInbound(prisma,tenantId,req.body);
+      return res.json(result);
+    } catch {
+      // No CPF, name, raw workbook or error payload in logs.
+      return res.status(503).json({error:'Lote não concluído. Reexecute para conciliar sem duplicidade.'});
+    }
+  });
+
   app.use(createCsrfMiddleware(prisma));
 
   // Rate Limiter for Authentication Endpoints (Brute Force Guard)
