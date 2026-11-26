@@ -2,7 +2,7 @@ import { registerEvolveBIRead } from './server/services/evolveBIRead';
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
-import {validateInboundBatch,processInbound} from './server/services/extractorInbound.js';
+import { deleteTenantProposals, parseProposalDeleteIds } from './server/services/proposalDeletion.js';
 import { sendTenantOwnerWelcome } from './server/services/tenantWelcomeEmail.js';
 import { registerTenantLogoRoutes } from './server/services/tenantLogoRoutes.js';
 import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
@@ -560,22 +560,8 @@ async function auditAndEnsureMasterUser() {
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());
 
-  // Dedicated Drive extractor endpoint, independent of EVOLVE BI.
-  app.post('/api/drive/extractor-inbound',rateLimit({windowMs:15*60*1000,max:120,standardHeaders:true,legacyHeaders:false}),async(req,res)=>{
-    res.setHeader('Cache-Control','no-store');
-    try {
-      const tenantId='cmwwf76ef0000jm074ydgay0f', auth=req.headers.authorization, token=process.env.SENTINEL_DRIVE_SYNC_TOKEN;
-      if(!token||token.length<48||typeof auth!=='string'||!auth.startsWith('Bearer ')||req.headers.cookie||req.headers.origin)return res.status(403).json({error:'Importação Drive não autorizada.'});
-      const digest=(v:string)=>crypto.createHash('sha256').update(v).digest();
-      if(!crypto.timingSafeEqual(digest(auth.slice(7)),digest(token)))return res.status(403).json({error:'Importação Drive não autorizada.'});
-      if(!validateInboundBatch(req.body))return res.status(400).json({error:'Lote inválido.'});
-      if(req.body.mode==='apply'&&process.env.SENTINEL_DRIVE_IMPORT_MODE!=='apply')return res.status(403).json({error:'Gravação Drive ainda não habilitada.'});
-      if(req.body.rows.some((row:any)=>row&&Object.prototype.hasOwnProperty.call(row,'portabilityProposalNumber')))return res.status(400).json({error:'O extrator não aceita vínculos externos.'});
-      const tenant=await prisma.tenant.findFirst({where:{id:tenantId,status:'ACTIVE',deletedAt:null},select:{id:true}});
-      if(!tenant)return res.status(403).json({error:'Empresa indisponível.'});
-      return res.json(await processInbound(prisma,tenantId,req.body));
-    }catch{return res.status(503).json({error:'Lote não concluído. Reexecute para conciliar sem duplicidade.'});}
-  });
+  // Retired: the external Drive extractor must only feed EVOLVE BI.
+  app.all('/api/drive/extractor-inbound',(_req,res)=>res.status(410).json({error:'Importação automática do Drive desativada no Sentinel.'}));
   // Explicitly retire all legacy bridge endpoints, including old Apps Script deployments.
   app.all('/api/bi/extractor-inbound',(_req,res)=>res.status(410).json({error:'Integração BI desativada.'}));
 
@@ -2978,6 +2964,7 @@ async function auditAndEnsureMasterUser() {
   // PROPOSALS API (PostgreSQL / Prisma)
   // -------------------------------------------------------------
   app.get('/api/proposals', async (req, res) => {
+    res.setHeader('Cache-Control','no-store');
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
@@ -4005,61 +3992,31 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  app.delete('/api/proposals/:id', async (req, res) => {
+  const deleteProposalRequest = async (req: express.Request, res: express.Response, input: unknown) => {
+    res.setHeader('Cache-Control','no-store');
     try {
       const session = await getAuthSession(req);
       if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
       if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.delete')) {
         return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.delete.' });
       }
-      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
-      const { id } = req.params;
-
-      if (!tenantId) {
-        return res.status(401).json({ error: 'Acesso não autorizado.' });
-      }
-
-      const proposal = await prisma.proposal.findFirst({
-        where: { id, tenantId },
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({error:'Acesso não autorizado.'});
+      const ids = parseProposalDeleteIds(input);
+      if (!ids) return res.status(400).json({error:'Seleção inválida. Limite de 250 propostas por lote.'});
+      const result = await deleteTenantProposals(prisma, tenantId, ids, session.user, req);
+      // One event per batch; targeted refresh fetches the entire tenant proposal list.
+      if (result.deletedCount) sseRegistry.broadcastToTenant(tenantId, {
+        type:'PROPOSAL_DELETED',entity:'Proposal',entityId:result.deletedIds[0],userId:session.user.id,
       });
-
-      if (!proposal) {
-        return res.status(404).json({ error: 'Proposta não encontrada.' });
-      }
-
-      await prisma.proposal.deleteMany({
-        where: { id, tenantId },
-      });
-
-      // Emissão pós-commit estritamente para o tenant
-      sseRegistry.broadcastToTenant(tenantId, {
-        type: 'PROPOSAL_DELETED',
-        entity: 'Proposal',
-        entityId: id,
-        userId: session.user.id,
-      });
-
-      await AuditLogService.record(prisma, {
-        tenantId,
-        userId: session.user.id,
-        userName: session.user.name,
-        action: 'PROPOSAL_DELETED',
-        entity: 'Proposal',
-        entityId: id,
-        oldData: {
-          id: proposal.id,
-          proposalNumber: proposal.proposalNumber,
-          contractValue: proposal.contractValue,
-        },
-        req,
-      });
-
-      return res.json({ success: true, message: 'Proposta removida.' });
+      return res.json({success:true,...result});
     } catch (err) {
       console.error('[API PROPOSALS DELETE ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao remover proposta.' });
+      return res.status(500).json({ error: 'Erro ao remover proposta(s). Nenhuma exclusão deste lote foi confirmada.' });
     }
-  });
+  };
+  app.delete('/api/proposals/:id', (req,res)=>deleteProposalRequest(req,res,[req.params.id]));
+  app.post('/api/proposals/bulk-delete', (req,res)=>deleteProposalRequest(req,res,req.body?.ids));
 
   // -------------------------------------------------------------
   // AUXILIARY ENTITIES (Statuses, Banks, Promoters, Partners, Products)
