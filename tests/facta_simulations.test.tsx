@@ -129,7 +129,7 @@ describe('FACTA simulações conforme manuais oficiais', () => {
     await expect(FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'REFIN' })).rejects.toThrow('selecione um contrato');
   });
   it('FGTS usa código comercial de tabela e zera períodos não selecionados', async () => {
-    const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: 100, dataRepasse_2: '01/03/2028', valor_2: 200 } } : path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '48291', CD_TABELA: 'internal', TABELA: 'LIGHT' }] } : { permitido: 'SIM', valor_liquido: 90, taxa: 1.8, parcelas_selecionadas: 1 });
+    const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: 100, dataRepasse_2: '01/03/2028', valor_2: 200 } } : path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '48291', CD_TABELA: 'internal', TABELA: 'LIGHT', TX_MENSAL: '2.04' }] } : { permitido: 'SIM', valor_liquido: 90, taxa: 1.8, parcelas_selecionadas: 1 });
     const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 1 });
     expect(request.mock.calls[2][4]).toMatchObject({ cpf: '123.456.789-01', tabela: '48291', taxa: '1.80', parcelas: [{ valor_1: '100.00' }, { valor_2: '0.00' }] });
     expect(rows[0]).toMatchObject({ state: 'OFFER', amount: 90, term: 1 });
@@ -144,10 +144,10 @@ describe('FACTA simulações conforme manuais oficiais', () => {
     const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 2 });
     expect(rows.map(item => item.state)).toEqual(['ERROR', 'PENDING']); expect(rows.every(item => !item.amount)).toBe(true);
   });
-  it('FGTS sem taxa conhecida nem código documentado consulta apenas o padrão sem inventar parâmetros', async () => {
+  it('FGTS com código fora do manual consulta apenas o padrão sem inventar parâmetros', async () => {
     const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) =>
       path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: '100.00' } } :
-      path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '99999' }] } :
+      path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '99999', TX_MENSAL: '1.80' }] } :
       { permitido: 'SIM', tabela: '48291 - LIGHT', valor_liquido: 80, parcelas_selecionadas: 1 });
     const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 1 });
     const body=request.mock.calls[2][4];
