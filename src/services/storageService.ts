@@ -4504,131 +4504,55 @@ export class StorageService {
     return { updatedCount, errors };
   }
 
-  public static async deleteProposal(id: string): Promise<void> {
-    const user = this.getActiveUser();
-    if (!hasPermission(user?.role, user?.customPermissions, 'proposals.delete')) {
-      throw new Error('Seu perfil não tem permissão para excluir propostas.');
-    }
-
-    // 1. Delete from PostgreSQL (Source of Truth)
-    if (typeof window !== 'undefined') {
-      try {
-        const res = await fetch(`/api/proposals/${id}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Falha ao excluir no PostgreSQL (HTTP ${res.status})`);
-        }
-      } catch (err: any) {
-        console.error('[DELETE PROPOSAL POSTGRESQL ERROR]', err);
-        throw err;
-      }
-    }
-
-    // 2. Perform local deletions
-    const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
-    const target = list.find(p => p.id === id);
-    if (target) {
-      const updated = list.filter(p => p.id !== id);
-      this.set(STORAGE_KEYS.PROPOSALS, updated);
-
-      // Clean relations
-      const relations = this.getProposalRelations().filter(
-        r => r.portabilityProposalId !== id && r.refinProposalId !== id
-      );
-      this.set(STORAGE_KEYS.PROPOSAL_RELATIONS, relations);
-
-      // Clean pendings
-      const pendings = this.getPendings().filter(p => p.proposalId !== id);
-      this.set(STORAGE_KEYS.PENDINGS, pendings);
-
-      // Clean comments
-      const comments = this.get<Comment[]>(STORAGE_KEYS.COMMENTS, []).filter(c => c.proposalId !== id);
-      this.set(STORAGE_KEYS.COMMENTS, comments);
-
-      // Clean histories
-      const histories = this.get<ProposalStatusHistory[]>(STORAGE_KEYS.HISTORY, INITIAL_HISTORY).filter(h => h.proposalId !== id);
-      this.set(STORAGE_KEYS.HISTORY, histories);
-
-      this.addAuditLog({
-        action: 'EXCLUIR_PROPOSTA',
-        entity: 'Proposal',
-        entityId: id,
-        previousData: JSON.stringify({ proposalNumber: target.proposalNumber }),
-      });
-    }
-
-    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+  public static async deleteProposal(id: string): Promise<{ deletedCount: number; absentCount: number }> {
+    return this.deleteProposals([id]);
   }
 
-  public static async deleteProposals(ids: string[]): Promise<{ deletedCount: number }> {
-    if (!ids || ids.length === 0) return { deletedCount: 0 };
-
+  public static async deleteProposals(ids: string[]): Promise<{ deletedCount: number; absentCount: number }> {
+    const requested = [...new Set(ids || [])];
+    if (!requested.length) return { deletedCount: 0, absentCount: 0 };
     const user = this.getActiveUser();
     if (!hasPermission(user?.role, user?.customPermissions, 'proposals.delete')) {
       throw new Error('Seu perfil não tem permissão para excluir propostas.');
     }
-
-    const deletedIds: string[] = [];
-    if (typeof window !== 'undefined') {
-      for (const id of ids) {
-        const res = await fetch(`/api/proposals/${id}`, {
-          method: 'DELETE',
-          credentials: 'include',
+    const scope = this.getSyncScope();
+    const confirmed = new Set<string>();
+    let deletedCount = 0, absentCount = 0;
+    let failure: unknown;
+    try {
+      for (let offset = 0; offset < requested.length; offset += 250) {
+        if (!this.isAuthenticated() || this.getSyncScope() !== scope) throw new Error('A empresa ativa foi alterada.');
+        const batch = requested.slice(offset, offset + 250);
+        const response = await fetch('/api/proposals/bulk-delete', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: batch }),
         });
-        if (res.ok) {
-          deletedIds.push(id);
-          continue;
-        }
-
-        const errData = await res.json().catch(() => ({}));
-        const reason = errData.error || `Falha ao excluir proposta (HTTP ${res.status}).`;
-        if (deletedIds.length === 0) throw new Error(reason);
-        toastService.warning('Exclusão parcial', `${deletedIds.length} excluída(s); a proposta ${id} não foi excluída. ${reason}`);
-        break;
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Falha ao excluir propostas (HTTP ${response.status}).`);
+        const deleted: string[] = result.deletedIds, absent: string[] = result.absentIds;
+        if (!Array.isArray(deleted) || !Array.isArray(absent) || result.deletedCount !== deleted.length ||
+            new Set([...deleted,...absent]).size !== batch.length || deleted.length + absent.length !== batch.length ||
+            [...deleted,...absent].some(id=>!batch.includes(id))) throw new Error('Resposta de exclusão inválida; atualize a carteira.');
+        deleted.forEach(id=>confirmed.add(id));
+        absent.forEach(id=>confirmed.add(id));
+        deletedCount += deleted.length;
+        absentCount += absent.length;
       }
+    } catch (error) { failure = error; }
+    if (this.isAuthenticated() && this.getSyncScope() === scope) {
+      // Invalidate any in-flight snapshot, then reconcile against PostgreSQL.
+      scopedReads.reset();
+      this.set(STORAGE_KEYS.PROPOSALS, this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, []).filter(p=>!confirmed.has(p.id)));
+      this.set(STORAGE_KEYS.PROPOSAL_RELATIONS, this.getProposalRelations().filter(r=>!confirmed.has(r.portabilityProposalId)&&!confirmed.has(r.refinProposalId)));
+      this.set(STORAGE_KEYS.PENDINGS, this.getPendings().filter(p=>!confirmed.has(p.proposalId)));
+      this.set(STORAGE_KEYS.COMMENTS, this.get<Comment[]>(STORAGE_KEYS.COMMENTS, []).filter(c=>!confirmed.has(c.proposalId)));
+      this.set(STORAGE_KEYS.HISTORY, this.get<ProposalStatusHistory[]>(STORAGE_KEYS.HISTORY, []).filter(h=>!confirmed.has(h.proposalId)));
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+      await this.syncSpecificEntity('Proposal');
     }
-
-    const idSet = new Set(deletedIds);
-    const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
-    const targetProposals = list.filter(p => idSet.has(p.id));
-    const targetAdes = targetProposals.map(p => p.proposalNumber);
-    const updated = list.filter(p => !idSet.has(p.id));
-    const deletedCount = list.length - updated.length;
-    this.set(STORAGE_KEYS.PROPOSALS, updated);
-
-    const relations = this.getProposalRelations().filter(
-      r => !idSet.has(r.portabilityProposalId) && !idSet.has(r.refinProposalId)
-    );
-    this.set(STORAGE_KEYS.PROPOSAL_RELATIONS, relations);
-
-    const pendings = this.getPendings().filter(p => !idSet.has(p.proposalId));
-    this.set(STORAGE_KEYS.PENDINGS, pendings);
-
-    const comments = this.get<Comment[]>(STORAGE_KEYS.COMMENTS, []).filter(c => !idSet.has(c.proposalId));
-    this.set(STORAGE_KEYS.COMMENTS, comments);
-
-    const histories = this.get<ProposalStatusHistory[]>(STORAGE_KEYS.HISTORY, INITIAL_HISTORY).filter(h => !idSet.has(h.proposalId));
-    this.set(STORAGE_KEYS.HISTORY, histories);
-
-    this.addAuditLog({
-      action: 'EXCLUIR_PROPOSTAS_EM_LOTE',
-      entity: 'Proposal',
-      entityId: `batch-${ids.length}`,
-      newData: JSON.stringify({
-        count: deletedCount,
-        requestedCount: ids.length,
-        failedCount: Math.max(0, ids.length - deletedCount),
-        deletedAdes: targetAdes,
-        ids,
-      }),
-    });
-
-    window.dispatchEvent(new Event('credit_gestao_storage_update'));
-
-    return { deletedCount };
+    if (failure) throw new Error(`${deletedCount} excluída(s), ${absentCount} já ausente(s). ${failure instanceof Error ? failure.message : 'Falha na exclusão.'}`);
+    return { deletedCount, absentCount };
   }
 
   // Status History
