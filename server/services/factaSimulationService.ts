@@ -29,6 +29,13 @@ const date = (value: unknown) => {
 const marginNumber = (value: unknown) => value === 0 || value === '0' || value === '0.00' || value === '0,00' ? 0 : factaNumber(value);
 const digits = (value: unknown) => String(value || '').replace(/\D/g, '');
 const list = (value: unknown): any[] => Array.isArray(value) ? value : [];
+ // FACTA FGTS manual v11.0, pp. 5–8: these commercial table codes use 1.80% a.m.
+const factaFgtsManualCodes = new Set(['50407','48291','53201','53210','53228','53236','53244','53252','53260','53279','53287']);
+const factaFgtsCpf = (value:string) => {
+  const cpf=digits(value);
+  if(cpf.length!==11)throw Error('CPF inválido para simulação FGTS FACTA.');
+  return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+};
 const allowed = new Set(['/proposta/operacoes-disponiveis', '/proposta/contratos-refinanciamento', '/fgts/saldo', '/fgts/calculo', '/comercial/tabelas-coeficientes', '/solicita-autorizacao-consulta', '/consignado-trabalhador/autoriza-consulta', '/consignado-trabalhador/analise-politica-credito']);
 
 const missingFactaConsent=(message:string)=>missingCltAuthorization(message)||/(?:^|[\s{\/])solicita-autorizacao-consulta\b/i.test(message);
@@ -199,25 +206,48 @@ export class FactaSimulationService {
     const rows: ProductSimulationRow[] = [];
     const row = (item: Omit<ProductSimulationRow, 'provider' | 'institution'>): ProductSimulationRow => ({ provider: 'FACTA', institution: 'FACTA', ...item });
     if (product === 'FGTS') {
-      const balance = await this.request(prisma, tenantId, '/fgts/saldo', { cpf: input.cpf });
+      const cpf = factaFgtsCpf(input.cpf);
+      const balance = await this.request(prisma, tenantId, '/fgts/saldo', { cpf: digits(cpf) });
       const periods = Array.from({ length: 12 }, (_, i) => i + 1).filter(i => balance.retorno?.[`dataRepasse_${i}`]);
-      if (!periods.some(i => factaNumber(balance.retorno?.[`valor_${i}`]))) return [row({ state: 'PENDING', message: balance.msg || 'Nenhum período de saldo disponível. Verifique a autorização no aplicativo FGTS.' })];
+      if (!periods.some(i => factaNumber(balance.retorno?.[`valor_${i}`]))) return [row({ state: 'PENDING', message: balance.msg && !/saldo retornado com sucesso/i.test(balance.msg) ? safeFactaMessage(balance.msg) : 'A FACTA não retornou períodos com saldo positivo. Verifique a autorização no aplicativo FGTS.' })];
+      if(!Number.isInteger(input.term)||input.term<1||input.term>12) return [row({state:'ERROR',message:'Informe uma quantidade válida de saques para a FACTA.'})];
+      const parcels = periods.map(i => ({
+        [`dataRepasse_${i}`]: balance.retorno[`dataRepasse_${i}`],
+        [`valor_${i}`]: (i <= input.term ? factaNumber(balance.retorno[`valor_${i}`]) || 0 : 0).toFixed(2),
+      }));
       const tables = await this.request(prisma, tenantId, '/comercial/tabelas-coeficientes', { averbador: 20095, tipo_operacao: 13 });
+      const candidates:{code?:string;name:string;rate?:number}[]=[];
       const seen = new Set<string>();
       for (const table of list(tables.dados)) {
         const code = String(table.CD_TABELA_FF || '').trim();
         if (!code || seen.has(code)) continue;
+        // Only documented FGTS codes (or commercially returned codes with explicit rates).
+        // Never apply a made-up rate to an unknown table.
+        const catalogRate=factaNumber(table.TX_MENSAL);
+        const rate=catalogRate ?? (factaFgtsManualCodes.has(code)?1.8:undefined);
+        if(!/^\d+$/.test(code)||!rate)continue;
         seen.add(code);
+        candidates.push({code,name:String(table.TABELA||code),rate});
+      }
+      // The FGTS manual explicitly allows omitting both rate and table to calculate
+      // the bank's default. Do not assume which table is default (the revision
+      // history and the current chapter disagree); trust the returned table.
+      if(!candidates.length)candidates.push({name:'Tabela padrão FACTA'});
+      for (const candidate of candidates) {
         try {
-          const result = await this.request(prisma, tenantId, '/fgts/calculo', {}, { cpf: input.cpf, tabela: code, ...(factaNumber(table.TX_MENSAL) ? { taxa: factaNumber(table.TX_MENSAL) } : {}), parcelas: periods.map(i => ({ [`dataRepasse_${i}`]: balance.retorno[`dataRepasse_${i}`], [`valor_${i}`]: i <= input.term ? factaNumber(balance.retorno[`valor_${i}`]) || 0 : 0 })) });
+          const result = await this.request(prisma, tenantId, '/fgts/calculo', {}, { cpf, ...(candidate.code ? {tabela:candidate.code,taxa:candidate.rate!.toFixed(2)} : {}), parcelas: parcels });
           const returnedCode = String(result.tabela || '').trim().match(/^(\d+)\s*-/)?.[1];
-          if (returnedCode && returnedCode !== code) throw new Error('FACTA retornou outra tabela para o cálculo solicitado. A condição não foi utilizada.');
+          if (candidate.code && returnedCode && returnedCode !== candidate.code) throw new Error('FACTA retornou outra tabela para o cálculo solicitado. A condição não foi utilizada.');
           const amount = factaNumber(result.valor_liquido);
           const approved = String(result.permitido || '').trim().toUpperCase() === 'SIM';
-          rows.push(row({ table: result.tabela || table.TABELA, state: approved && amount ? 'OFFER' : 'PENDING', amount: approved ? amount : undefined, term: factaNumber(result.parcelas_selecionadas), rate: factaNumber(result.taxa), simulationId: result.simulacao_fgts, message: approved && amount ? undefined : result.msg || result.mensagem || 'Antecipação não permitida nesta tabela.' }));
-        } catch (error: any) { rows.push(row({ table: table.TABELA, state: 'ERROR', data:error.writeUncertain?{writeUncertain:true}:undefined, message: error.message })); }
+          const bankMessage=typeof result.msg==='string'?result.msg:typeof result.mensagem==='string'?result.mensagem:undefined;
+          rows.push(row({ table: result.tabela || candidate.name, state: approved && amount ? 'OFFER' : 'PENDING', amount: approved ? amount : undefined, term: factaNumber(result.parcelas_selecionadas), rate: factaNumber(result.taxa), simulationId: result.simulacao_fgts, message: approved && amount ? undefined : (bankMessage && safeFactaMessage(bankMessage)) || 'Antecipação não permitida nesta tabela.' }));
+        } catch (error: any) {
+          const diagnostic=this.failure(error);
+          rows.push(row({ table: candidate.name, state: 'ERROR', data:diagnostic.data, message:diagnostic.message }));
+        }
       }
-      return rows.length ? rows : [row({ state: 'PENDING', message: 'Nenhuma tabela FGTS retornada.' })];
+      return rows;
     }
     if(action==='AUTHORIZE'&&!confirmedMissing)return this.product(prisma,tenantId,product,'REFRESH',{...input,automaticAuthorization:true,observeOnly:false});
     if (action === 'AUTHORIZE') {
