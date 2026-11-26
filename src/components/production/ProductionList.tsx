@@ -261,8 +261,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       description: 'Esta ação excluirá permanentemente a proposta e seus históricos, pendências e comentários vinculados.',
       onConfirm: async () => {
         try {
-          await StorageService.deleteProposal(proposal.id);
-          toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} foi excluída.`);
+          const result = await StorageService.deleteProposal(proposal.id);
+          if (result.deletedCount) toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} foi excluída.`);
+          else toastService.warning('Carteira atualizada', `ADE ${proposal.proposalNumber} já não estava na carteira.`);
           refreshData();
         } catch (err: any) {
           toastService.error('Erro ao Excluir', err.message || 'Erro ao excluir proposta.');
@@ -282,7 +283,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         try {
           const result = await StorageService.deleteProposals(selectedIds);
           refreshData();
-          toastService.success('Exclusão Concluída', `${result.deletedCount} proposta(s) excluída(s) com sucesso.`);
+          toastService.success('Exclusão Concluída', `${result.deletedCount} proposta(s) excluída(s); ${result.absentCount} já não estavam na carteira.`);
         } catch (err: any) {
           toastService.error('Erro na Operação', err.message || 'Erro ao excluir propostas em lote.');
         }
