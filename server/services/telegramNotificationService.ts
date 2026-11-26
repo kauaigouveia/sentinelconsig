@@ -9,6 +9,8 @@ import { AuditLogService } from './auditLogService.js';
 import { downloadTelegramPdf, readTelegramInssPdf, telegramPdfReviewText,parseTelegramSelectedContracts,validateTelegramPdfDocument,calculateTelegramInssQuotes,telegramPdfErrorCode,telegramPdfErrorMessage,TELEGRAM_PDF_TTL_MS,type TelegramPdfReview } from './telegramInssPdfService.js';
 import { calculateTelegramInssOfficialQuotes } from './telegramInssOfficialQuotes.js';
 import {formatTelegramInssPortfolio} from './telegramInssPortfolio.js';
+import {telegramDaycovalPrints,sendTelegramDaycovalPrint} from './telegramDaycovalPrint.js';
+import type {DaycovalShareData} from '../../src/lib/daycovalShareImage.js';
 import {calculateTelegramInssMarginQuotes} from './telegramInssMarginQuotes.js';
 import { normalizeTelegramMenuInput } from './telegramProductMenu.js';
 import {beginTelegramNativeSimulation,continueTelegramCltSimulation,cltConsultationOptions,telegramNativePrompt,acceptTelegramNativeAnswer,telegramNativeSummary,type TelegramNativeDraft} from './telegramNativeSimulation.js';
@@ -303,10 +305,13 @@ type ProposalQueryState = {
     pendingPdf?:{review:TelegramPdfReview;expires:number;selectedIndices?:number[]};
     native?:TelegramNativeDraft;
     cltMarginReady?:boolean;
+    daycovalPrintAttempt?:string;
+    daycovalPrints?:{account:TelegramAccount;expires:number;items:DaycovalShareData[]};
     expires: number;
 };
 
 type TelegramPdfWork=
+    |{kind:'PRINT';account:TelegramAccount;data:DaycovalShareData}
     |{kind:'READ';account:TelegramAccount;document:{file_id:string;file_name?:string;mime_type?:string;file_size?:number}}
     |{kind:'CALCULATE';account:TelegramAccount;review:TelegramPdfReview;indices:number[];illiterate:'YES'|'NO';attemptKey:string}
     |{kind:'NATIVE';account:TelegramAccount;draft:TelegramNativeDraft;attemptKey:string}
@@ -445,6 +450,8 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             state.results = undefined;
             keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
         };
+        if(state.daycovalPrints&&state.daycovalPrints.expires<Date.now())state.daycovalPrints=undefined;
+        const printMatch=text.match(/^PRINT\s+(\d{1,4})$/i);
         const menuChoice=telegramMenuAction(text,state.phase==='PRODUCT'?(state.section||'ROOT'):'ROOT',state.phase==='PRODUCT'||state.phase==='MENU');
         if (['menu','/menu','/start'].includes(command) || menuChoice==='HOME') {
             if(state.selected && await valid(state.selected))showMain();
@@ -464,7 +471,19 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             if (state.phase === 'COMPANY') showCompanies();
         } else if (state.selected && await valid(state.selected)) {
             keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
-            if(msg.document){
+            if(printMatch){
+                const batch=state.daycovalPrints,account=state.selected;
+                const chosen=batch?.items[Number(printMatch[1])-1];
+                if(!batch||batch.expires<Date.now()||batch.account.tenantId!==account.tenantId||batch.account.partnerId!==account.partnerId||batch.account.linkedAt!==account.linkedAt||!chosen){
+                    response='Imagem não disponível ou consulta expirada. Faça uma nova simulação pelo extrato.';
+                }else if(!(await takeQuerySlot())){
+                    response='Limite de consultas atingido neste intervalo.';
+                }else{
+                    pdfWork={kind:'PRINT',account,data:chosen};
+                    response='🖼 Gerando imagem da condição Daycoval selecionada.';
+                }
+                keyboard=telegramSectionMenu('PORT').keyboard;
+            }else if(msg.document){
                 if(state.phase!=='PDF_WAIT'||state.section!=='PORT'){
                     response='Para enviar um extrato INSS, abra Portabilidade INSS → Simular pelo extrato e siga as orientações. O documento não foi baixado.';
                     keyboard=telegramSectionMenu('PORT').keyboard;
@@ -508,6 +527,7 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
                     // The consultation identifiers are deleted from the encrypted
                     // chat state before any calls to bank APIs leave this process.
                     state.pendingPdf=undefined;
+                    state.daycovalPrintAttempt=pdfWork.attemptKey;state.daycovalPrints=undefined;
                     state.phase='PRODUCT';state.section='PORT';
                     response='🔎 Conferência registrada. Vou calcular TODOS os contratos selecionados nas planilhas e consultar as integrações bancárias habilitadas. Cada contrato receberá seu próprio resultado. Nenhuma contratação será realizada.';
                     keyboard=telegramSectionMenu('PORT').keyboard;
@@ -691,6 +711,14 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
     if(!job)return;
     // No PDF download, external Telegram request or workbook calculation runs under Prisma transaction.
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    if(job.kind==='PRINT'){
+        try{
+            if(await telegramAccountStillValid(db,config,chatId,job.account))await sendTelegramDaycovalPrint(config.token,chatId,job.data);
+        }catch{
+            if(await telegramAccountStillValid(db,config,chatId,job.account))await telegram(config,'sendMessage',{chat_id:chatId,text:'Não foi possível gerar ou enviar a imagem. O resultado da simulação continua disponível no portal.',protect_content:true});
+        }
+        return;
+    }
     if(job.kind==='CLT_MARGIN'){
         try{
             const partner=await db.partner.findFirst({
@@ -839,8 +867,21 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
     const margin=await marginTask;
     if(!await telegramAccountStillValid(db,config,chatId,job.account))return;
+    let printAvailable=false;
+    try{
+        const items=telegramDaycovalPrints(job.review,sheets?.quotes||[]);
+        const previous=await db.systemConfig.findUnique({where:{id:stateId}});
+        if(items.length&&previous){
+            const state=decrypt<ProposalQueryState>(previous.configValue);
+            if(state.expires>Date.now()&&state.daycovalPrintAttempt===job.attemptKey&&state.selected?.tenantId===job.account.tenantId&&state.selected.partnerId===job.account.partnerId&&state.selected.linkedAt===job.account.linkedAt){
+                const updated={...state,daycovalPrints:{account:job.account,expires:Date.now()+TELEGRAM_PDF_TTL_MS,items},expires:Date.now()+TELEGRAM_PDF_TTL_MS};
+                const claimed=await db.systemConfig.updateMany({where:{id:stateId,configValue:previous.configValue},data:{configValue:encrypt(updated)}});
+                printAvailable=claimed.count===1;
+            }
+        }
+    }catch{/* Printing must not block calculated financial results. */}
     const report=formatTelegramInssPortfolio(
-        job.review,job.indices,sheets?.quotes||[],integration?.contracts||[],margin);
+        job.review,job.indices,sheets?.quotes||[],integration?.contracts||[],margin,printAvailable);
     if(!sheets||!integration)report.push('⚠️ '+(!sheets?'Cálculo documental ':'')+
         (!sheets&&!integration?'e ':'')+(!integration?'integrações bancárias ':'')+
         'não concluído(s) nesta consulta. Verifique no Portal; isso não significa recusa.');
