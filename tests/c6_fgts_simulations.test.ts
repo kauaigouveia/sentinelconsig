@@ -84,6 +84,20 @@ describe('C6 FGTS oficial — simulação sem inclusão',()=>{
   expect(pending.state).toBe('PENDING');
   expect(JSON.stringify(pending)).not.toContain('23082.31');
  });
+ it('403 não vira ausência de saldo e não expõe dados bancários',async()=>{
+  prep();
+  const failure=vi.fn(async()=>({ok:false,status:403,json:async()=>({message:'Forbidden',private:'secret-fixture'})})) as any;
+  const call=C6FgtsSimulationService.simulate({} as any,'tenant-a',input,bank as any,failure);
+  await expect(call).rejects.toThrow(/HTTP 403.*permissão/);
+  expect(failure).toHaveBeenCalledTimes(1);
+ });
+ it('classifica recusa de convênio sem divulgar mensagem bruta do banco',async()=>{
+  prep();
+  const failure=vi.fn(async()=>({ok:false,status:403,json:async()=>({message:'Convênio inválido para CPF 52998224725'})})) as any;
+  const error=await C6FgtsSimulationService.simulate({} as any,'tenant-a',input,bank as any,failure).catch(e=>e);
+  expect(error.message).toContain('convênio FGTS');
+  expect(error.message).not.toContain('52998224725');
+ });
  it('encaminha C6 FGTS ao motor compartilhado usado pelo site e Telegram',async()=>{
   vi.spyOn(NossaFintechService,'getConfig').mockResolvedValue({enabled:false,isConfigured:false} as any);
   vi.spyOn(FactaBankService,'getTenantConfig').mockResolvedValue({isConfigured:false,simulationEnabled:false} as any);
