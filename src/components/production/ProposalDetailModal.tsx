@@ -526,8 +526,9 @@ const ProposalDetailModalContent: React.FC<
       description: 'A exclusão removerá o registro e todos os históricos, pendências e comentários vinculados.',
       onConfirm: async () => {
         try {
-          await StorageService.deleteProposal(proposal.id);
-          toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} removida com sucesso.`);
+          const result = await StorageService.deleteProposal(proposal.id);
+          if (result.deletedCount) toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} foi excluída.`);
+          else toastService.warning('Carteira atualizada', `ADE ${proposal.proposalNumber} já não estava na carteira.`);
           onProposalUpdated();
           onClose();
         } catch (err: any) {
