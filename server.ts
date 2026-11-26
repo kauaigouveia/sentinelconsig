@@ -1,3 +1,4 @@
+import { registerEvolveBIRead } from './server/services/evolveBIRead';
 import { shouldBootstrapInitialMaster } from './server/utils/masterBootstrapGuard.js';
 import { getPartnerTurnstileConfig, verifyPartnerTurnstile } from './server/services/partnerTurnstile.js';
 import { sendAccountCreatedNotice, sendAdminPasswordResetNotice } from './server/services/transactionalEmail.js';
@@ -577,6 +578,8 @@ async function auditAndEnsureMasterUser() {
   });
   // Explicitly retire all legacy bridge endpoints, including old Apps Script deployments.
   app.all('/api/bi/extractor-inbound',(_req,res)=>res.status(410).json({error:'Integração BI desativada.'}));
+
+  registerEvolveBIRead(app, prisma);
 
   app.use(createCsrfMiddleware(prisma));
 
