@@ -40,6 +40,8 @@ export function formatTelegramInssPortfolio(
  const blocks:string[]=['📊 INSS · SIMULAÇÕES\nEspécie '+review.benefitType+
    ' · '+indices.length+' contratos selecionados'];
  let totalIndividual=0;
+ const daycoval=sheets.filter(row=>row.bank==='DAYCOVAL');
+ const printCode=(q:TelegramSpreadsheetQuote)=>daycoval.indexOf(q)+1;
  for(const index of indices){
   const contract=review.contracts[index];if(!contract)continue;
   const code=resolveInstitutionCode(contract.bank);
@@ -47,12 +49,12 @@ export function formatTelegramInssPortfolio(
   const integration=official.find(row=>row.index===index);
   const offers=[
    ...sheets.filter(row=>row.indices.length===1&&row.indices[0]===index).map(row=>({
-    bank:row.bank,table:row.table,amount:row.amount,term:row.term,rate:row.rate,
+    bank:row.bank,table:row.table,amount:row.amount,term:row.term,rate:row.rate,print:row.bank==='DAYCOVAL'?printCode(row):0,
    })),
    ...(integration?.rows||[]).filter(row=>row.state==='OFFER'&&Number(row.amount)>0)
     .map(row=>({bank:String(row.provider||row.institution||''),
       table:String(row.name||row.code||''),amount:Number(row.amount),
-      term:Number(row.term),rate:Number(row.rate)})),
+      term:Number(row.term),rate:Number(row.rate),print:0})),
   ];
   const byBank=new Map<string,(typeof offers)[number]>();
   for(const offer of offers){
@@ -67,7 +69,7 @@ export function formatTelegramInssPortfolio(
    ' | restantes '+contract.remaining];
   for(const offer of options)lines.push('🏦 '+short(offer.bank,22)+
    ' | troco '+money(offer.amount)+' | '+offer.term+'x | '+pct(offer.rate)+
-   (offer.bank.toUpperCase()==='DAYCOVAL'?' | '+short(offer.table,45):''));
+   (offer.bank.toUpperCase()==='DAYCOVAL'?' | '+short(offer.table,45)+(offer.print?' | PRINT '+offer.print:''):''));
   if(!options.length)lines.push('⚠️ Sem cotação positiva neste contrato');
   if(integration?.failed)lines.push('⚠️ Integrações pendentes (não significa recusa)');
   const others=otherEligibleBanks(review,contract);
@@ -83,7 +85,7 @@ export function formatTelegramInssPortfolio(
    lines.push('Contratos '+group.indices.map(i=>i+1).join('+')+
     ' | '+short(group.table,50)+
     '\nTroco '+money(group.amount)+' | parcela '+money(group.installment)+
-    ' | '+group.term+'x | '+pct(group.rate));
+    ' | '+group.term+'x | '+pct(group.rate)+' | PRINT '+printCode(group));
    for(const change of group.changes){
     const old=change.original,next=change.adjusted;
     const label=next==null?'recalculo não informado':
@@ -118,6 +120,7 @@ export function formatTelegramInssPortfolio(
   '\nMargem livre (parcela): '+money(review.loanMargin)+
   '\nNão somar trocos de unificações nem ofertas alternativas.'+
   '\n⚠️ Simulações sujeitas a vigência, autorização e aprovação. Nenhuma contratação realizada.');
+ if(daycoval.length)blocks.push('🖼 Para receber a imagem de uma condição Daycoval, digite PRINT e o número indicado na cotação (ex.: PRINT 1). Disponível por 10 minutos.');
  const messages:string[]=[];let current='';
  for(const block of blocks){
   for(const line of block.split('\n')){
