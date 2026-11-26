@@ -32,18 +32,11 @@ export function daycovalShareData(row:Quote,condition:Condition){
    term:numeric(row.term),table:row.table?.name||row.table?.cod_tabela||'Tabela não informada',
    amount:numeric(row.data?.contractAmount),cash:numeric(row.troco),version:row.sourceVersionDate||''};
 }
-export function renderDaycovalShare(row:Quote,condition:Condition,customerName:string){
- const d=daycovalShareData(row,condition);
- const canvas=document.createElement('canvas');canvas.width=1500;canvas.height=800;
- const ctx=canvas.getContext('2d');if(!ctx)throw Error('Não foi possível gerar a imagem.');
+export type DaycovalShareData = ReturnType<typeof daycovalShareData>;
+type CellPainter=(x:number,y:number,w:number,h:number,label:string,fill?:string,color?:string,bold?:boolean,align?:'left'|'center',size?:number)=>void;
+function paintDaycoval(d:DaycovalShareData,customerName:string,draw:CellPainter){
  const blue='#09265b',line='#8f9aa7',ink='#10213b',green='#c8e7bc',pale='#fff2cf',white='#ffffff';
- function cell(x:number,y:number,w:number,h:number,label:string,fill=white,color=ink,bold=false,align:CanvasTextAlign='center',size=24){
-  ctx.fillStyle=fill;ctx.fillRect(x,y,w,h);ctx.strokeStyle=line;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,w-1,h-1);
-  ctx.save();ctx.beginPath();ctx.rect(x+5,y+2,w-10,h-4);ctx.clip();
-  ctx.fillStyle=color;ctx.font=(bold?'700 ':'400 ')+size+'px Arial';ctx.textAlign=align;ctx.textBaseline='middle';
-  ctx.fillText(label,align==='left'?x+14:x+w/2,y+h/2,w-25);ctx.restore();
- }
- ctx.fillStyle=white;ctx.fillRect(0,0,1500,800);
+ function cell(x:number,y:number,w:number,h:number,label:string,fill=white,color=ink,bold=false,align:'left'|'center'='center',size=24){draw(x,y,w,h,label,fill,color,bold,align,size);}
  cell(24,22,1452,54,'DAYCOVAL  |  SIMULADOR COM SALDO',blue,white,true,'left',30);
  cell(24,76,1452,48,'Reprodução de simulação • Sentinel Consig  |  '+customerName,white,ink,true,'left',23);
  const x=24,w=1452,left=330,col=(w-left)/(d.contracts.length+1);
@@ -69,7 +62,29 @@ export function renderDaycovalShare(row:Quote,condition:Condition,customerName:s
  let pos=24;labels.forEach((label,i)=>{cell(pos,532,widths[i],50,label,blue,white,true,'center',21);cell(pos,582,widths[i],70,vals[i],i===4?green:white,ink,true,'center',i===0?20:25);pos+=widths[i];});
  cell(24,674,1452,44,'Resultado: estimativa para conferência, sujeita à aprovação bancária.',white,ink,true,'left',22);
  cell(24,718,1452,44,'Reprodução dos dados calculados — não é print original nem aprovação do banco.'+(d.version?'  |  Planilha: '+d.version:''),white,ink,false,'left',20);
+}
+export function renderDaycovalShare(row:Quote,condition:Condition,customerName:string){
+ const d=daycovalShareData(row,condition);
+ const canvas=document.createElement('canvas');canvas.width=1500;canvas.height=800;
+ const ctx=canvas.getContext('2d');if(!ctx)throw Error('Não foi possível gerar a imagem.');
+ ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1500,800);
+ paintDaycoval(d,customerName,(x,y,w,h,label,fill='#ffffff',color='#10213b',bold=false,align='center',size=24)=>{
+  ctx.fillStyle=fill;ctx.fillRect(x,y,w,h);ctx.strokeStyle='#8f9aa7';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+  ctx.save();ctx.beginPath();ctx.rect(x+5,y+2,w-10,h-4);ctx.clip();
+  ctx.fillStyle=color;ctx.font=(bold?'700 ':'400 ')+size+'px Arial';ctx.textAlign=align;ctx.textBaseline='middle';
+  ctx.fillText(label,align==='left'?x+14:x+w/2,y+h/2,w-25);ctx.restore();
+ });
  return canvas;
+}
+const escapeXml=(v:string)=>v.replace(/[\u0000-\u001f]/g,' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+export function daycovalShareSvg(d:DaycovalShareData,customerName='Cliente INSS'){
+ const cells:string[]=[];
+ paintDaycoval(d,customerName,(x,y,w,h,label,fill='#ffffff',color='#10213b',bold=false,align='center',size=24)=>{
+  const safe=escapeXml(label);
+  const fit=Math.min(size,(w-25)/Math.max(1,label.length*.58));
+  cells.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+fill+'" stroke="#8f9aa7"/><text x="'+(align==='left'?x+14:x+w/2)+'" y="'+(y+h/2+fit*.35)+'" text-anchor="'+(align==='left'?'start':'middle')+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="'+fit+'" font-weight="'+(bold?700:400)+'" fill="'+color+'">'+safe+'</text>');
+ });
+ return '<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="800" viewBox="0 0 1500 800"><rect width="1500" height="800" fill="white"/>'+cells.join('')+'</svg>';
 }
 export async function saveDaycovalShare(row:Quote,condition:Condition,customerName:string,copy:boolean){
  const canvas=renderDaycovalShare(row,condition,customerName);
