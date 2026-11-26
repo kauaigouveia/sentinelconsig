@@ -35,12 +35,12 @@ function otherEligibleBanks(review:TelegramPdfReview,contract:TelegramPdfReview[
 /** Concise partner message; no complete CPF, benefit number or contract number. */
 export function formatTelegramInssPortfolio(
  review:TelegramPdfReview,indices:readonly number[],sheets:readonly TelegramSpreadsheetQuote[],
- official:readonly Official[],margin?:TelegramInssMarginResult,
+ official:readonly Official[],margin?:TelegramInssMarginResult,printAvailable=false,
 ):string[]{
  const blocks:string[]=['📊 INSS · SIMULAÇÕES\nEspécie '+review.benefitType+
    ' · '+indices.length+' contratos selecionados'];
  let totalIndividual=0;
- const daycoval=sheets.filter(row=>row.bank==='DAYCOVAL');
+ const daycoval=printAvailable?sheets.filter(row=>row.bank==='DAYCOVAL'):[];
  const printCode=(q:TelegramSpreadsheetQuote)=>daycoval.indexOf(q)+1;
  for(const index of indices){
   const contract=review.contracts[index];if(!contract)continue;
@@ -85,7 +85,7 @@ export function formatTelegramInssPortfolio(
    lines.push('Contratos '+group.indices.map(i=>i+1).join('+')+
     ' | '+short(group.table,50)+
     '\nTroco '+money(group.amount)+' | parcela '+money(group.installment)+
-    ' | '+group.term+'x | '+pct(group.rate)+' | PRINT '+printCode(group));
+    ' | '+group.term+'x | '+pct(group.rate)+(printCode(group)?' | PRINT '+printCode(group):''));
    for(const change of group.changes){
     const old=change.original,next=change.adjusted;
     const label=next==null?'recalculo não informado':
