@@ -209,7 +209,7 @@ export class FactaSimulationService {
       const cpf = factaFgtsCpf(input.cpf);
       const balance = await this.request(prisma, tenantId, '/fgts/saldo', { cpf: digits(cpf) });
       const periods = Array.from({ length: 12 }, (_, i) => i + 1).filter(i => balance.retorno?.[`dataRepasse_${i}`]);
-      if (!periods.some(i => factaNumber(balance.retorno?.[`valor_${i}`]))) return [row({ state: 'PENDING', message: balance.msg && !/saldo retornado com sucesso/i.test(balance.msg) ? safeFactaMessage(balance.msg) : 'A FACTA não retornou períodos com saldo positivo. Verifique a autorização no aplicativo FGTS.' })];
+      if (!periods.some(i => factaNumber(balance.retorno?.[`valor_${i}`]))) return [row({ state: 'PENDING', message: typeof balance.msg==='string' && balance.msg && !/saldo retornado com sucesso/i.test(balance.msg) ? safeFactaMessage(balance.msg) : 'A FACTA não retornou períodos com saldo positivo. Verifique a autorização no aplicativo FGTS.' })];
       if(!Number.isInteger(input.term)||input.term<1||input.term>12) return [row({state:'ERROR',message:'Informe uma quantidade válida de saques para a FACTA.'})];
       const parcels = periods.map(i => ({
         [`dataRepasse_${i}`]: balance.retorno[`dataRepasse_${i}`],
@@ -221,13 +221,11 @@ export class FactaSimulationService {
       for (const table of list(tables.dados)) {
         const code = String(table.CD_TABELA_FF || '').trim();
         if (!code || seen.has(code)) continue;
-        // Only documented FGTS codes (or commercially returned codes with explicit rates).
-        // Never apply a made-up rate to an unknown table.
-        const catalogRate=factaNumber(table.TX_MENSAL);
-        const rate=catalogRate ?? (factaFgtsManualCodes.has(code)?1.8:undefined);
-        if(!/^\d+$/.test(code)||!rate)continue;
+        // The catalog may also contain other commercial codes. Only submit tables
+        // documented for this FGTS endpoint; the bank still decides eligibility.
+        if(!factaFgtsManualCodes.has(code))continue;
         seen.add(code);
-        candidates.push({code,name:String(table.TABELA||code),rate});
+        candidates.push({code,name:String(table.TABELA||code),rate:1.8});
       }
       // The FGTS manual explicitly allows omitting both rate and table to calculate
       // the bank's default. Do not assume which table is default (the revision
