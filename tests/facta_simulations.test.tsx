@@ -131,18 +131,28 @@ describe('FACTA simulações conforme manuais oficiais', () => {
   it('FGTS usa código comercial de tabela e zera períodos não selecionados', async () => {
     const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: 100, dataRepasse_2: '01/03/2028', valor_2: 200 } } : path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '48291', CD_TABELA: 'internal', TABELA: 'LIGHT' }] } : { permitido: 'SIM', valor_liquido: 90, taxa: 1.8, parcelas_selecionadas: 1 });
     const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 1 });
-    expect(request.mock.calls[2][4]).toMatchObject({ tabela: '48291', parcelas: [{ valor_1: 100 }, { valor_2: 0 }] });
+    expect(request.mock.calls[2][4]).toMatchObject({ cpf: '123.456.789-01', tabela: '48291', taxa: '1.80', parcelas: [{ valor_1: '100.00' }, { valor_2: '0.00' }] });
     expect(rows[0]).toMatchObject({ state: 'OFFER', amount: 90, term: 1 });
   });
   it('FGTS não oferece valor recusado e isola falhas por tabela', async () => {
     vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path, _q, body: any) => {
       if (path === '/fgts/saldo') return { retorno: { dataRepasse_1: '01/03/2027', valor_1: 100 } };
-      if (path === '/comercial/tabelas-coeficientes') return { dados: [{ CD_TABELA_FF: 'a' }, { CD_TABELA_FF: 'b' }] };
-      if (body.tabela === 'a') throw new Error('Tabela indisponível');
+      if (path === '/comercial/tabelas-coeficientes') return { dados: [{ CD_TABELA_FF: '48291' }, { CD_TABELA_FF: '50407' }] };
+      if (body.tabela === '48291') throw new Error('Tabela indisponível');
       return { permitido: 'NAO', valor_liquido: 90, mensagem: 'Sem autorização' };
     });
-    const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', productInput);
+    const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 2 });
     expect(rows.map(item => item.state)).toEqual(['ERROR', 'PENDING']); expect(rows.every(item => !item.amount)).toBe(true);
+  });
+  it('FGTS sem taxa conhecida nem código documentado consulta apenas o padrão sem inventar parâmetros', async () => {
+    const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) =>
+      path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: '100.00' } } :
+      path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '99999' }] } :
+      { permitido: 'SIM', tabela: '48291 - LIGHT', valor_liquido: 80, parcelas_selecionadas: 1 });
+    const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 1 });
+    const body=request.mock.calls[2][4];
+    expect(body).not.toHaveProperty('taxa'); expect(body).not.toHaveProperty('tabela');
+    expect(rows[0]).toMatchObject({table:'48291 - LIGHT',state:'OFFER',amount:80});
   });
   it('solicita autorização CLT explícita, averbador correto e telefone formatado', async () => {
     const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async(_db,_tenant,path)=>{if(path==='/consignado-trabalhador/autoriza-consulta')throw Error('Token expirado, necessário utilizar o endpoint {solicita-autorizacao-consulta}.');return {mensagem:'Aguarde assinatura'};});
@@ -227,9 +237,9 @@ describe('FACTA transporte e vínculo de propostas', () => {
     expect(result.offers[0].policyReview).not.toContain('Divergência documental');
   });
   it('mantém períodos zerados e rejeita cálculo FGTS de tabela diferente', async () => {
-    const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: 0, dataRepasse_2: '01/03/2028', valor_2: 200 } } : path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '1' }] } : { permitido: 'SIM', tabela: '2 - OUTRA', valor_liquido: 90 });
-    const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', productInput);
-    expect(request.mock.calls[2][4]).toMatchObject({ parcelas: [{ valor_1: 0 }, { valor_2: 200 }] });
+    const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: 0, dataRepasse_2: '01/03/2028', valor_2: 200 } } : path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '48291' }] } : { permitido: 'SIM', tabela: '50407 - OUTRA', valor_liquido: 90 });
+    const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', { ...productInput, term: 2 });
+    expect(request.mock.calls[2][4]).toMatchObject({ parcelas: [{ valor_1: '0.00' }, { valor_2: '200.00' }] });
     expect(rows[0]).toMatchObject({ state: 'ERROR', message: expect.stringContaining('outra tabela') });
   });
   it('rejeita política de crédito de outra matrícula', async () => {
