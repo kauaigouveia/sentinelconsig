@@ -81,15 +81,17 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
   showOwnShare?:boolean;
 }) {
   const [unified, setUnified] = useState(false);
+  const [contractFilter,setContractFilter]=useState('');
   const [providerFilter, setProviderFilter] = useState('');
   const [page, setPage] = useState(0);
   const [copyStatus, setCopyStatus] = useState('');
   const available = rows.filter(row => row.success && !row.skipped && positive(row.troco));
   const providers = [...new Set(available.map(row => row.provider))].sort();
+  const contractLabels=[...new Set(available.filter(row=>Boolean(row.unified)===unified&&(!providerFilter||row.provider===providerFilter)).map(row=>row.contractLabel||'Contrato informado'))];
   const grouped = useMemo(() => {
     const byContract = new Map<string,Map<string,T[]>>();
     for (const row of available) {
-      if (Boolean(row.unified) !== unified || (providerFilter && row.provider !== providerFilter)) continue;
+      if (Boolean(row.unified) !== unified || (providerFilter && row.provider !== providerFilter) || (contractFilter&&(row.contractLabel||'Contrato informado')!==contractFilter)) continue;
       const label = row.contractLabel || 'Contrato informado';
       if (!byContract.has(label)) byContract.set(label, new Map());
       const byProvider = byContract.get(label)!;
@@ -115,7 +117,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
         cashOut:row?.troco,
       };
     });
-  }, [rows, unified, providerFilter, conditionFor]);
+  }, [rows, unified, providerFilter, contractFilter, conditionFor]);
 
   const lastPage = Math.max(0, Math.ceil(grouped.length / 3) - 1);
   const currentPage = Math.min(page, lastPage);
@@ -127,7 +129,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
     'Contrato: ' + (row.contractLabel || 'Contrato informado'),
     'Tabela: ' + (row.table?.name || row.table?.cod_tabela || 'Condição calculada'),
     'Troco estimado: ' + amount(row.troco),
-    'Soma das parcelas originais portadas: ' + amount(row.originalInstallment),
+    'Parcelas originais portadas: ' + amount(row.originalInstallment),
     'Parcela do novo refinanciamento: ' + amount(conditionFor(row).installment),
     ...(row.provider==='DAYCOVAL' ? [buildPortRefinBreakdown(row.installmentChanges,conditionFor(row).installment)
       ? portabilityBreakdownText(buildPortRefinBreakdown(row.installmentChanges,conditionFor(row).installment)!)
@@ -159,7 +161,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       Math.round(Number(original) * 100) !== Math.round(Number(installment) * 100);
     const showProjected = !positive(original) || !positive(installment) || changed || Boolean(row.unified) ||
       Boolean(row.installmentChanges?.length);
-    return <div key={key} className={'rounded-xl border p-4 sm:p-5 ' + (isSelected
+    return <div key={key} className={'rounded-xl border p-3 sm:p-3.5 ' + (isSelected
       ? 'border-[var(--action)] bg-[var(--bg-surface-elevated)]'
       : 'border-[var(--border-default)] bg-[var(--bg-surface)]')}>
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
@@ -183,17 +185,17 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
           {isSaved ? 'Cotação salva' : isSelected ? 'Cotação selecionada' : 'Selecionar cotação'}
         </button>}
       </div>
-      {row.success && <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {row.success && <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4">
         <div className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[var(--bg-canvas)] p-3">
-          <span className="text-[11px] font-medium text-[var(--text-secondary)]">Troco estimado para o cliente</span>
+          <span className="text-[11px] font-medium text-[var(--text-secondary)]">Troco estimado</span>
           <strong className="mt-1 block break-words text-xl font-bold tabular-nums text-[var(--success-text)]">{amount(row.troco)}</strong>
         </div>
         <div className="min-w-0 p-2">
-          <span className="block text-[11px] text-[var(--text-secondary)]">{row.unified ? "Soma das parcelas originais" : "Parcela original da portabilidade"}</span>
+          <span className="block text-[11px] text-[var(--text-secondary)]">{row.unified ? "Soma das parcelas originais" : "Parcela original"}</span>
           <strong className="mt-1 block text-base tabular-nums">{amount(original)}</strong>
         </div>
         <div className="min-w-0 p-2">
-          <span className="block text-[11px] text-[var(--text-secondary)]">{row.provider==='DAYCOVAL' ? 'Parcela do novo refinanciamento' : showProjected ? 'Parcela projetada do refinanciamento' : 'Parcela proposta'}</span>
+          <span className="block text-[11px] text-[var(--text-secondary)]">{row.provider==='DAYCOVAL' ? 'Parcela do refin' : showProjected ? 'Parcela do refin' : 'Parcela proposta'}</span>
           <strong className="mt-1 block text-base tabular-nums">{amount(installment)}</strong>
         </div>
         <div className="min-w-0 p-2">
@@ -204,7 +206,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       </div>}
       {row.success && positive(row.data?.contractAmount) && <p className="mt-2 text-xs text-[var(--text-secondary)]">Valor do contrato calculado: <strong>{amount(row.data?.contractAmount)}</strong></p>}
       {row.provider==='DAYCOVAL' && (row.installmentChanges?.length
-        ? <PortRefinInstallmentsTable detail={buildPortRefinBreakdown(row.installmentChanges,condition.installment)!}/>
+        ? <details className="mt-3 rounded-lg border border-[var(--border-default)] p-3"><summary className="cursor-pointer text-xs font-semibold text-[var(--link)]">Ver composição das parcelas portadas</summary><div className="mt-3"><PortRefinInstallmentsTable detail={buildPortRefinBreakdown(row.installmentChanges,condition.installment)!}/></div></details>
         : <p role="status" className="mt-3 rounded-lg border border-[var(--warning-border)] p-3 text-xs text-[var(--warning-text)]">A composição individual das parcelas portadas não foi informada nesta cotação. Não é possível determinar se alguma parcela foi reduzida.</p>)}
       {row.requiresReview && <p className="mt-3 text-xs text-[var(--warning-text)]">
         Esta cotação pode ser salva para conferência, mas não deve seguir para contratação antes da validação.
@@ -222,7 +224,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
       </div>
       <label className="flex items-center gap-2 text-xs font-semibold">
         Filtrar banco
-        <select aria-label="Filtrar banco" value={providerFilter} onChange={event => {setProviderFilter(event.target.value);setPage(0);}}
+        <select aria-label="Filtrar banco" value={providerFilter} onChange={event => {setProviderFilter(event.target.value);setContractFilter('');setPage(0);}}
           className="max-w-48 rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2">
           <option value="">Todos os bancos</option>
           {providers.map(provider => <option key={provider} value={provider}>{bankName(provider)}</option>)}
@@ -231,20 +233,21 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
     </header>
     <div className="flex flex-wrap gap-2" aria-label="Tipo de resultado">
       {[false,true].map(value => <button type="button" key={String(value)} aria-pressed={unified === value}
-        onClick={() => {setUnified(value);setPage(0);}}
+        onClick={() => {setUnified(value);setContractFilter('');setPage(0);}}
         className={'rounded-lg border px-3 py-2 text-xs font-semibold ' +
           (unified === value ? 'border-[var(--action)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]' : 'border-[var(--border-default)] text-[var(--text-secondary)]')}>
         {value ? 'Unificações Daycoval' : 'Contratos individuais'} ({new Set(available.filter(row => Boolean(row.unified) === value).map(row => row.contractLabel || 'Contrato informado')).size})
       </button>)}
     </div>
+    <label className="flex flex-wrap items-center gap-2 text-xs font-semibold">Contrato / grupo<select aria-label="Filtrar contrato ou grupo" value={contractFilter} onChange={e=>{setContractFilter(e.target.value);setPage(0);}} className="min-w-0 max-w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2"><option value="">Todos os contratos</option>{contractLabels.map(label=><option key={label} value={label}>{label}</option>)}</select></label>
     {unified && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)]">
       Unificações representam alternativas para os mesmos contratos; os valores não devem ser somados entre propostas.
     </p>}
     {grouped.length === 0 && <p role="status" className="rounded-xl border border-[var(--border-default)] p-6 text-sm">Nenhuma simulação encontrada para estes filtros.</p>}
     {grouped.slice(currentPage * 3,currentPage * 3 + 3).map(([label,banks]) => <article key={label}
-      className="space-y-4 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] p-3 sm:p-5">
+      className="space-y-3 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] p-3 sm:p-4">
       <h4 className="border-b border-[var(--border-default)] pb-3 text-sm font-bold">{label}</h4>
-      {[...banks].map(([provider,conditions]) => {
+      <div className="grid min-w-0 gap-3 xl:grid-cols-2">{[...banks].map(([provider,conditions]) => {
         const sorted = [...conditions];
         return <section key={provider} className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -261,7 +264,7 @@ export function PortabilityResults<T extends PortabilityResult>({rows, selected,
             <div className="mt-3 space-y-3">{sorted.slice(1).map((row,index) => renderCondition(row,provider + ':' + index))}</div>
           </details>}
         </section>;
-      })}
+      })}</div>
     </article>)}
     {lastPage > 0 && <nav className="flex flex-wrap items-center justify-between gap-3 text-xs" aria-label="Páginas de contratos">
       <button type="button" disabled={currentPage===0} onClick={() => setPage(currentPage-1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Anterior</button>

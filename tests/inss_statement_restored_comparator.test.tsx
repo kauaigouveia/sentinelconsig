@@ -103,7 +103,7 @@ it('botão único dispara NOVO, C6 e Paraná e recupera unificações Daycoval e
  fireEvent.click(screen.getByRole('button',{name:'Copiar para WhatsApp'}));
  await waitFor(()=>expect(copied).toHaveBeenCalledOnce());
  expect(String(copied.mock.calls[0][0])).toContain('PORTABILIDADE');
- expect(String(copied.mock.calls[0][0])).toContain('Daycoval');
+ expect(String(copied.mock.calls[0][0])).toMatch(/daycoval/i);
 });
 
 it('extrato sem empréstimos inicia apenas NOVO e não chama portabilidade dos bancos',async()=>{

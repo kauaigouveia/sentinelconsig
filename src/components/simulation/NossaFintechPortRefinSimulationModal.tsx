@@ -5,6 +5,7 @@ import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portR
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
+import { saveDaycovalShare } from '../../lib/daycovalShareImage';
 import { inssBankProjectedQuotes } from '../../lib/inssBankProjectedQuotes';
 import {dedupeInssNovoOffers, inssNovoConsultationTerms, normalizeInssNovoOffers} from '../../lib/inssNovoConsultationTerms';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
@@ -580,13 +581,19 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       setShareStatus('Resumo copiado! Cole na conversa do WhatsApp.');
     }catch{setShareStatus('Selecione e copie manualmente o texto do resumo abaixo.');}
   };
+  const exportDaycoval=async(row:SimulationRow,copy:boolean)=>{
+    try{
+      await saveDaycovalShare(row,conditionFor(row),statement?.customer.name||form.name||'Cliente',copy);
+      setShareStatus(copy?'Imagem copiada. Cole no WhatsApp.':'Imagem Daycoval salva.');
+    }catch(e){setShareStatus(e instanceof Error?e.message:'Não foi possível gerar a imagem.');}
+  };
   if(!isOpen)return null;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
-    <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
+    <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[95dvh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
       <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{statement?.contracts.length===0?'INSS · NOVO pela margem do extrato':statement?'INSS · Simulação completa por extrato':'INSS · Portabilidade + Refinanciamento'}</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement?.contracts.length===0?'Compare ofertas de NOVO com a margem disponível do extrato.':statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
       {!statement && <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>}
       {step===2 && (statement
-        ? <section aria-label="Resumo dos contratos do extrato" className="flex flex-wrap gap-x-7 gap-y-2 border-b border-[var(--field-border)] px-5 py-3 text-xs">
+        ? <section aria-label="Resumo dos contratos do extrato" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-[var(--field-border)] bg-[var(--bg-canvas)] px-4 py-2.5 text-xs">
             <span>Cliente: <strong>{form.name||'Benefício INSS'}</strong></span>
             {contractQueue.length>0 && <>
               <span>Contratos: <strong>{contractQueue.length}</strong></span>
@@ -595,7 +602,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             <span>Prazo de referência: <strong>{form.numberOfInstallments} meses</strong></span>
           </section>
         : <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>)}
-      <div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
         {!statement && <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className={labelClass}>CPF<input required value={form.cpf} onChange={e => update('cpf', formatCpf(e.target.value))} className={inputClass} /></label>
           <label className={labelClass}>Nome do cliente (opcional)<input value={form.name} onChange={e=>update('name',e.target.value)} className={inputClass}/></label>
@@ -782,6 +789,16 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <textarea readOnly value={messageForWhatsApp} rows={9} aria-label="Mensagem para WhatsApp" className="mt-2 w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs"/>
         </details>
         {shareStatus && <p role="status" className="text-xs text-[var(--success-text)]">{shareStatus}</p>}
+      </section>}
+      {selectedRows.some(row=>row.provider==='DAYCOVAL'&&row.success&&Number(row.troco)>0&&row.installmentChanges?.length)&&<section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] p-4" aria-label="Imagem de simulação Daycoval">
+        <h3 className="font-semibold">Print da simulação Daycoval</h3>
+        <p className="text-xs text-[var(--text-secondary)]">Imagem no estilo da planilha, com a condição selecionada e os contratos mascarados. Reprodução da estimativa, não é aprovação bancária.</p>
+        {selectedRows.filter(row=>row.provider==='DAYCOVAL'&&row.success&&Number(row.troco)>0&&row.installmentChanges?.length).map((row,index)=><div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--field-border)] p-3">
+          <span className="flex-1 text-xs">{row.contractLabel||'Daycoval'} · {row.table?.name||'Tabela selecionada'} · {currency(row.troco)}</span>
+          <button type="button" onClick={()=>void exportDaycoval(row,true)} className="rounded-lg bg-[var(--action)] px-3 py-2 text-xs font-semibold text-[var(--action-ink)]">Copiar imagem</button>
+          <button type="button" onClick={()=>void exportDaycoval(row,false)} className="rounded-lg border border-[var(--field-border)] px-3 py-2 text-xs font-semibold">Salvar PNG</button>
+        </div>)}
+        {shareStatus&&<p role="status" className="text-xs text-[var(--text-secondary)]">{shareStatus}</p>}
       </section>}
       {(selectedRows.length > 0 || savedRows.length > 0 || saveMessage) && <details open={!statement} className="mt-4 rounded-xl border border-[var(--border-default)] p-3">
         <summary className={statement?'cursor-pointer text-xs font-semibold':'hidden'}>Salvar cotações no sistema (opcional)</summary>

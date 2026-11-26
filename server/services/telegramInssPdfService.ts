@@ -243,7 +243,7 @@ export function parseTelegramSelectedContracts(value:string,count:number):number
 
 export type TelegramSpreadsheetQuote={
   bank:string;indices:number[];table:string;amount:number;rate:number;
-  installment:number;term:number;changes:{index:number;original:number;adjusted:number|null}[];
+  installment:number;term:number;contractAmount?:number;version?:string;changes:{index:number;original:number;adjusted:number|null;returnRate?:number|null}[];
 };
 export type TelegramQuoteResult={texts:string[];calculatedBanks:string[];unavailableBanks:string[];quotes:TelegramSpreadsheetQuote[]};
 /** Read only; use exactly the tenant-bound stored workbooks and the approved calculation engine. */
@@ -302,7 +302,7 @@ export async function calculateTelegramInssQuotes(
           const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
           quotes.push({bank,indices:[selectedIndices[position]],table,amount:Number(offer.amount),
             rate:Number(offer.rate),installment:Number(offer.installment),term:Number(offer.term),
-            changes:[{index:selectedIndices[position],original,adjusted}]});
+            contractAmount:offer.contractAmount,version:r.version?.versionDate||undefined,changes:[{index:selectedIndices[position],original,adjusted,returnRate:offer.installmentChanges?.[0]?.returnRate??null}]});
           const originalLine='Parcela portada: '+money(original)+' → '+
             (adjusted!=null?money(adjusted):'recalculo não informado');
           texts.push('🏦 '+bank+' · Contrato '+String(selectedIndices[position]+1)+' (final '+
@@ -335,12 +335,12 @@ export async function calculateTelegramInssQuotes(
       const changes=group.map((position,n)=>{
         const value=offer.installmentChanges?.[n]?.newInstallment;
         return {index:selectedIndices[position],original:chosen[position].installment,
-          adjusted:value==null||!Number.isFinite(Number(value))?null:Number(value)};
+          adjusted:value==null||!Number.isFinite(Number(value))?null:Number(value),returnRate:offer.installmentChanges?.[n]?.returnRate??null};
       });
       const table=String(offer.name||offer.code||'Condição calculada').slice(0,90);
       quotes.push({bank:'DAYCOVAL',indices:group.map(i=>selectedIndices[i]),table,
         amount:Number(offer.amount),rate:Number(offer.rate),
-        installment:Number(offer.installment),term:Number(offer.term),changes});
+        installment:Number(offer.installment),term:Number(offer.term),contractAmount:offer.contractAmount,version:result.version?.versionDate||undefined,changes});
       texts.push('🔄 DAYCOVAL · Contratos '+group.map(i=>selectedIndices[i]+1).join('+')+
         ' · Tabela: '+table+' · Troco: '+money(offer.amount));
     }

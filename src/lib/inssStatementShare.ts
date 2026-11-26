@@ -1,4 +1,4 @@
-import {buildPortRefinBreakdown,portabilityBreakdownText} from './portRefinBreakdown';
+import {originContractSuffix} from './portRefinBreakdown';
 import {formatMonthlyRate} from './portRefinQuote';
 import type {PortedInstallmentChange} from './portRefinBreakdown';
 
@@ -26,45 +26,33 @@ export function inssStatementWhatsAppText(
   conditionFor:(row:SharedPortQuote)=>{installment?:number|null;rate?:number|null},
 ):string {
   if(!selectedMargin && !selectedPort.length)return '';
-  const parts=['*SIMULAÇÃO INSS · CONDIÇÕES SELECIONADAS*',customerName?'Cliente: '+customerName:''];
-  if(selectedMargin)parts.push(
-    '',
-    selectedMargin.scenario==='PROJECTED_2027'?'*NOVO · PRÉVIA 2027 (SEM MARGEM LIBERADA)*':'*NOVO · MARGEM ATUAL*',
-    'Banco: '+selectedMargin.institution,
-    'Tabela: '+selectedMargin.table,
-    (selectedMargin.scenario==='PROJECTED_2027'
-      ? selectedMargin.calculatedByApi?'Valor hipotético calculado pela API, não liberado: ':'Bruto teórico pela fórmula Price, não liberado: '
-      : 'Valor estimado a liberar: ')+currency(selectedMargin.amount),
-    'Parcela: '+currency(selectedMargin.installment),
-    'Prazo: '+(selectedMargin.term?selectedMargin.term+' meses':'Não informado'),
-    'Taxa: '+formatMonthlyRate(selectedMargin.rate),
-    selectedMargin.scenario==='PROJECTED_2027'
-      ? (selectedMargin.calculatedByApi
-          ? 'Fonte: API bancária em modo de simulação hipotética; não é aprovação, margem liberada ou contratação.'
-          : 'Fonte: taxa/prazo vigentes, reaplicados na fórmula Price; NÃO é cotação futura, aprovação ou valor líquido.')
-      : selectedMargin.source==='PLANILHA'?'Fonte: planilha (estimativa)':'Fonte: consulta bancária',
-  );
+  const blocks=['*SIMULAÇÃO INSS*'+(customerName?'\nCliente: '+customerName:'')];
+  if(selectedMargin){
+    const future=selectedMargin.scenario==='PROJECTED_2027';
+    const lines=[future?'*NOVO · AUMENTO DE MARGEM 2027*':'*NOVO · MARGEM ATUAL*',
+      'Banco: '+selectedMargin.institution,
+      (future&&!selectedMargin.calculatedByApi?'Valor bruto estimado: ':'Valor estimado: ')+currency(selectedMargin.amount),
+      'Parcela: '+currency(selectedMargin.installment),
+      'Prazo: '+(selectedMargin.term?selectedMargin.term+' meses':'Não informado')];
+    if(selectedMargin.table&&!/não identificad|não retorn|não informad/i.test(selectedMargin.table))lines.splice(2,0,'Tabela: '+selectedMargin.table);
+    if(selectedMargin.rate!=null&&selectedMargin.rate>0)lines.push('Taxa: '+formatMonthlyRate(selectedMargin.rate));
+    if(future)lines.push('⚠ Margem futura ainda não liberada.');
+    blocks.push(lines.join('\n'));
+  }
   for(const [index,row]of selectedPort.entries()){
     const condition=conditionFor(row);
-    parts.push('',
-      `*PORTABILIDADE ${index+1}${row.unified?' · UNIFICAÇÃO DAYCOVAL':''}*`,
-      'Banco: '+row.provider,
-      'Origem: '+(row.contractLabel||'Contrato informado'),
-      'Tabela: '+(row.table?.name||row.table?.cod_tabela||'Condição calculada'),
-      'Troco estimado: '+currency(row.troco),
-      'Soma das parcelas originais: '+currency(row.originalInstallment),
-      'Parcela do refinanciamento: '+currency(condition.installment),
-      'Prazo: '+(row.term?row.term+' meses':'Não informado'),
-      'Taxa: '+formatMonthlyRate(condition.rate),
-    );
-    if(row.provider.toUpperCase()==='DAYCOVAL'){
-      const detail=buildPortRefinBreakdown(row.installmentChanges,condition.installment);
-      if(detail)parts.push(portabilityBreakdownText(detail));
-      else parts.push('Parcelas individuais ajustadas: não informadas pela planilha.');
-    }
+    const suffixes=(row.installmentChanges||[]).map(c=>originContractSuffix(c.contractSuffix)).filter(Boolean);
+    const lines=[`*PORTABILIDADE ${index+1} + REFINANCIAMENTO*`,'Banco: '+row.provider];
+    const table=row.table?.name||row.table?.cod_tabela;
+    if(table)lines.push('Tabela: '+table);
+    if(row.unified)lines.push('Operação: Unificação'+(row.installmentChanges?.length?' de '+row.installmentChanges.length+' contratos':''));
+    if(suffixes.length)lines.push('Contratos: finais '+suffixes.join(' e '));
+    else if(row.contractLabel)lines.push('Origem: '+row.contractLabel);
+    lines.push('*Troco estimado: '+currency(row.troco)+'*','Parcela atual: '+currency(row.originalInstallment),
+      'Parcela do refinanciamento: '+currency(condition.installment),'Prazo: '+(row.term?row.term+' meses':'Não informado'));
+    if(condition.rate!=null&&condition.rate>0)lines.push('Taxa: '+formatMonthlyRate(condition.rate));
+    blocks.push(lines.join('\n'));
   }
-  parts.push('','*Importante:* Valores para conferência, sujeitos às regras vigentes, autorização e aprovação bancária. '+(selectedMargin?.scenario==='PROJECTED_2027'
-    ? 'A parcela futura de R$ 42,00 AINDA NÃO está liberada; simulações em cenário hipotético sem averbabilidade.'
-    : 'A margem projetada de 2027 não foi incluída.'));
-  return parts.filter(Boolean).join('\n');
+  blocks.push('_Valores sujeitos à conferência e aprovação bancária._');
+  return blocks.join('\n\n');
 }

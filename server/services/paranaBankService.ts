@@ -196,6 +196,13 @@ export class ParanaBankService {
     const scoped = data.propostas.filter((row: any) => String(row.codigoDoPromotor || '') === config.promoterCode);
     return { indiceDaPagina: data.indiceDaPagina && data.indiceDaPagina !== query.indiceDaPagina ? data.indiceDaPagina : null, ignoredCount: data.propostas.length - scoped.length, propostas: scoped.map((row: any) => ({ codigoDaProposta: row.codigoDaProposta, numeroDaProposta: row.numeroDaProposta, status: row.status, tipoDaOperacao: row.tipoDaOperacao, dataDeCadastro: row.dataDeCadastro, valorLiberadoParaOCliente: row.valorLiberadoParaOCliente, quantidadeDeParcelas: row.quantidadeDeParcelas, valorDaParcela: row.valorDaParcela })) };
   }
+  static async readProposalStatus(db:any,tenantId:string,promoterId:string,proposalId:string,proposalNumber:string){
+    const row=await db.systemConfig.findUnique({where:{tenantId_configKey:{tenantId,configKey:bankPromoterConfigKey('parana',promoterId,`proposal:${proposalId}`)}}});
+    if(!row)return null;
+    const data=open(row.configValue);
+    if(String(data.numeroDaProposta)!==proposalNumber&&String(data.codigoDaProposta)!==proposalNumber)return null;
+    return {status:data.status,lastSyncAt:data.lastSyncAt};
+  }
   static async sync(db: any, tenantId: string, proposalId: string, userId: string) {
     const proposal = await db.proposal.findFirst({ where: { id: proposalId, tenantId, deletedAt: null }, include: { client: true, bank: true } });
     if (!proposal || !isParanaBank(proposal.bank) || !proposal.promoterId) throw new Error('Proposta Paraná não encontrada ou sem promotora vinculada.');
