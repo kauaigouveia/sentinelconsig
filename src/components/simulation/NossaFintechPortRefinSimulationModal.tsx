@@ -589,11 +589,11 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   };
   if(!isOpen)return null;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
-    <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
+    <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[95dvh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
       <header className="flex items-start justify-between border-b border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><div><SimulationBack onBack={onBack} disabled={loading} label={statement ? 'Voltar ao extrato' : undefined}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{statement?.contracts.length===0?'INSS · NOVO pela margem do extrato':statement?'INSS · Simulação completa por extrato':'INSS · Portabilidade + Refinanciamento'}</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{statement?.contracts.length===0?'Compare ofertas de NOVO com a margem disponível do extrato.':statement ? 'Compare as condições dos contratos selecionados no extrato.' : 'Informe cliente e dívida para comparar as condições nas integrações habilitadas.'}</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-5 w-5" /></button></header>
       {!statement && <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>}
       {step===2 && (statement
-        ? <section aria-label="Resumo dos contratos do extrato" className="flex flex-wrap gap-x-7 gap-y-2 border-b border-[var(--field-border)] px-5 py-3 text-xs">
+        ? <section aria-label="Resumo dos contratos do extrato" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-[var(--field-border)] bg-[var(--bg-canvas)] px-4 py-2.5 text-xs">
             <span>Cliente: <strong>{form.name||'Benefício INSS'}</strong></span>
             {contractQueue.length>0 && <>
               <span>Contratos: <strong>{contractQueue.length}</strong></span>
@@ -602,7 +602,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             <span>Prazo de referência: <strong>{form.numberOfInstallments} meses</strong></span>
           </section>
         : <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>)}
-      <div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
         {!statement && <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-[var(--field-border)] p-5 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className={labelClass}>CPF<input required value={form.cpf} onChange={e => update('cpf', formatCpf(e.target.value))} className={inputClass} /></label>
           <label className={labelClass}>Nome do cliente (opcional)<input value={form.name} onChange={e=>update('name',e.target.value)} className={inputClass}/></label>
