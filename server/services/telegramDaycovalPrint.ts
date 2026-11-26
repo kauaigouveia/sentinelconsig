@@ -1,3 +1,5 @@
+import {existsSync} from 'node:fs';
+import {join} from 'node:path';
 import type {TelegramPdfReview,TelegramSpreadsheetQuote} from './telegramInssPdfService.js';
 import {daycovalShareSvg,type DaycovalShareData} from '../../src/lib/daycovalShareImage.js';
 const n=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
@@ -15,7 +17,9 @@ export function telegramDaycovalPrints(review:TelegramPdfReview,quotes:readonly 
 }
 export async function telegramDaycovalPng(data:DaycovalShareData):Promise<Uint8Array>{
  const {Resvg}=await import('@resvg/resvg-js');
- const renderer=new Resvg(daycovalShareSvg(data,'Cliente INSS'),{font:{loadSystemFonts:true,defaultFontFamily:'DejaVu Sans'}});
+ const root=join(process.cwd(),'node_modules','pdfjs-dist','standard_fonts');
+ const fontFiles=['LiberationSans-Regular.ttf','LiberationSans-Bold.ttf'].map(name=>join(root,name)).filter(path=>existsSync(path));
+ const renderer=new Resvg(daycovalShareSvg(data,'Cliente INSS'),{font:{loadSystemFonts:true,fontFiles,defaultFontFamily:fontFiles.length?'Liberation Sans':'DejaVu Sans'}});
  return renderer.render().asPng();
 }
 export async function sendTelegramDaycovalPrint(token:string,chatId:string,data:DaycovalShareData,fetcher:typeof fetch=fetch){
