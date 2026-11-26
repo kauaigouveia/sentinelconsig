@@ -14,14 +14,14 @@ it('gera resumo legível do NOVO e das portabilidades selecionadas sem CPF',()=>
  }],()=>({installment:258.67,rate:1.7496}));
  expect(message).toContain('*NOVO · MARGEM ATUAL*');
  expect(message).toContain('C6 BANK');
- expect(message).toContain('*PORTABILIDADE 1 · UNIFICAÇÃO DAYCOVAL*');
+ expect(message).toContain('*PORTABILIDADE 1 + REFINANCIAMENTO*');
  expect(message).toContain('800584 – RFN INSS 4');
- expect(message).toContain('62,30');
- expect(message).toContain('redução de');
- expect(message).toContain('Total das parcelas após ajustes');
- expect(message).toContain('PARCELA DO NOVO REFINANCIAMENTO');
+ expect(message).toContain('Contratos: finais 3125 e 4512');
+ expect(message).not.toContain('redução de');
+ expect(message).not.toContain('Total das parcelas após ajustes');
+ expect(message).toContain('Parcela do refinanciamento');
  expect(message).not.toContain('52998224725');
- expect(message).toContain('A margem projetada de 2027 não foi incluída.');
+ expect(message).toContain('Valores sujeitos à conferência e aprovação bancária.');
 });
 it('permite copiar somente NOVO ou somente portabilidade',()=>{
  const margin=inssStatementWhatsAppText('Pessoa',{institution:'FACTA',table:'Nova',amount:500,installment:36,term:84,rate:1.9,source:'API'},[],()=>({}));
@@ -32,3 +32,5 @@ it('permite copiar somente NOVO ou somente portabilidade',()=>{
  expect(port).toContain('PARANA');
  expect(inssStatementWhatsAppText('Pessoa',null,[],()=>({}))).toBe('');
 });
+
+it('does not include unidentified table or technical source',()=>{const message=inssStatementWhatsAppText('Pessoa',{institution:'Banco',table:'Tabela não identificada · produto 200',amount:1000,installment:42,term:108,rate:null,source:'API',scenario:'PROJECTED_2027',calculatedByApi:true},[],()=>({}));expect(message).not.toContain('produto 200');expect(message).not.toContain('Taxa:');expect(message).not.toContain('API');expect(message).toContain('Margem futura ainda não liberada.');});
