@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "prebuild": "vitest run tests/nexus_navigation_structural.test.tsx tests/nexus_home_operational.test.tsx tests/ui_pendencies_operational.test.tsx tests/partner_browser_title.test.tsx tests/brand_slogan_login_variants.test.ts tests/inss_extrato_novo_port_regression_20261123.test.tsx tests/finanto_inss_novo_status.test.ts tests/inss_statement_quote_route.test.ts tests/inss_novo_regression.test.ts tests/inss_statement_restored_comparator.test.tsx tests/inss_multi_quote_selection.test.ts tests/daycoval_unification_priority_ui.test.tsx tests/extractor_inbound.test.ts tests/evolve_bi_read.test.ts",
+    "prebuild": "vitest run tests/nexus_navigation_structural.test.tsx tests/nexus_home_operational.test.tsx tests/ui_pendencies_operational.test.tsx tests/partner_browser_title.test.tsx tests/brand_slogan_login_variants.test.ts tests/inss_extrato_novo_port_regression_20261123.test.tsx tests/finanto_inss_novo_status.test.ts tests/inss_statement_quote_route.test.ts tests/inss_novo_regression.test.ts tests/inss_statement_restored_comparator.test.tsx tests/inss_multi_quote_selection.test.ts tests/daycoval_unification_priority_ui.test.tsx tests/extractor_inbound.test.ts tests/evolve_bi_read.test.ts tests/proposal_deletion.test.ts",
     "build": "prisma generate && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "vercel-build": "npm run build",
     "start": "node dist/server.cjs",
