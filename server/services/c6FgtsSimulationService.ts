@@ -49,8 +49,23 @@ export class C6FgtsSimulationService {
     body:JSON.stringify(body),
   });
   const data=await response.json().catch(()=>null) as any;
-  if(!response.ok||!data||typeof data!=='object'||data.error||data.errors)
-    throw Error('C6 FGTS não concluiu a simulação (HTTP '+response.status+').');
+  if(!response.ok||!data||typeof data!=='object'||data.error||data.errors){
+    // Only classify bank messages; never expose raw payloads, customer identifiers or tokens.
+    const parts=[data?.message,data?.error_description,data?.error?.message,data?.detail,
+      typeof data?.error==='string'?data.error:undefined,
+      ...(Array.isArray(data?.errors)?data.errors.slice(0,10).map((x:any)=>typeof x==='string'?x:x?.message):[])];
+    const reason=parts.filter(x=>typeof x==='string').join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const diagnostic=/saldo insuficiente|sem saldo|insufficient balance|no balance/.test(reason)?'O C6 informou saldo insuficiente ou indisponível.':
+      /saque.aniversario|autorizacao.*(?:cliente|fgts|caixa)|(?:cliente|fgts|caixa).*autorizacao/.test(reason)?'O C6 informou uma restrição de saque-aniversário ou autorização FGTS.':
+      /convenio|covenant/.test(reason)?'O C6 informou uma restrição relacionada ao convênio FGTS. Confira a tabela habilitada para esta promotora.':
+      /promotora|promoter/.test(reason)?'O C6 informou uma restrição relacionada à promotora. Confira o vínculo comercial.':
+      response.status===401?'Autenticação recusada pelo C6. Confira a conexão.':
+      response.status===403?'O C6 recusou o acesso à simulação FGTS. Verifique a permissão do usuário da API, convênio e vínculo da promotora com o banco.':
+      response.status===429?'Limite de consultas C6 atingido. Tente novamente em instantes.':
+      response.status>=500?'Serviço FGTS C6 indisponível no momento.':
+      'O C6 não confirmou a simulação. Confira os dados e a modalidade solicitada.';
+    throw Error('C6 FGTS (HTTP '+response.status+'): '+diagnostic);
+  }
   const number=(v:unknown)=>v!==null&&v!==''&&Number.isFinite(Number(v))?Number(v):undefined;
   const amount=number(data.net_amount),term=number(data.installment_quantity);
   if(!amount||amount<=0||!term||!Number.isInteger(term)||term<1||term>10)
