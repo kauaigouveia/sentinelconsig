@@ -5,6 +5,7 @@ import {originContractSuffix,type PortedInstallmentChange} from '../../lib/portR
 import { formatMonthlyRate } from '../../lib/portRefinQuote';
 import { inssProjectedMargin } from '../../lib/inssProjectedMargin';
 import { inssStatementWhatsAppText } from '../../lib/inssStatementShare';
+import { saveDaycovalShare } from '../../lib/daycovalShareImage';
 import { inssBankProjectedQuotes } from '../../lib/inssBankProjectedQuotes';
 import {dedupeInssNovoOffers, inssNovoConsultationTerms, normalizeInssNovoOffers} from '../../lib/inssNovoConsultationTerms';
 import { toggleInssQuoteSelection } from '../../lib/inssQuoteSelection';
@@ -580,6 +581,12 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       setShareStatus('Resumo copiado! Cole na conversa do WhatsApp.');
     }catch{setShareStatus('Selecione e copie manualmente o texto do resumo abaixo.');}
   };
+  const exportDaycoval=async(row:SimulationRow,copy:boolean)=>{
+    try{
+      await saveDaycovalShare(row,conditionFor(row),statement?.customer.name||form.name||'Cliente',copy);
+      setShareStatus(copy?'Imagem copiada. Cole no WhatsApp.':'Imagem Daycoval salva.');
+    }catch(e){setShareStatus(e instanceof Error?e.message:'Não foi possível gerar a imagem.');}
+  };
   if(!isOpen)return null;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--scrim)] p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
@@ -782,6 +789,16 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <textarea readOnly value={messageForWhatsApp} rows={9} aria-label="Mensagem para WhatsApp" className="mt-2 w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs"/>
         </details>
         {shareStatus && <p role="status" className="text-xs text-[var(--success-text)]">{shareStatus}</p>}
+      </section>}
+      {selectedRows.some(row=>row.provider==='DAYCOVAL'&&row.success&&Number(row.troco)>0&&row.installmentChanges?.length)&&<section className="mt-4 space-y-3 rounded-xl border border-[var(--border-default)] p-4" aria-label="Imagem de simulação Daycoval">
+        <h3 className="font-semibold">Print da simulação Daycoval</h3>
+        <p className="text-xs text-[var(--text-secondary)]">Imagem no estilo da planilha, com a condição selecionada e os contratos mascarados. Reprodução da estimativa, não é aprovação bancária.</p>
+        {selectedRows.filter(row=>row.provider==='DAYCOVAL'&&row.success&&Number(row.troco)>0&&row.installmentChanges?.length).map((row,index)=><div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--field-border)] p-3">
+          <span className="flex-1 text-xs">{row.contractLabel||'Daycoval'} · {row.table?.name||'Tabela selecionada'} · {currency(row.troco)}</span>
+          <button type="button" onClick={()=>void exportDaycoval(row,true)} className="rounded-lg bg-[var(--action)] px-3 py-2 text-xs font-semibold text-[var(--action-ink)]">Copiar imagem</button>
+          <button type="button" onClick={()=>void exportDaycoval(row,false)} className="rounded-lg border border-[var(--field-border)] px-3 py-2 text-xs font-semibold">Salvar PNG</button>
+        </div>)}
+        {shareStatus&&<p role="status" className="text-xs text-[var(--text-secondary)]">{shareStatus}</p>}
       </section>}
       {(selectedRows.length > 0 || savedRows.length > 0 || saveMessage) && <details open={!statement} className="mt-4 rounded-xl border border-[var(--border-default)] p-3">
         <summary className={statement?'cursor-pointer text-xs font-semibold':'hidden'}>Salvar cotações no sistema (opcional)</summary>
